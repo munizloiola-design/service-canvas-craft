@@ -44,6 +44,47 @@ export type Database = {
         }
         Relationships: []
       }
+      project_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          project_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          project_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          project_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_attachments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           assigned_to: string | null
@@ -54,7 +95,12 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          media_type: Database["public"]["Enums"]["media_type"] | null
+          notes: string | null
           priority: Database["public"]["Enums"]["project_priority"]
+          reference_links: string[]
+          service_type: Database["public"]["Enums"]["service_type"] | null
+          start_date: string | null
           status: Database["public"]["Enums"]["project_status"]
           title: string
           updated_at: string
@@ -68,7 +114,12 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          media_type?: Database["public"]["Enums"]["media_type"] | null
+          notes?: string | null
           priority?: Database["public"]["Enums"]["project_priority"]
+          reference_links?: string[]
+          service_type?: Database["public"]["Enums"]["service_type"] | null
+          start_date?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           title: string
           updated_at?: string
@@ -82,7 +133,12 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          media_type?: Database["public"]["Enums"]["media_type"] | null
+          notes?: string | null
           priority?: Database["public"]["Enums"]["project_priority"]
+          reference_links?: string[]
+          service_type?: Database["public"]["Enums"]["service_type"] | null
+          start_date?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           title?: string
           updated_at?: string
@@ -125,8 +181,27 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "gerente" | "membro"
+      media_type:
+        | "post"
+        | "story"
+        | "reels"
+        | "video"
+        | "banner"
+        | "logo"
+        | "site"
+        | "impresso"
+        | "outro"
       project_priority: "baixa" | "media" | "alta" | "urgente"
       project_status: "a_fazer" | "em_andamento" | "em_revisao" | "concluido"
+      service_type:
+        | "design_grafico"
+        | "social_media"
+        | "video"
+        | "fotografia"
+        | "web"
+        | "branding"
+        | "copywriting"
+        | "outro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -255,8 +330,29 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "gerente", "membro"],
+      media_type: [
+        "post",
+        "story",
+        "reels",
+        "video",
+        "banner",
+        "logo",
+        "site",
+        "impresso",
+        "outro",
+      ],
       project_priority: ["baixa", "media", "alta", "urgente"],
       project_status: ["a_fazer", "em_andamento", "em_revisao", "concluido"],
+      service_type: [
+        "design_grafico",
+        "social_media",
+        "video",
+        "fotografia",
+        "web",
+        "branding",
+        "copywriting",
+        "outro",
+      ],
     },
   },
 } as const
