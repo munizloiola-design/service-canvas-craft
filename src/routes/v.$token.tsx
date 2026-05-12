@@ -33,7 +33,7 @@ function ValidationPage() {
   const decide = useMutation({
     mutationFn: async (decision: "aprovado" | "reprovado") => {
       const { data, error } = await supabase.rpc("submit_client_decision", {
-        _token: token, _decision: decision, _feedback: feedback || null,
+        _token: token, _decision: decision, _feedback: feedback || "",
       });
       if (error) throw error;
       if (!data) throw new Error("Link inválido ou já utilizado");

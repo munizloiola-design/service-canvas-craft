@@ -215,8 +215,8 @@ function CrudTable({ table }: { table: typeof TABLES[number] }) {
               <span className="h-4 w-4 rounded-full border shrink-0" style={{ background: String(r.color) }} />
             ) : null}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{String(r[primaryField] ?? "—")}</p>
-              {secondaryField && r[secondaryField] && (
+              <p className="text-sm font-medium truncate">{r[primaryField] != null ? String(r[primaryField]) : "—"}</p>
+              {secondaryField && r[secondaryField] != null && (
                 <p className="text-xs text-muted-foreground truncate">{String(r[secondaryField])}</p>
               )}
             </div>
