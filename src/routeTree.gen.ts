@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VTokenRouteImport } from './routes/v.$token'
 import { Route as AppTeamRouteImport } from './routes/_app/team'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -28,6 +30,11 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VTokenRoute = VTokenRouteImport.update({
+  id: '/v/$token',
+  path: '/v/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppTeamRoute = AppTeamRouteImport.update({
@@ -45,49 +52,77 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCadastrosRoute = AppCadastrosRouteImport.update({
+  id: '/cadastros',
+  path: '/cadastros',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/cadastros': typeof AppCadastrosRoute
   '/dashboard': typeof AppDashboardRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
+  '/v/$token': typeof VTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/cadastros': typeof AppCadastrosRoute
   '/dashboard': typeof AppDashboardRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
+  '/v/$token': typeof VTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/cadastros': typeof AppCadastrosRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/projects': typeof AppProjectsRoute
   '/_app/team': typeof AppTeamRoute
+  '/v/$token': typeof VTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/dashboard' | '/projects' | '/team'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/cadastros'
+    | '/dashboard'
+    | '/projects'
+    | '/team'
+    | '/v/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/dashboard' | '/projects' | '/team'
+  to:
+    | '/'
+    | '/login'
+    | '/cadastros'
+    | '/dashboard'
+    | '/projects'
+    | '/team'
+    | '/v/$token'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/login'
+    | '/_app/cadastros'
     | '/_app/dashboard'
     | '/_app/projects'
     | '/_app/team'
+    | '/v/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  VTokenRoute: typeof VTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -113,6 +148,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/v/$token': {
+      id: '/v/$token'
+      path: '/v/$token'
+      fullPath: '/v/$token'
+      preLoaderRoute: typeof VTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/team': {
       id: '/_app/team'
       path: '/team'
@@ -134,16 +176,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/cadastros': {
+      id: '/_app/cadastros'
+      path: '/cadastros'
+      fullPath: '/cadastros'
+      preLoaderRoute: typeof AppCadastrosRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppCadastrosRoute: typeof AppCadastrosRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppProjectsRoute: typeof AppProjectsRoute
   AppTeamRoute: typeof AppTeamRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppCadastrosRoute: AppCadastrosRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppProjectsRoute: AppProjectsRoute,
   AppTeamRoute: AppTeamRoute,
@@ -155,7 +206,18 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  VTokenRoute: VTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
