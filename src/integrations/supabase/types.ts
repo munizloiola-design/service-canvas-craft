@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      clients: {
+        Row: {
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      media_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      priorities: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          level: number
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          level?: number
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          level?: number
+          name?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -43,6 +127,45 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      project_assignees: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          role_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          role_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          role_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_assignees_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_assignees_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "project_roles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_attachments: {
         Row: {
@@ -85,63 +208,222 @@ export type Database = {
           },
         ]
       }
+      project_roles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      project_transitions: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          from_status_id: string | null
+          id: string
+          project_id: string
+          reason: string | null
+          to_status_id: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          from_status_id?: string | null
+          id?: string
+          project_id: string
+          reason?: string | null
+          to_status_id?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          from_status_id?: string | null
+          id?: string
+          project_id?: string
+          reason?: string | null
+          to_status_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_transitions_from_status_id_fkey"
+            columns: ["from_status_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_transitions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_transitions_to_status_id_fkey"
+            columns: ["to_status_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           assigned_to: string | null
           budget: number | null
+          client_decided_at: string | null
+          client_decision: string | null
+          client_feedback: string | null
+          client_id: string | null
           client_name: string | null
+          client_token: string | null
           created_at: string
           created_by: string | null
+          deliverable_path: string | null
           description: string | null
           due_date: string | null
+          has_reference: boolean
           id: string
           media_type: Database["public"]["Enums"]["media_type"] | null
+          media_type_id: string | null
           notes: string | null
+          post_date: string | null
           priority: Database["public"]["Enums"]["project_priority"]
+          priority_id: string | null
           reference_links: string[]
           service_type: Database["public"]["Enums"]["service_type"] | null
           start_date: string | null
           status: Database["public"]["Enums"]["project_status"]
+          status_id: string | null
           title: string
           updated_at: string
         }
         Insert: {
           assigned_to?: string | null
           budget?: number | null
+          client_decided_at?: string | null
+          client_decision?: string | null
+          client_feedback?: string | null
+          client_id?: string | null
           client_name?: string | null
+          client_token?: string | null
           created_at?: string
           created_by?: string | null
+          deliverable_path?: string | null
           description?: string | null
           due_date?: string | null
+          has_reference?: boolean
           id?: string
           media_type?: Database["public"]["Enums"]["media_type"] | null
+          media_type_id?: string | null
           notes?: string | null
+          post_date?: string | null
           priority?: Database["public"]["Enums"]["project_priority"]
+          priority_id?: string | null
           reference_links?: string[]
           service_type?: Database["public"]["Enums"]["service_type"] | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["project_status"]
+          status_id?: string | null
           title: string
           updated_at?: string
         }
         Update: {
           assigned_to?: string | null
           budget?: number | null
+          client_decided_at?: string | null
+          client_decision?: string | null
+          client_feedback?: string | null
+          client_id?: string | null
           client_name?: string | null
+          client_token?: string | null
           created_at?: string
           created_by?: string | null
+          deliverable_path?: string | null
           description?: string | null
           due_date?: string | null
+          has_reference?: boolean
           id?: string
           media_type?: Database["public"]["Enums"]["media_type"] | null
+          media_type_id?: string | null
           notes?: string | null
+          post_date?: string | null
           priority?: Database["public"]["Enums"]["project_priority"]
+          priority_id?: string | null
           reference_links?: string[]
           service_type?: Database["public"]["Enums"]["service_type"] | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["project_status"]
+          status_id?: string | null
           title?: string
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_media_type_id_fkey"
+            columns: ["media_type_id"]
+            isOneToOne: false
+            referencedRelation: "media_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_priority_id_fkey"
+            columns: ["priority_id"]
+            isOneToOne: false
+            referencedRelation: "priorities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      text_snippets: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          title: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          title: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          title?: string
         }
         Relationships: []
       }
@@ -166,16 +448,70 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_statuses: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_client_validation: boolean
+          is_final: boolean
+          is_review: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_client_validation?: boolean
+          is_final?: boolean
+          is_review?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_client_validation?: boolean
+          is_final?: boolean
+          is_review?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      get_project_by_token: {
+        Args: { _token: string }
+        Returns: {
+          client_decided_at: string
+          client_decision: string
+          client_feedback: string
+          client_name: string
+          deliverable_path: string
+          description: string
+          id: string
+          media_type_name: string
+          notes: string
+          status_name: string
+          title: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_manager: { Args: { _uid: string }; Returns: boolean }
+      submit_client_decision: {
+        Args: { _decision: string; _feedback: string; _token: string }
         Returns: boolean
       }
     }
