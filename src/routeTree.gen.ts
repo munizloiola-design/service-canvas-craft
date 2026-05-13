@@ -15,6 +15,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as VTokenRouteImport } from './routes/v.$token'
 import { Route as AppTeamRouteImport } from './routes/_app/team'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
+import { Route as AppOrcamentoRouteImport } from './routes/_app/orcamento'
+import { Route as AppFinanceiroRouteImport } from './routes/_app/financeiro'
+import { Route as AppEquipamentosRouteImport } from './routes/_app/equipamentos'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
 
@@ -47,6 +50,21 @@ const AppProjectsRoute = AppProjectsRouteImport.update({
   path: '/projects',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOrcamentoRoute = AppOrcamentoRouteImport.update({
+  id: '/orcamento',
+  path: '/orcamento',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEquipamentosRoute = AppEquipamentosRouteImport.update({
+  id: '/equipamentos',
+  path: '/equipamentos',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -63,6 +81,9 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/cadastros': typeof AppCadastrosRoute
   '/dashboard': typeof AppDashboardRoute
+  '/equipamentos': typeof AppEquipamentosRoute
+  '/financeiro': typeof AppFinanceiroRoute
+  '/orcamento': typeof AppOrcamentoRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
   '/v/$token': typeof VTokenRoute
@@ -72,6 +93,9 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/cadastros': typeof AppCadastrosRoute
   '/dashboard': typeof AppDashboardRoute
+  '/equipamentos': typeof AppEquipamentosRoute
+  '/financeiro': typeof AppFinanceiroRoute
+  '/orcamento': typeof AppOrcamentoRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
   '/v/$token': typeof VTokenRoute
@@ -83,6 +107,9 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/cadastros': typeof AppCadastrosRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/equipamentos': typeof AppEquipamentosRoute
+  '/_app/financeiro': typeof AppFinanceiroRoute
+  '/_app/orcamento': typeof AppOrcamentoRoute
   '/_app/projects': typeof AppProjectsRoute
   '/_app/team': typeof AppTeamRoute
   '/v/$token': typeof VTokenRoute
@@ -94,6 +121,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/cadastros'
     | '/dashboard'
+    | '/equipamentos'
+    | '/financeiro'
+    | '/orcamento'
     | '/projects'
     | '/team'
     | '/v/$token'
@@ -103,6 +133,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/cadastros'
     | '/dashboard'
+    | '/equipamentos'
+    | '/financeiro'
+    | '/orcamento'
     | '/projects'
     | '/team'
     | '/v/$token'
@@ -113,6 +146,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/cadastros'
     | '/_app/dashboard'
+    | '/_app/equipamentos'
+    | '/_app/financeiro'
+    | '/_app/orcamento'
     | '/_app/projects'
     | '/_app/team'
     | '/v/$token'
@@ -169,6 +205,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/orcamento': {
+      id: '/_app/orcamento'
+      path: '/orcamento'
+      fullPath: '/orcamento'
+      preLoaderRoute: typeof AppOrcamentoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/financeiro': {
+      id: '/_app/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof AppFinanceiroRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/equipamentos': {
+      id: '/_app/equipamentos'
+      path: '/equipamentos'
+      fullPath: '/equipamentos'
+      preLoaderRoute: typeof AppEquipamentosRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
@@ -189,6 +246,9 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppCadastrosRoute: typeof AppCadastrosRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppEquipamentosRoute: typeof AppEquipamentosRoute
+  AppFinanceiroRoute: typeof AppFinanceiroRoute
+  AppOrcamentoRoute: typeof AppOrcamentoRoute
   AppProjectsRoute: typeof AppProjectsRoute
   AppTeamRoute: typeof AppTeamRoute
 }
@@ -196,6 +256,9 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppCadastrosRoute: AppCadastrosRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppEquipamentosRoute: AppEquipamentosRoute,
+  AppFinanceiroRoute: AppFinanceiroRoute,
+  AppOrcamentoRoute: AppOrcamentoRoute,
   AppProjectsRoute: AppProjectsRoute,
   AppTeamRoute: AppTeamRoute,
 }

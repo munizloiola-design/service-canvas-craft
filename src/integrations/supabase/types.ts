@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      budget_simulations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          fixed_cost_total: number
+          hours: number
+          id: string
+          name: string
+          professionals: Json
+          profit_pct: number
+          suggested_price: number
+          tax_pct: number
+          total_cost: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          fixed_cost_total?: number
+          hours?: number
+          id?: string
+          name: string
+          professionals?: Json
+          profit_pct?: number
+          suggested_price?: number
+          tax_pct?: number
+          total_cost?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          fixed_cost_total?: number
+          hours?: number
+          id?: string
+          name?: string
+          professionals?: Json
+          profit_pct?: number
+          suggested_price?: number
+          tax_pct?: number
+          total_cost?: number
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           contact_name: string | null
@@ -43,6 +85,174 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      equipments: {
+        Row: {
+          acquisition_date: string
+          acquisition_value: number
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          depreciation_pct_year: number
+          id: string
+          name: string
+          notes: string | null
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          acquisition_date?: string
+          acquisition_value?: number
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          depreciation_pct_year?: number
+          id?: string
+          name: string
+          notes?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          acquisition_date?: string
+          acquisition_value?: number
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          depreciation_pct_year?: number
+          id?: string
+          name?: string
+          notes?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      financial_entries: {
+        Row: {
+          amount: number
+          category: string | null
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          entry_date: string
+          id: string
+          kind: string
+          project_id: string | null
+          receipt_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          category?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description: string
+          entry_date?: string
+          id?: string
+          kind: string
+          project_id?: string | null
+          receipt_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          entry_date?: string
+          id?: string
+          kind?: string
+          project_id?: string | null
+          receipt_path?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_entries_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_settings: {
+        Row: {
+          currency: string
+          default_commission_pct: number
+          id: boolean
+          tax_pct: number
+          updated_at: string
+        }
+        Insert: {
+          currency?: string
+          default_commission_pct?: number
+          id?: boolean
+          tax_pct?: number
+          updated_at?: string
+        }
+        Update: {
+          currency?: string
+          default_commission_pct?: number
+          id?: boolean
+          tax_pct?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fixed_costs: {
+        Row: {
+          active: boolean
+          amount: number
+          category: string | null
+          created_at: string
+          due_day: number | null
+          id: string
+          name: string
+          notes: string | null
+          recurrence: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount?: number
+          category?: string | null
+          created_at?: string
+          due_day?: number | null
+          id?: string
+          name: string
+          notes?: string | null
+          recurrence?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          category?: string | null
+          created_at?: string
+          due_day?: number | null
+          id?: string
+          name?: string
+          notes?: string | null
+          recurrence?: string
           updated_at?: string
         }
         Relationships: []
@@ -101,8 +311,10 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          commission_pct: number
           created_at: string
           full_name: string
+          hourly_cost: number
           id: string
           job_title: string | null
           phone: string | null
@@ -110,8 +322,10 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          commission_pct?: number
           created_at?: string
           full_name?: string
+          hourly_cost?: number
           id: string
           job_title?: string | null
           phone?: string | null
@@ -119,8 +333,10 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          commission_pct?: number
           created_at?: string
           full_name?: string
+          hourly_cost?: number
           id?: string
           job_title?: string | null
           phone?: string | null
@@ -399,6 +615,53 @@ export type Database = {
             columns: ["status_id"]
             isOneToOne: false
             referencedRelation: "workflow_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_incomes: {
+        Row: {
+          active: boolean
+          amount: number
+          client_id: string | null
+          created_at: string
+          description: string
+          id: string
+          next_due: string | null
+          notes: string | null
+          recurrence: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount?: number
+          client_id?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          next_due?: string | null
+          notes?: string | null
+          recurrence?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          client_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          next_due?: string | null
+          notes?: string | null
+          recurrence?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_incomes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
