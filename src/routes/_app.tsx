@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, Navigate, Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
-import { LayoutDashboard, FolderKanban, Users, LogOut, Briefcase, Settings } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Users, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,9 @@ export const Route = createFileRoute("/_app")({
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/projects", label: "Projetos", icon: FolderKanban },
+  { to: "/financeiro", label: "Financeiro", icon: DollarSign },
+  { to: "/orcamento", label: "Orçamento", icon: Calculator },
+  { to: "/equipamentos", label: "Equipamentos", icon: Wrench },
   { to: "/team", label: "Equipe", icon: Users },
   { to: "/cadastros", label: "Cadastros", icon: Settings },
 ] as const;
