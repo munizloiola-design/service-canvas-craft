@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as VTokenRouteImport } from './routes/v.$token'
 import { Route as AppTeamRouteImport } from './routes/_app/team'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
+import { Route as AppPermissoesRouteImport } from './routes/_app/permissoes'
 import { Route as AppOrcamentoRouteImport } from './routes/_app/orcamento'
 import { Route as AppFinanceiroRouteImport } from './routes/_app/financeiro'
 import { Route as AppEquipamentosRouteImport } from './routes/_app/equipamentos'
@@ -48,6 +49,11 @@ const AppTeamRoute = AppTeamRouteImport.update({
 const AppProjectsRoute = AppProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPermissoesRoute = AppPermissoesRouteImport.update({
+  id: '/permissoes',
+  path: '/permissoes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppOrcamentoRoute = AppOrcamentoRouteImport.update({
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/equipamentos': typeof AppEquipamentosRoute
   '/financeiro': typeof AppFinanceiroRoute
   '/orcamento': typeof AppOrcamentoRoute
+  '/permissoes': typeof AppPermissoesRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
   '/v/$token': typeof VTokenRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/equipamentos': typeof AppEquipamentosRoute
   '/financeiro': typeof AppFinanceiroRoute
   '/orcamento': typeof AppOrcamentoRoute
+  '/permissoes': typeof AppPermissoesRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
   '/v/$token': typeof VTokenRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/_app/equipamentos': typeof AppEquipamentosRoute
   '/_app/financeiro': typeof AppFinanceiroRoute
   '/_app/orcamento': typeof AppOrcamentoRoute
+  '/_app/permissoes': typeof AppPermissoesRoute
   '/_app/projects': typeof AppProjectsRoute
   '/_app/team': typeof AppTeamRoute
   '/v/$token': typeof VTokenRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/equipamentos'
     | '/financeiro'
     | '/orcamento'
+    | '/permissoes'
     | '/projects'
     | '/team'
     | '/v/$token'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/equipamentos'
     | '/financeiro'
     | '/orcamento'
+    | '/permissoes'
     | '/projects'
     | '/team'
     | '/v/$token'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/_app/equipamentos'
     | '/_app/financeiro'
     | '/_app/orcamento'
+    | '/_app/permissoes'
     | '/_app/projects'
     | '/_app/team'
     | '/v/$token'
@@ -205,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/permissoes': {
+      id: '/_app/permissoes'
+      path: '/permissoes'
+      fullPath: '/permissoes'
+      preLoaderRoute: typeof AppPermissoesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/orcamento': {
       id: '/_app/orcamento'
       path: '/orcamento'
@@ -249,6 +268,7 @@ interface AppRouteChildren {
   AppEquipamentosRoute: typeof AppEquipamentosRoute
   AppFinanceiroRoute: typeof AppFinanceiroRoute
   AppOrcamentoRoute: typeof AppOrcamentoRoute
+  AppPermissoesRoute: typeof AppPermissoesRoute
   AppProjectsRoute: typeof AppProjectsRoute
   AppTeamRoute: typeof AppTeamRoute
 }
@@ -259,6 +279,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEquipamentosRoute: AppEquipamentosRoute,
   AppFinanceiroRoute: AppFinanceiroRoute,
   AppOrcamentoRoute: AppOrcamentoRoute,
+  AppPermissoesRoute: AppPermissoesRoute,
   AppProjectsRoute: AppProjectsRoute,
   AppTeamRoute: AppTeamRoute,
 }
@@ -274,3 +295,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
