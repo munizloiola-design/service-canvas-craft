@@ -23,11 +23,12 @@ const navItems: { to: string; label: string; icon: typeof LayoutDashboard; resou
 ];
 
 function AppLayout() {
-  const { user, loading, signOut, roles } = useAuth();
+  const { user, loading, signOut, roles, hasRole } = useAuth();
+  const { can, loading: permsLoading } = usePermissions();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  if (loading) {
+  if (loading || permsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -35,6 +36,11 @@ function AppLayout() {
     );
   }
   if (!user) return <Navigate to="/login" />;
+
+  const visibleNav = navItems.filter((item) => {
+    if (item.adminOnly && !hasRole("admin")) return false;
+    return can(item.resource, "view");
+  });
 
   const initials = (user.email ?? "U").slice(0, 2).toUpperCase();
   const primaryRole = roles[0] ?? "membro";
@@ -50,7 +56,7 @@ function AppLayout() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
+          {visibleNav.map((item) => {
             const active = pathname.startsWith(item.to);
             const Icon = item.icon;
             return (
