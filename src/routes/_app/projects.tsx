@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload } from "lucide-react";
+import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/projects")({ component: ProjectsPage });
@@ -48,12 +48,23 @@ const ALL_COLUMNS = [
   { key: "post_date", label: "Postagem" },
 ] as const;
 
+type FilterKey = "client" | "assignee" | "status" | "priority" | "media" | "decision" | "due_from" | "due_to" | "post_from" | "post_to";
+type ActiveFilter = { key: FilterKey; value: string };
+
+const FILTER_LABELS: Record<FilterKey, string> = {
+  client: "Cliente", assignee: "Responsável", status: "Etapa", priority: "Prioridade",
+  media: "Tipo de mídia", decision: "Decisão do cliente",
+  due_from: "Prazo a partir de", due_to: "Prazo até",
+  post_from: "Postagem a partir de", post_to: "Postagem até",
+};
+
 function ProjectsPage() {
   const { isManager } = useAuth();
   const [view, setView] = useState<"kanban" | "list">("kanban");
   const [open, setOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [visibleCols, setVisibleCols] = useState<string[]>(ALL_COLUMNS.map((c) => c.key));
+  const [filters, setFilters] = useState<ActiveFilter[]>([]);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
