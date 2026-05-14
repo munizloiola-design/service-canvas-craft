@@ -89,6 +89,39 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_widgets: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          position: number
+          size: string
+          updated_at: string
+          user_id: string
+          widget_key: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          position?: number
+          size?: string
+          updated_at?: string
+          user_id: string
+          widget_key: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          position?: number
+          size?: string
+          updated_at?: string
+          user_id?: string
+          widget_key?: string
+        }
+        Relationships: []
+      }
       equipments: {
         Row: {
           acquisition_date: string
@@ -666,6 +699,30 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          resource: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          resource: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          resource?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
       text_snippets: {
         Row: {
           content: string
@@ -764,6 +821,10 @@ export type Database = {
           status_name: string
           title: string
         }[]
+      }
+      has_permission: {
+        Args: { _action: string; _resource: string; _uid: string }
+        Returns: boolean
       }
       has_role: {
         Args: {
