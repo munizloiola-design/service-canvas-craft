@@ -1,69 +1,67 @@
+# Fase 2 — Workflow, permissões, calendários e dashboard
 
-# Plano de evolução do sistema
+## 1. Status configurável nas demandas
 
-Vamos quebrar em fases para manter qualidade. Começo executando a Fase 1 imediatamente assim que você aprovar.
+Já existe a tabela `workflow_statuses` (name, color, sort_order, is_final, is_review, is_client_validation). Vou:
 
----
+- Criar página **Cadastros → Status** para CRUD (gerentes/admin) com drag-to-reorder.
+- Em `projects.tsx`, trocar o seletor fixo de status pela lista dinâmica de `workflow_statuses` (já há `status_id`, mas o código ainda usa o enum `status`). Manter compatibilidade lendo `status_id` quando presente.
+- Toda mudança de status grava em `project_transitions` (já existe).
 
-## Fase 1 — Financeiro + Equipamentos + Orçamento (foco agora)
+## 2. Permissões granulares por área
 
-### 1. Cadastro de Equipamentos (`/equipamentos`)
-Tabela `equipments` com:
-- código (auto-gerado, editável)
-- nome, tipo (categoria livre), valor de aquisição
-- data de aquisição → calcula tempo de uso
-- **% de depreciação ao ano** (definida por equipamento)
-- valor depreciado atual = valor × (1 − %aa)^anos (calculado em tempo real)
+Hoje só existem 3 papéis (`admin`, `gerente`, `membro`) via `user_roles`. Para permissões finas sem reescrever tudo:
 
-Tela com listagem, filtro por tipo, formulário CRUD e card de resumo (valor total, depreciação acumulada do mês).
+- Nova tabela `role_permissions(role app_role, resource text, action text)` — ex.: `('membro','financeiro','view')`.
+- Função `has_permission(_uid, _resource, _action)` security definer.
+- Tela **Cadastros → Permissões**: matriz papel × recurso (financeiro, orçamento, equipamentos, equipe, cadastros, projetos) × ações (view, create, edit, delete).
+- No frontend, hook `usePermission(resource, action)` esconde itens do menu e botões.
+- RLS continua usando `is_manager` para escrita; a granularidade extra fica no app layer (suficiente para UI; o backstop RLS continua).
 
-### 2. Financeiro (`/financeiro`)
-Sub-abas:
-- **Custos fixos** (`fixed_costs`): nome, categoria, valor, recorrência (mensal/anual), dia do vencimento, ativo
-- **Receitas recorrentes** (`recurring_incomes`): cliente vinculado, descrição, valor, recorrência, próximo vencimento
-- **Lançamentos** (`financial_entries`): entrada/saída avulsa com data, valor, categoria, descrição, projeto vinculado (opcional), comprovante anexável
-- **Resumo**: cards de Entradas, Saídas, Impostos, Comissões, Depreciação do mês + gráfico mensal (12 meses) entradas vs saídas; filtro por período
+## 3. Calendários
 
-Cálculos automáticos:
-- Imposto: % configurável no cadastro (ex.: 6% Simples) aplicado sobre receitas
-- Comissões: % por colaborador (campo no `profiles`) aplicado sobre projetos concluídos
-- Depreciação do mês: soma da depreciação mensal de todos equipamentos ativos
+Nova rota `/calendario` com duas abas:
 
-### 3. Orçamento (`/orcamento`)
-Calculadora interativa (não persiste por padrão, com botão "salvar simulação"):
-- Inputs: nº horas trabalhadas, custos fixos do mês (auto-preenchido), profissionais selecionados (puxa custo/hora do perfil), % lucro, % imposto
-- Outputs: custo/hora da operação, custo total do projeto, preço sugerido, margem líquida
-- Botão "Gerar PDF" da proposta
+- **Prazo**: eventos = `projects.due_date`.
+- **Postagem**: eventos = `projects.post_date`.
 
-### 4. Cadastros adicionais
-Adicionar em `/cadastros`: aba **Configurações Financeiras** (alíquota de imposto padrão, % comissão padrão) e em **Equipe** o campo `custo_hora` por colaborador.
+Componente baseado em `react-big-calendar` (mês/semana/dia), cores por status, clique abre o projeto.
 
----
+## 4. Filtros avançados em Projetos
 
-## Fase 2 — Próximas (depois da Fase 1 aprovada)
+Em `/projects`, adicionar barra de filtros combináveis (botão "+ Adicionar filtro"):
+cliente, responsável, status, prioridade, tipo de mídia, decisão do cliente, intervalo de datas (prazo/postagem). Estado salvo na URL (search params via TanStack Router) para compartilhar.
 
-- **Status configurável nas demandas** + área de **Funções e Permissões** (admin define o que cada role vê em cada propriedade/área)
-- **Calendários** (prazo + postagem) e **filtros combinados** em Projetos
-- **Cronômetro oculto** de tempo médio por status (trigger no `project_transitions`) + **Relatórios** (financeiro, tempo por status, por profissional, exportar CSV/PDF)
-- **Dashboard personalizável** (escolher widgets/cards visíveis por usuário)
+## 5. Cronômetro oculto de status
 
-## Fase 3 — Integrações
+- Coluna `entered_at timestamptz` em `project_transitions` (já temos `created_at`, basta usar).
+- View materializada não — fazemos query agregada: para cada projeto, somar `(próximo created_at - created_at)` por `from_status_id` ⇒ tempo médio em cada status.
+- Novo endpoint via `createServerFn` `getStatusDurations()` retorna `{ status_id, avg_seconds, count }`.
+- Card no dashboard "Tempo médio por status".
 
-- **Facebook Business**: criar app Meta + OAuth — preciso que você crie o App no [developers.facebook.com](https://developers.facebook.com), me passe `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET`, e pré-aprovar permissões (`pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `ads_read`). Vou montar o fluxo de conexão e leitura/posting de páginas.
-- **Diguinho (IA)**: chat lateral usando Lovable AI Gateway (`gemini-3-flash-preview`), sem chave extra. Apresentação inicial com top trends gerais + por área de interesse, baseado em conhecimento do modelo (sem dados ao vivo, conforme escolhido). Persiste histórico por usuário.
+## 6. Dashboard personalizável
 
----
+- Nova tabela `dashboard_widgets(user_id, widget_key, position int, size text, config jsonb)`.
+- Catálogo de widgets: Resumo financeiro, Cash flow 12m, Projetos por status, Tempo médio por status, Próximos prazos, Receitas recorrentes, Carga por profissional, Margem média (orçamentos), Equipamentos depreciados.
+- Modo "editar dashboard": adicionar/remover/reordenar (drag) widgets, salvar por usuário.
+- Default: 4 widgets pré-configurados para novos usuários.
 
-## Detalhes técnicos (Fase 1)
+## Detalhes técnicos
 
-**Migração**: novas tabelas `equipments`, `fixed_costs`, `recurring_incomes`, `financial_entries`, `budget_simulations`, `financial_settings` (singleton). Coluna `hourly_cost` em `profiles`. RLS: leitura para autenticados, escrita só para admin/gerente (reusa `is_manager()`).
+- Migração única: `role_permissions` + seed default + função `has_permission` + (se necessário) índice em `project_transitions(project_id, created_at)`.
+- Dependências novas: `react-big-calendar`, `@dnd-kit/core` + `@dnd-kit/sortable` (drag de status e widgets).
+- Server functions em `src/lib/`: `permissions.functions.ts`, `analytics.functions.ts` (durações, agregados do dashboard).
+- Hooks: `usePermission`, `useDashboardLayout`.
+- Sidebar ganha entrada **Calendário**; **Cadastros** ganha sub-itens Status e Permissões.
 
-**Storage**: bucket `financial-receipts` (privado) para comprovantes.
+## Ordem de execução
 
-**Stack**: TanStack Start + shadcn (Tabs, Card, Table, Dialog, Form com zod), `recharts` para gráficos, `date-fns` para período.
+1. Migração (permissões + helpers).
+2. Status dinâmicos + tela de cadastro.
+3. Permissões + matriz + hook.
+4. Filtros em projetos + URL state.
+5. Calendário.
+6. Cronômetro de status (server fn + card).
+7. Dashboard personalizável.
 
-**Navegação**: adicionar "Financeiro", "Orçamento" e "Equipamentos" no sidebar (`src/routes/_app.tsx`).
-
----
-
-**Posso começar pela Fase 1?** Depois que ela estiver rodando, sigo para Fase 2 e por último as integrações.
+Posso começar pela etapa 1 ou prefere reordenar?

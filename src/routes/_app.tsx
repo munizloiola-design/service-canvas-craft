@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, Navigate, Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
-import { LayoutDashboard, FolderKanban, Users, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench } from "lucide-react";
+import { usePermissions, type Resource } from "@/lib/permissions";
+import { LayoutDashboard, FolderKanban, Users, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -9,22 +10,25 @@ export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
 
-const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/projects", label: "Projetos", icon: FolderKanban },
-  { to: "/financeiro", label: "Financeiro", icon: DollarSign },
-  { to: "/orcamento", label: "Orçamento", icon: Calculator },
-  { to: "/equipamentos", label: "Equipamentos", icon: Wrench },
-  { to: "/team", label: "Equipe", icon: Users },
-  { to: "/cadastros", label: "Cadastros", icon: Settings },
-] as const;
+const navItems: { to: string; label: string; icon: typeof LayoutDashboard; resource: Resource; adminOnly?: boolean }[] = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, resource: "dashboard" },
+  { to: "/projects", label: "Projetos", icon: FolderKanban, resource: "projects" },
+  { to: "/calendario", label: "Calendário", icon: CalendarDays, resource: "calendario" },
+  { to: "/financeiro", label: "Financeiro", icon: DollarSign, resource: "financeiro" },
+  { to: "/orcamento", label: "Orçamento", icon: Calculator, resource: "orcamento" },
+  { to: "/equipamentos", label: "Equipamentos", icon: Wrench, resource: "equipamentos" },
+  { to: "/team", label: "Equipe", icon: Users, resource: "team" },
+  { to: "/cadastros", label: "Cadastros", icon: Settings, resource: "cadastros" },
+  { to: "/permissoes", label: "Permissões", icon: ShieldCheck, resource: "cadastros", adminOnly: true },
+];
 
 function AppLayout() {
-  const { user, loading, signOut, roles } = useAuth();
+  const { user, loading, signOut, roles, hasRole } = useAuth();
+  const { can, loading: permsLoading } = usePermissions();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  if (loading) {
+  if (loading || permsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -32,6 +36,11 @@ function AppLayout() {
     );
   }
   if (!user) return <Navigate to="/login" />;
+
+  const visibleNav = navItems.filter((item) => {
+    if (item.adminOnly && !hasRole("admin")) return false;
+    return can(item.resource, "view");
+  });
 
   const initials = (user.email ?? "U").slice(0, 2).toUpperCase();
   const primaryRole = roles[0] ?? "membro";
@@ -47,7 +56,7 @@ function AppLayout() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
+          {visibleNav.map((item) => {
             const active = pathname.startsWith(item.to);
             const Icon = item.icon;
             return (

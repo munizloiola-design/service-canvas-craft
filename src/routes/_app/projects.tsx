@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload } from "lucide-react";
+import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/projects")({ component: ProjectsPage });
@@ -48,12 +48,23 @@ const ALL_COLUMNS = [
   { key: "post_date", label: "Postagem" },
 ] as const;
 
+type FilterKey = "client" | "assignee" | "status" | "priority" | "media" | "decision" | "due_from" | "due_to" | "post_from" | "post_to";
+type ActiveFilter = { key: FilterKey; value: string };
+
+const FILTER_LABELS: Record<FilterKey, string> = {
+  client: "Cliente", assignee: "Responsável", status: "Etapa", priority: "Prioridade",
+  media: "Tipo de mídia", decision: "Decisão do cliente",
+  due_from: "Prazo a partir de", due_to: "Prazo até",
+  post_from: "Postagem a partir de", post_to: "Postagem até",
+};
+
 function ProjectsPage() {
   const { isManager } = useAuth();
   const [view, setView] = useState<"kanban" | "list">("kanban");
   const [open, setOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [visibleCols, setVisibleCols] = useState<string[]>(ALL_COLUMNS.map((c) => c.key));
+  const [filters, setFilters] = useState<ActiveFilter[]>([]);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -103,6 +114,45 @@ function ProjectsPage() {
     return m;
   }, [allAssignees]);
 
+  const filteredProjects = useMemo(() => {
+    return projects.filter((p) => {
+      for (const f of filters) {
+        if (!f.value) continue;
+        switch (f.key) {
+          case "client": if (p.client_id !== f.value) return false; break;
+          case "status": if ((p.status_id ?? "") !== f.value) return false; break;
+          case "priority": if ((p.priority_id ?? "") !== f.value) return false; break;
+          case "media": if ((p.media_type_id ?? "") !== f.value) return false; break;
+          case "decision": if ((p.client_decision ?? "pending") !== f.value) return false; break;
+          case "assignee": {
+            const ass = assigneesByProject.get(p.id) ?? [];
+            if (!ass.some((a) => a.user_id === f.value)) return false;
+            break;
+          }
+          case "due_from": if (!p.due_date || p.due_date < f.value) return false; break;
+          case "due_to": if (!p.due_date || p.due_date > f.value) return false; break;
+          case "post_from": if (!p.post_date || p.post_date < f.value) return false; break;
+          case "post_to": if (!p.post_date || p.post_date > f.value) return false; break;
+        }
+      }
+      return true;
+    });
+  }, [projects, filters, assigneesByProject]);
+
+  const filterOptions: Record<FilterKey, { value: string; label: string }[]> = {
+    client: clients.map((c) => ({ value: c.id, label: c.name })),
+    assignee: members.map((m) => ({ value: m.id, label: m.full_name })),
+    status: statuses.map((s) => ({ value: s.id, label: s.name })),
+    priority: priorities.map((p) => ({ value: p.id, label: p.name })),
+    media: mediaTypes.map((m) => ({ value: m.id, label: m.name })),
+    decision: [
+      { value: "pending", label: "Pendente" },
+      { value: "aprovado", label: "Aprovado" },
+      { value: "reprovado", label: "Reprovado" },
+    ],
+    due_from: [], due_to: [], post_from: [], post_to: [],
+  };
+
   return (
     <div className="p-8 max-w-[1600px] mx-auto">
       <header className="mb-6 flex items-center justify-between gap-4 flex-wrap">
@@ -111,6 +161,20 @@ function ProjectsPage() {
           <p className="text-muted-foreground mt-1">Acompanhe o fluxo da agência ponta a ponta.</p>
         </div>
         <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm"><Filter className="h-4 w-4 mr-1" /> + Filtro</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Adicionar filtro</DropdownMenuLabel>
+              {(Object.keys(FILTER_LABELS) as FilterKey[]).map((k) => (
+                <DropdownMenuCheckboxItem key={k} checked={filters.some((f) => f.key === k)}
+                  onCheckedChange={(v) => setFilters((cur) => v ? [...cur, { key: k, value: "" }] : cur.filter((f) => f.key !== k))}>
+                  {FILTER_LABELS[k]}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {view === "list" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -140,16 +204,41 @@ function ProjectsPage() {
         </div>
       </header>
 
+      {filters.length > 0 && (
+        <Card className="p-3 mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground mr-1">Filtros:</span>
+          {filters.map((f, i) => (
+            <div key={`${f.key}-${i}`} className="flex items-center gap-1 bg-muted/50 rounded-md pl-2 pr-1 py-1">
+              <span className="text-xs font-medium">{FILTER_LABELS[f.key]}:</span>
+              {f.key === "due_from" || f.key === "due_to" || f.key === "post_from" || f.key === "post_to" ? (
+                <Input type="date" value={f.value} className="h-7 text-xs w-36"
+                  onChange={(e) => setFilters((cur) => cur.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} />
+              ) : (
+                <Select value={f.value} onValueChange={(v) => setFilters((cur) => cur.map((x, j) => j === i ? { ...x, value: v } : x))}>
+                  <SelectTrigger className="h-7 text-xs w-44"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                  <SelectContent>
+                    {filterOptions[f.key].map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
+                onClick={() => setFilters((cur) => cur.filter((_, j) => j !== i))}><X className="h-3 w-3" /></Button>
+            </div>
+          ))}
+          <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto" onClick={() => setFilters([])}>Limpar tudo</Button>
+        </Card>
+      )}
+
       <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "list")}>
         <TabsList><TabsTrigger value="kanban">Kanban</TabsTrigger><TabsTrigger value="list">Lista</TabsTrigger></TabsList>
 
         <TabsContent value="kanban" className="mt-4">
-          <KanbanView projects={projects} statuses={statuses} priorities={priorities}
+          <KanbanView projects={filteredProjects} statuses={statuses} priorities={priorities}
             assigneesByProject={assigneesByProject} maps={maps} onDetail={setDetailId} />
         </TabsContent>
 
         <TabsContent value="list" className="mt-4">
-          <ListView projects={projects} visibleCols={visibleCols} maps={maps}
+          <ListView projects={filteredProjects} visibleCols={visibleCols} maps={maps}
             assigneesByProject={assigneesByProject} onDetail={setDetailId} />
         </TabsContent>
       </Tabs>
@@ -171,10 +260,16 @@ function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, 
   onDetail: (id: string) => void;
 }) {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status_id }: { id: string; status_id: string }) => {
+    mutationFn: async ({ id, status_id, from }: { id: string; status_id: string; from: string | null }) => {
       const { error } = await supabase.from("projects").update({ status_id }).eq("id", id);
       if (error) throw error;
+      if (user) {
+        await supabase.from("project_transitions").insert({
+          project_id: id, from_status_id: from, to_status_id: status_id, changed_by: user.id,
+        });
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
     onError: (e: Error) => toast.error(e.message),
@@ -212,7 +307,7 @@ function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, 
                       {p.due_date && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(p.due_date).toLocaleDateString("pt-BR")}</span>}
                       {ass.length > 0 && <span>{ass.length} resp.</span>}
                     </div>
-                    <Select value={p.status_id ?? ""} onValueChange={(v) => updateStatus.mutate({ id: p.id, status_id: v })}>
+                    <Select value={p.status_id ?? ""} onValueChange={(v) => updateStatus.mutate({ id: p.id, status_id: v, from: p.status_id })}>
                       <SelectTrigger className="h-6 text-[11px] mt-2" onClick={(e) => e.stopPropagation()}><SelectValue placeholder="Mover para..." /></SelectTrigger>
                       <SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                     </Select>

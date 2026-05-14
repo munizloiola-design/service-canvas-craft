@@ -15,10 +15,12 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as VTokenRouteImport } from './routes/v.$token'
 import { Route as AppTeamRouteImport } from './routes/_app/team'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
+import { Route as AppPermissoesRouteImport } from './routes/_app/permissoes'
 import { Route as AppOrcamentoRouteImport } from './routes/_app/orcamento'
 import { Route as AppFinanceiroRouteImport } from './routes/_app/financeiro'
 import { Route as AppEquipamentosRouteImport } from './routes/_app/equipamentos'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
 
 const LoginRoute = LoginRouteImport.update({
@@ -50,6 +52,11 @@ const AppProjectsRoute = AppProjectsRouteImport.update({
   path: '/projects',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPermissoesRoute = AppPermissoesRouteImport.update({
+  id: '/permissoes',
+  path: '/permissoes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOrcamentoRoute = AppOrcamentoRouteImport.update({
   id: '/orcamento',
   path: '/orcamento',
@@ -70,6 +77,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCalendarioRoute = AppCalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCadastrosRoute = AppCadastrosRouteImport.update({
   id: '/cadastros',
   path: '/cadastros',
@@ -80,10 +92,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/cadastros': typeof AppCadastrosRoute
+  '/calendario': typeof AppCalendarioRoute
   '/dashboard': typeof AppDashboardRoute
   '/equipamentos': typeof AppEquipamentosRoute
   '/financeiro': typeof AppFinanceiroRoute
   '/orcamento': typeof AppOrcamentoRoute
+  '/permissoes': typeof AppPermissoesRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
   '/v/$token': typeof VTokenRoute
@@ -92,10 +106,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/cadastros': typeof AppCadastrosRoute
+  '/calendario': typeof AppCalendarioRoute
   '/dashboard': typeof AppDashboardRoute
   '/equipamentos': typeof AppEquipamentosRoute
   '/financeiro': typeof AppFinanceiroRoute
   '/orcamento': typeof AppOrcamentoRoute
+  '/permissoes': typeof AppPermissoesRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
   '/v/$token': typeof VTokenRoute
@@ -106,10 +122,12 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/cadastros': typeof AppCadastrosRoute
+  '/_app/calendario': typeof AppCalendarioRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/equipamentos': typeof AppEquipamentosRoute
   '/_app/financeiro': typeof AppFinanceiroRoute
   '/_app/orcamento': typeof AppOrcamentoRoute
+  '/_app/permissoes': typeof AppPermissoesRoute
   '/_app/projects': typeof AppProjectsRoute
   '/_app/team': typeof AppTeamRoute
   '/v/$token': typeof VTokenRoute
@@ -120,10 +138,12 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/cadastros'
+    | '/calendario'
     | '/dashboard'
     | '/equipamentos'
     | '/financeiro'
     | '/orcamento'
+    | '/permissoes'
     | '/projects'
     | '/team'
     | '/v/$token'
@@ -132,10 +152,12 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/cadastros'
+    | '/calendario'
     | '/dashboard'
     | '/equipamentos'
     | '/financeiro'
     | '/orcamento'
+    | '/permissoes'
     | '/projects'
     | '/team'
     | '/v/$token'
@@ -145,10 +167,12 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/_app/cadastros'
+    | '/_app/calendario'
     | '/_app/dashboard'
     | '/_app/equipamentos'
     | '/_app/financeiro'
     | '/_app/orcamento'
+    | '/_app/permissoes'
     | '/_app/projects'
     | '/_app/team'
     | '/v/$token'
@@ -205,6 +229,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/permissoes': {
+      id: '/_app/permissoes'
+      path: '/permissoes'
+      fullPath: '/permissoes'
+      preLoaderRoute: typeof AppPermissoesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/orcamento': {
       id: '/_app/orcamento'
       path: '/orcamento'
@@ -233,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/calendario': {
+      id: '/_app/calendario'
+      path: '/calendario'
+      fullPath: '/calendario'
+      preLoaderRoute: typeof AppCalendarioRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/cadastros': {
       id: '/_app/cadastros'
       path: '/cadastros'
@@ -245,20 +283,24 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppCadastrosRoute: typeof AppCadastrosRoute
+  AppCalendarioRoute: typeof AppCalendarioRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppEquipamentosRoute: typeof AppEquipamentosRoute
   AppFinanceiroRoute: typeof AppFinanceiroRoute
   AppOrcamentoRoute: typeof AppOrcamentoRoute
+  AppPermissoesRoute: typeof AppPermissoesRoute
   AppProjectsRoute: typeof AppProjectsRoute
   AppTeamRoute: typeof AppTeamRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppCadastrosRoute: AppCadastrosRoute,
+  AppCalendarioRoute: AppCalendarioRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppEquipamentosRoute: AppEquipamentosRoute,
   AppFinanceiroRoute: AppFinanceiroRoute,
   AppOrcamentoRoute: AppOrcamentoRoute,
+  AppPermissoesRoute: AppPermissoesRoute,
   AppProjectsRoute: AppProjectsRoute,
   AppTeamRoute: AppTeamRoute,
 }
