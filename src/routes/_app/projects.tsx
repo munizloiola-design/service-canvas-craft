@@ -204,16 +204,41 @@ function ProjectsPage() {
         </div>
       </header>
 
+      {filters.length > 0 && (
+        <Card className="p-3 mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground mr-1">Filtros:</span>
+          {filters.map((f, i) => (
+            <div key={`${f.key}-${i}`} className="flex items-center gap-1 bg-muted/50 rounded-md pl-2 pr-1 py-1">
+              <span className="text-xs font-medium">{FILTER_LABELS[f.key]}:</span>
+              {f.key === "due_from" || f.key === "due_to" || f.key === "post_from" || f.key === "post_to" ? (
+                <Input type="date" value={f.value} className="h-7 text-xs w-36"
+                  onChange={(e) => setFilters((cur) => cur.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} />
+              ) : (
+                <Select value={f.value} onValueChange={(v) => setFilters((cur) => cur.map((x, j) => j === i ? { ...x, value: v } : x))}>
+                  <SelectTrigger className="h-7 text-xs w-44"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                  <SelectContent>
+                    {filterOptions[f.key].map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
+                onClick={() => setFilters((cur) => cur.filter((_, j) => j !== i))}><X className="h-3 w-3" /></Button>
+            </div>
+          ))}
+          <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto" onClick={() => setFilters([])}>Limpar tudo</Button>
+        </Card>
+      )}
+
       <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "list")}>
         <TabsList><TabsTrigger value="kanban">Kanban</TabsTrigger><TabsTrigger value="list">Lista</TabsTrigger></TabsList>
 
         <TabsContent value="kanban" className="mt-4">
-          <KanbanView projects={projects} statuses={statuses} priorities={priorities}
+          <KanbanView projects={filteredProjects} statuses={statuses} priorities={priorities}
             assigneesByProject={assigneesByProject} maps={maps} onDetail={setDetailId} />
         </TabsContent>
 
         <TabsContent value="list" className="mt-4">
-          <ListView projects={projects} visibleCols={visibleCols} maps={maps}
+          <ListView projects={filteredProjects} visibleCols={visibleCols} maps={maps}
             assigneesByProject={assigneesByProject} onDetail={setDetailId} />
         </TabsContent>
       </Tabs>
