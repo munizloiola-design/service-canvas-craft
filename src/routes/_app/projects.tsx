@@ -307,7 +307,7 @@ function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, 
                       {p.due_date && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(p.due_date).toLocaleDateString("pt-BR")}</span>}
                       {ass.length > 0 && <span>{ass.length} resp.</span>}
                     </div>
-                    <Select value={p.status_id ?? ""} onValueChange={(v) => updateStatus.mutate({ id: p.id, status_id: v })}>
+                    <Select value={p.status_id ?? ""} onValueChange={(v) => updateStatus.mutate({ id: p.id, status_id: v, from: p.status_id })}>
                       <SelectTrigger className="h-6 text-[11px] mt-2" onClick={(e) => e.stopPropagation()}><SelectValue placeholder="Mover para..." /></SelectTrigger>
                       <SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                     </Select>
