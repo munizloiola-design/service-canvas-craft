@@ -260,10 +260,16 @@ function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, 
   onDetail: (id: string) => void;
 }) {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status_id }: { id: string; status_id: string }) => {
+    mutationFn: async ({ id, status_id, from }: { id: string; status_id: string; from: string | null }) => {
       const { error } = await supabase.from("projects").update({ status_id }).eq("id", id);
       if (error) throw error;
+      if (user) {
+        await supabase.from("project_transitions").insert({
+          project_id: id, from_status_id: from, to_status_id: status_id, changed_by: user.id,
+        });
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
     onError: (e: Error) => toast.error(e.message),
