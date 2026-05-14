@@ -20,6 +20,7 @@ import { Route as AppOrcamentoRouteImport } from './routes/_app/orcamento'
 import { Route as AppFinanceiroRouteImport } from './routes/_app/financeiro'
 import { Route as AppEquipamentosRouteImport } from './routes/_app/equipamentos'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
 
 const LoginRoute = LoginRouteImport.update({
@@ -76,6 +77,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCalendarioRoute = AppCalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCadastrosRoute = AppCadastrosRouteImport.update({
   id: '/cadastros',
   path: '/cadastros',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/cadastros': typeof AppCadastrosRoute
+  '/calendario': typeof AppCalendarioRoute
   '/dashboard': typeof AppDashboardRoute
   '/equipamentos': typeof AppEquipamentosRoute
   '/financeiro': typeof AppFinanceiroRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/cadastros': typeof AppCadastrosRoute
+  '/calendario': typeof AppCalendarioRoute
   '/dashboard': typeof AppDashboardRoute
   '/equipamentos': typeof AppEquipamentosRoute
   '/financeiro': typeof AppFinanceiroRoute
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/cadastros': typeof AppCadastrosRoute
+  '/_app/calendario': typeof AppCalendarioRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/equipamentos': typeof AppEquipamentosRoute
   '/_app/financeiro': typeof AppFinanceiroRoute
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/cadastros'
+    | '/calendario'
     | '/dashboard'
     | '/equipamentos'
     | '/financeiro'
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/cadastros'
+    | '/calendario'
     | '/dashboard'
     | '/equipamentos'
     | '/financeiro'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/_app/cadastros'
+    | '/_app/calendario'
     | '/_app/dashboard'
     | '/_app/equipamentos'
     | '/_app/financeiro'
@@ -252,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/calendario': {
+      id: '/_app/calendario'
+      path: '/calendario'
+      fullPath: '/calendario'
+      preLoaderRoute: typeof AppCalendarioRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/cadastros': {
       id: '/_app/cadastros'
       path: '/cadastros'
@@ -264,6 +283,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppCadastrosRoute: typeof AppCadastrosRoute
+  AppCalendarioRoute: typeof AppCalendarioRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppEquipamentosRoute: typeof AppEquipamentosRoute
   AppFinanceiroRoute: typeof AppFinanceiroRoute
@@ -275,6 +295,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppCadastrosRoute: AppCadastrosRoute,
+  AppCalendarioRoute: AppCalendarioRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppEquipamentosRoute: AppEquipamentosRoute,
   AppFinanceiroRoute: AppFinanceiroRoute,
