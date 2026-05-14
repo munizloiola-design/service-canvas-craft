@@ -114,6 +114,45 @@ function ProjectsPage() {
     return m;
   }, [allAssignees]);
 
+  const filteredProjects = useMemo(() => {
+    return projects.filter((p) => {
+      for (const f of filters) {
+        if (!f.value) continue;
+        switch (f.key) {
+          case "client": if (p.client_id !== f.value) return false; break;
+          case "status": if ((p.status_id ?? "") !== f.value) return false; break;
+          case "priority": if ((p.priority_id ?? "") !== f.value) return false; break;
+          case "media": if ((p.media_type_id ?? "") !== f.value) return false; break;
+          case "decision": if ((p.client_decision ?? "pending") !== f.value) return false; break;
+          case "assignee": {
+            const ass = assigneesByProject.get(p.id) ?? [];
+            if (!ass.some((a) => a.user_id === f.value)) return false;
+            break;
+          }
+          case "due_from": if (!p.due_date || p.due_date < f.value) return false; break;
+          case "due_to": if (!p.due_date || p.due_date > f.value) return false; break;
+          case "post_from": if (!p.post_date || p.post_date < f.value) return false; break;
+          case "post_to": if (!p.post_date || p.post_date > f.value) return false; break;
+        }
+      }
+      return true;
+    });
+  }, [projects, filters, assigneesByProject]);
+
+  const filterOptions: Record<FilterKey, { value: string; label: string }[]> = {
+    client: clients.map((c) => ({ value: c.id, label: c.name })),
+    assignee: members.map((m) => ({ value: m.id, label: m.full_name })),
+    status: statuses.map((s) => ({ value: s.id, label: s.name })),
+    priority: priorities.map((p) => ({ value: p.id, label: p.name })),
+    media: mediaTypes.map((m) => ({ value: m.id, label: m.name })),
+    decision: [
+      { value: "pending", label: "Pendente" },
+      { value: "aprovado", label: "Aprovado" },
+      { value: "reprovado", label: "Reprovado" },
+    ],
+    due_from: [], due_to: [], post_from: [], post_to: [],
+  };
+
   return (
     <div className="p-8 max-w-[1600px] mx-auto">
       <header className="mb-6 flex items-center justify-between gap-4 flex-wrap">
@@ -122,6 +161,20 @@ function ProjectsPage() {
           <p className="text-muted-foreground mt-1">Acompanhe o fluxo da agência ponta a ponta.</p>
         </div>
         <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm"><Filter className="h-4 w-4 mr-1" /> + Filtro</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Adicionar filtro</DropdownMenuLabel>
+              {(Object.keys(FILTER_LABELS) as FilterKey[]).map((k) => (
+                <DropdownMenuCheckboxItem key={k} checked={filters.some((f) => f.key === k)}
+                  onCheckedChange={(v) => setFilters((cur) => v ? [...cur, { key: k, value: "" }] : cur.filter((f) => f.key !== k))}>
+                  {FILTER_LABELS[k]}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {view === "list" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
