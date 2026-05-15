@@ -47,7 +47,7 @@ function PersonalizacaoPage() {
       .then(({ data }) => setTemplates((data ?? []) as EmailTpl[]));
   }, []);
 
-  if (pLoading) return <div className="p-8">Carregando...</div>;
+  if (pLoading) return <div className="p-4 md:p-8">Carregando...</div>;
   if (!can("branding" as any, "manage")) return <Navigate to="/dashboard" />;
 
   const upload = async (file: File, kind: "logo" | "favicon") => {
@@ -103,7 +103,7 @@ function PersonalizacaoPage() {
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 md:p-8 max-w-4xl mx-auto">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold flex items-center gap-2">
           <Palette className="h-6 w-6" /> Personalização

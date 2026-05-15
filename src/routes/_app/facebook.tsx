@@ -37,7 +37,7 @@ function FacebookPage() {
 
   if (!isLoading && data && !data.connected) {
     return (
-      <div className="p-8 max-w-2xl">
+      <div className="p-4 md:p-8 max-w-2xl">
         <Card>
           <CardContent className="py-12 text-center space-y-4">
             <div className="mx-auto h-12 w-12 rounded-full bg-[#1877F2]/10 text-[#1877F2] flex items-center justify-center">
@@ -59,7 +59,7 @@ function FacebookPage() {
   const conv = actions.find((a) => a.action_type === "offsite_conversion" || a.action_type === "lead")?.value;
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Facebook className="h-6 w-6 text-[#1877F2]" /> Facebook Ads</h1>

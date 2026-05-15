@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Plus, Trash2, Save, Pencil, FilePlus2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/orcamento")({ component: OrcamentoPage });
@@ -37,6 +37,7 @@ function OrcamentoPage() {
     [fixed],
   );
 
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [hours, setHours] = useState(40);
   const [fixedTotal, setFixedTotal] = useState(0);
@@ -44,8 +45,29 @@ function OrcamentoPage() {
   const [taxPct, setTaxPct] = useState(6);
   const [pros, setPros] = useState<Pro[]>([]);
 
-  useEffect(() => { setFixedTotal(Math.round(fixedMonthly * 100) / 100); }, [fixedMonthly]);
-  useEffect(() => { if (settings) setTaxPct(Number(settings.tax_pct ?? 6)); }, [settings]);
+  useEffect(() => { if (!editingId) setFixedTotal(Math.round(fixedMonthly * 100) / 100); }, [fixedMonthly, editingId]);
+  useEffect(() => { if (settings && !editingId) setTaxPct(Number(settings.tax_pct ?? 6)); }, [settings, editingId]);
+
+  const resetForm = () => {
+    setEditingId(null);
+    setName("");
+    setHours(40);
+    setFixedTotal(Math.round(fixedMonthly * 100) / 100);
+    setProfitPct(30);
+    setTaxPct(Number(settings?.tax_pct ?? 6));
+    setPros([]);
+  };
+
+  const loadSim = (s: any) => {
+    setEditingId(s.id);
+    setName(s.name ?? "");
+    setHours(Number(s.hours ?? 0));
+    setFixedTotal(Number(s.fixed_cost_total ?? 0));
+    setProfitPct(Number(s.profit_pct ?? 0));
+    setTaxPct(Number(s.tax_pct ?? 0));
+    setPros(Array.isArray(s.professionals) ? (s.professionals as Pro[]) : []);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const calc = useMemo(() => {
     const proCost = pros.reduce((s, p) => s + p.hourly_cost * p.hours, 0);
@@ -70,16 +92,38 @@ function OrcamentoPage() {
   const save = useMutation({
     mutationFn: async () => {
       const { data: u } = await supabase.auth.getUser();
-      const { error } = await supabase.from("budget_simulations").insert({
+      const payload = {
         name: name || `Simulação ${new Date().toLocaleDateString("pt-BR")}`,
         hours, fixed_cost_total: fixedTotal,
         professionals: pros as any, profit_pct: profitPct, tax_pct: taxPct,
         total_cost: calc.baseCost, suggested_price: calc.suggested,
-        created_by: u.user?.id,
-      });
+      };
+      if (editingId) {
+        const { error } = await supabase.from("budget_simulations").update(payload).eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("budget_simulations").insert({ ...payload, created_by: u.user?.id });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["budget_sims"] });
+      toast.success(editingId ? "Simulação atualizada" : "Simulação salva");
+      resetForm();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const removeSim = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("budget_simulations").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["budget_sims"] }); toast.success("Simulação salva"); },
+    onSuccess: (_d, id) => {
+      qc.invalidateQueries({ queryKey: ["budget_sims"] });
+      toast.success("Simulação removida");
+      if (editingId === id) resetForm();
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -89,14 +133,22 @@ function OrcamentoPage() {
   });
 
   return (
-    <div className="p-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Orçamento</h1>
-        <p className="text-sm text-muted-foreground">Calcule o preço sugerido com base em custos, profissionais, lucro e imposto.</p>
+    <div className="p-4 md:p-8 space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Orçamento</h1>
+          <p className="text-sm text-muted-foreground">Calcule o preço sugerido com base em custos, profissionais, lucro e imposto.</p>
+        </div>
+        {editingId && (
+          <Button variant="outline" size="sm" onClick={resetForm}><FilePlus2 className="h-4 w-4 mr-1" />Nova simulação</Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="p-6 lg:col-span-2 space-y-4">
+        <Card className="p-4 md:p-6 lg:col-span-2 space-y-4">
+          {editingId && (
+            <div className="text-xs px-2 py-1 rounded bg-primary/10 text-primary inline-flex w-fit">Editando simulação</div>
+          )}
           <div><Label>Nome da simulação</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Campanha XPTO" /></div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -111,11 +163,12 @@ function OrcamentoPage() {
               <Label>Profissionais</Label>
               <Button size="sm" variant="outline" onClick={addPro}><Plus className="h-4 w-4 mr-1" />Adicionar</Button>
             </div>
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader><TableRow><TableHead>Profissional</TableHead><TableHead>Custo/hora</TableHead><TableHead>Horas</TableHead><TableHead className="text-right">Subtotal</TableHead><TableHead></TableHead></TableRow></TableHeader>
               <TableBody>
                 {pros.map((p, idx) => (
-                  <TableRow key={p.user_id}>
+                  <TableRow key={`${p.user_id}-${idx}`}>
                     <TableCell>
                       <Select value={p.user_id} onValueChange={(v) => {
                         const prof = profiles.find((x: any) => x.id === v);
@@ -134,10 +187,11 @@ function OrcamentoPage() {
                 {pros.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-4">Adicione profissionais para calcular o custo de mão de obra</TableCell></TableRow>}
               </TableBody>
             </Table>
+            </div>
           </div>
         </Card>
 
-        <Card className="p-6 space-y-4">
+        <Card className="p-4 md:p-6 space-y-4">
           <h3 className="font-medium">Resultado</h3>
           <Row label="Custo profissionais" value={fmtBRL(calc.proCost)} />
           <Row label="Rateio custos fixos" value={fmtBRL(calc.fixedShare)} />
@@ -148,27 +202,37 @@ function OrcamentoPage() {
           <Row label={`Imposto (${taxPct}%)`} value={fmtBRL(calc.taxAmount)} />
           <hr />
           <Row label="Preço sugerido" value={fmtBRL(calc.suggested)} bold large />
-          <Button className="w-full" onClick={() => save.mutate()}><Save className="h-4 w-4 mr-2" />Salvar simulação</Button>
+          <Button className="w-full" onClick={() => save.mutate()}>
+            <Save className="h-4 w-4 mr-2" />{editingId ? "Atualizar simulação" : "Salvar simulação"}
+          </Button>
         </Card>
       </div>
 
       <Card className="p-4">
         <h3 className="font-medium mb-4">Simulações salvas</h3>
+        <div className="overflow-x-auto">
         <Table>
-          <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Data</TableHead><TableHead>Horas</TableHead><TableHead className="text-right">Custo</TableHead><TableHead className="text-right">Sugerido</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Data</TableHead><TableHead>Horas</TableHead><TableHead className="text-right">Custo</TableHead><TableHead className="text-right">Sugerido</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
           <TableBody>
             {sims.map((s: any) => (
-              <TableRow key={s.id}>
+              <TableRow key={s.id} className={editingId === s.id ? "bg-primary/5" : undefined}>
                 <TableCell className="font-medium">{s.name}</TableCell>
                 <TableCell>{new Date(s.created_at).toLocaleDateString("pt-BR")}</TableCell>
                 <TableCell>{s.hours}</TableCell>
                 <TableCell className="text-right">{fmtBRL(Number(s.total_cost))}</TableCell>
                 <TableCell className="text-right font-semibold">{fmtBRL(Number(s.suggested_price))}</TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button size="icon" variant="ghost" title="Editar" onClick={() => loadSim(s)}><Pencil className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" title="Excluir" onClick={() => { if (confirm(`Excluir "${s.name}"?`)) removeSim.mutate(s.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
-            {sims.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhuma simulação salva</TableCell></TableRow>}
+            {sims.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Nenhuma simulação salva</TableCell></TableRow>}
           </TableBody>
         </Table>
+        </div>
       </Card>
     </div>
   );

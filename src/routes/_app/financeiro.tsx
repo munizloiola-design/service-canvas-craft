@@ -25,7 +25,7 @@ const fmtBRL = (n: number) => (Number(n) || 0).toLocaleString("pt-BR", { style: 
 
 function FinanceiroPage() {
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Financeiro</h1>
         <p className="text-sm text-muted-foreground">Resumo, custos, receitas e lançamentos.</p>
