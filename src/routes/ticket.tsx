@@ -192,7 +192,15 @@ function PublicTicketPage() {
                 </p>
               </header>
 
-              <form onSubmit={submit} className="space-y-5">
+              {hasAutofill && (
+                <div className="mb-4 flex items-center justify-between text-xs bg-muted/40 border rounded-md px-3 py-2">
+                  <span className="text-muted-foreground">Preenchemos seus dados da última vez.</span>
+                  <button type="button" onClick={clearAutofill} className="text-primary hover:underline">
+                    Limpar
+                  </button>
+                </div>
+              )}
+              <form ref={formRef} onSubmit={submit} className="space-y-5">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="name">Seu nome *</Label>
