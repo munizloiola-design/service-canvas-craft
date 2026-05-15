@@ -39,7 +39,7 @@ function getRetryAfterSeconds(error: unknown): number {
 
 // Move a message to the dead letter queue and log the reason.
 async function moveToDlq(
-  supabase: ReturnType<typeof createClient>,
+  supabase: AnySupabase,
   queue: string,
   msg: { msg_id: number; message: Record<string, unknown> },
   reason: string
