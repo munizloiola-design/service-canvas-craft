@@ -1,58 +1,42 @@
-## 1. Edição completa de demandas (Projetos)
+# Envio real de e-mails de aprovação/recusa de tickets
 
-Hoje o `ProjectDetailDialog` (src/routes/_app/projects.tsx, linhas ~530–680) só permite editar `status_id` e `priority_id` direto pelos selects. Título, descrição, observações, cliente, tipo de mídia, datas, orçamento, links de referência e responsáveis são apenas leitura.
+Hoje `notifyDecision` em `src/routes/_app/tickets.tsx` apenas faz `console.info`. Vamos plugar o envio de verdade usando a infra de e-mails transacionais da Lovable (domínio `notify.digcomunicacao.com.br` já configurado).
 
-Mudanças:
-- Adicionar botão **"Editar demanda"** no `DialogFooter` (gestores) que alterna o diálogo para um modo de edição (reaproveitando o componente do `NewDemandDialog` em formulário pré-preenchido) — incluindo:
-  - Título, descrição, observações
-  - Cliente, tipo de mídia, prioridade, etapa
-  - Datas: início, prazo, postagem
-  - Orçamento
-  - Reference links (adicionar/remover)
-  - Responsáveis (substituir todos os `project_assignees` numa única transação)
-  - Anexos: permitir excluir anexos existentes e adicionar novos (`project_attachments` + storage `project-files`)
-  - Material para o cliente (`deliverable_path`): substituir/remover
-- Salvar via `supabase.from("projects").update(...)` + sync de `project_assignees` (delete + insert) e attachments.
-- Mantém os atalhos inline de status/prioridade no modo visualização.
+## O que será feito
 
-## 2. Edição de simulações de orçamento
+1. **Scaffold de e-mails transacionais**
+   - Cria server route `/lovable/email/transactional/send`, página `/unsubscribe`, tabelas de suppression/unsubscribe e registry de templates.
+   - Cria helper `src/lib/email/send.ts` com `sendTransactionalEmail(...)`.
 
-Hoje em src/routes/_app/orcamento.tsx as simulações salvas só listam (linhas 155–172). A política RLS `bs_*` não tem UPDATE — usuários nem podem editar.
+2. **Dois templates React Email** em `src/lib/email-templates/`
+   - `ticket-approved.tsx` — assunto: "Sua solicitação foi aprovada · {brand}". Conteúdo: saudação ao solicitante, título da demanda, mensagem de aprovação e botão "Acompanhar projeto" (link público `/v/{token}` quando o token do projeto criado existir; se não existir, omite o botão).
+   - `ticket-rejected.tsx` — assunto: "Sua solicitação não foi aprovada · {brand}". Conteúdo: título da demanda + bloco com o **motivo da recusa** (`review_notes`).
+   - Ambos carregam logo + cor primária de `app_branding` (passados via `templateData`).
+   - Registrados em `src/lib/email-templates/registry.ts`.
 
-Mudanças:
-- **Migração**: adicionar policy `bs_update` para `is_manager(auth.uid())` na tabela `budget_simulations` (e `updated_at` opcional para ordenar).
-- Adicionar coluna de ações na lista de simulações com:
-  - **Carregar**: preenche o formulário (`name`, `hours`, `fixedTotal`, `profitPct`, `taxPct`, `pros`) com a simulação selecionada e entra em modo edição (estado `editingId`).
-  - **Excluir**: `delete` da simulação (já permitido por RLS).
-- Botão "Salvar simulação" passa a fazer `update` quando `editingId` está setado, ou `insert` caso contrário. Adicionar botão "Nova simulação" para limpar o estado.
+3. **Substituir `notifyDecision`** em `src/routes/_app/tickets.tsx`
+   - Após aprovar: buscar `client_token` do projeto recém-criado e chamar `sendTransactionalEmail({ templateName: 'ticket-approved', recipientEmail: t.requester_email, idempotencyKey: 'ticket-' + t.id + '-approved', templateData: { name, title, brandName, brandLogoUrl, primaryColor, trackUrl } })`.
+   - Após recusar: chamar com `ticket-rejected` e `templateData.reviewNotes = note`.
+   - Remover o `console.info` e o TODO.
+   - Manter o estado da tabela `email_templates` apenas como referência editável futura (sem usar agora para o envio real — fica claro no código).
 
-## 3. Otimização da responsividade para celular
-
-Problemas atuais:
-- `src/routes/_app.tsx`: sidebar `w-64` fixa visível em todas as telas — ocupa metade do celular.
-- Várias páginas usam `p-8` (sem `px-4`), tabelas largas sem scroll, grids de 2/4 colunas sem fallback `grid-cols-1`.
-
-Mudanças:
-- **Layout (`_app.tsx`)**:
-  - Topbar mobile (`md:hidden`) com logo + botão menu (Sheet do shadcn) que abre a sidebar como drawer.
-  - Sidebar: `hidden md:flex` em desktop, dentro do `Sheet` em mobile.
-  - `main`: adicionar `pt-14 md:pt-0` para compensar topbar.
-- **Páginas principais** (projects, orcamento, tickets, financeiro, dashboard, personalizacao, equipamentos, team, cadastros):
-  - Trocar `p-8` por `p-4 md:p-8`.
-  - Headers com flex: `flex-col gap-3 md:flex-row md:items-center md:justify-between`.
-  - Tabelas envoltas em `<div className="overflow-x-auto">`.
-  - Grids: garantir `grid-cols-1` no mobile (ex.: orçamento `grid-cols-2 md:grid-cols-4` está ok; revisar outras).
-  - Diálogos: `max-w-2xl` ok; adicionar `w-[95vw]` para mobile.
-- Kanban de projetos: garantir scroll horizontal em telas estreitas.
-
-## Arquivos afetados
-- src/routes/_app.tsx (topbar + drawer)
-- src/routes/_app/projects.tsx (modo editar + responsivo)
-- src/routes/_app/orcamento.tsx (carregar/excluir/atualizar simulação + responsivo)
-- src/routes/_app/{tickets,financeiro,dashboard,personalizacao,equipamentos,team,cadastros}.tsx (paddings/grids/tabelas responsivas — passes pontuais)
-- nova migração: policy de UPDATE em `budget_simulations`
+4. **Aviso na UI**
+   - O texto que já avisa "ao aprovar/recusar, um e-mail será enviado para …" passa a ser verdade. Sem alteração visual.
 
 ## Detalhes técnicos
-- Sync de assignees: `delete` por `project_id` + `insert` da nova lista (igual padrão do NewDemandDialog).
-- Edição reaproveita o mesmo formulário do `NewDemandDialog` extraindo-o para um componente compartilhado `DemandForm` com prop `initialValues` e `mode: 'create' | 'edit'`.
-- No orçamento, ao "Carregar" simulação, popular `pros` a partir do JSON (`professionals`), `editingId` controla o botão Salvar.
+
+- `SENDER_DOMAIN` baked-in: `notify.digcomunicacao.com.br` (não confundir com `FROM_DOMAIN`).
+- `idempotencyKey` previne duplicidade em re-tentativas/cliques duplos.
+- Tratamento de erro: o envio é best-effort. Se falhar, mostra `toast.warning("Ticket atualizado, mas o e-mail não foi enviado")` — o status do ticket não é revertido (o e-mail entra na fila e tem retry automático).
+- Endereços já em `suppressed_emails` (bounces/unsubscribes) são bloqueados automaticamente pelo server route.
+- Rodapé de unsubscribe é adicionado automaticamente pelo sistema — templates não incluem opt-out.
+
+## Arquivos tocados
+
+- Novos: `src/lib/email/send.ts`, `src/lib/email-templates/ticket-approved.tsx`, `src/lib/email-templates/ticket-rejected.tsx`, `src/routes/unsubscribe.tsx`, mais arquivos gerados pelo scaffold (`send-transactional-email`, `handle-email-unsubscribe`, `handle-email-suppression`, `registry.ts`).
+- Editados: `src/routes/_app/tickets.tsx` (função `notifyDecision`).
+
+## Fora do escopo
+
+- E-mail de aprovação/recusa do **cliente final** no fluxo `/v/{token}` (decisão do projeto, não do ticket). Fica para depois.
+- Edição visual dos templates pela tela de Personalização. Por ora os templates vivem no código e puxam logo/cor da marca via `app_branding`.

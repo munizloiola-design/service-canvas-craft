@@ -9,11 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as TicketRouteImport } from './routes/ticket'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VTokenRouteImport } from './routes/v.$token'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AppTicketsRouteImport } from './routes/_app/tickets'
 import { Route as AppTeamRouteImport } from './routes/_app/team'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
@@ -28,8 +30,16 @@ import { Route as AppDiguinhoRouteImport } from './routes/_app/diguinho'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TicketRoute = TicketRouteImport.update({
   id: '/ticket',
   path: '/ticket',
@@ -52,6 +62,11 @@ const IndexRoute = IndexRouteImport.update({
 const VTokenRoute = VTokenRouteImport.update({
   id: '/v/$token',
   path: '/v/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppTicketsRoute = AppTicketsRouteImport.update({
@@ -124,6 +139,23 @@ const AppCadastrosRoute = AppCadastrosRouteImport.update({
   path: '/cadastros',
   getParentRoute: () => AppRoute,
 } as any)
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -135,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/ticket': typeof TicketRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
   '/dashboard': typeof AppDashboardRoute
@@ -149,13 +182,18 @@ export interface FileRoutesByFullPath {
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
   '/tickets': typeof AppTicketsRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/v/$token': typeof VTokenRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/ticket': typeof TicketRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
   '/dashboard': typeof AppDashboardRoute
@@ -170,8 +208,12 @@ export interface FileRoutesByTo {
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
   '/tickets': typeof AppTicketsRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/v/$token': typeof VTokenRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -179,6 +221,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/ticket': typeof TicketRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/_app/cadastros': typeof AppCadastrosRoute
   '/_app/calendario': typeof AppCalendarioRoute
   '/_app/dashboard': typeof AppDashboardRoute
@@ -193,8 +236,12 @@ export interface FileRoutesById {
   '/_app/projects': typeof AppProjectsRoute
   '/_app/team': typeof AppTeamRoute
   '/_app/tickets': typeof AppTicketsRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/v/$token': typeof VTokenRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -202,6 +249,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/ticket'
+    | '/unsubscribe'
     | '/cadastros'
     | '/calendario'
     | '/dashboard'
@@ -216,13 +264,18 @@ export interface FileRouteTypes {
     | '/projects'
     | '/team'
     | '/tickets'
+    | '/email/unsubscribe'
     | '/v/$token'
+    | '/lovable/email/suppression'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/ticket'
+    | '/unsubscribe'
     | '/cadastros'
     | '/calendario'
     | '/dashboard'
@@ -237,14 +290,19 @@ export interface FileRouteTypes {
     | '/projects'
     | '/team'
     | '/tickets'
+    | '/email/unsubscribe'
     | '/v/$token'
+    | '/lovable/email/suppression'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/login'
     | '/ticket'
+    | '/unsubscribe'
     | '/_app/cadastros'
     | '/_app/calendario'
     | '/_app/dashboard'
@@ -259,8 +317,12 @@ export interface FileRouteTypes {
     | '/_app/projects'
     | '/_app/team'
     | '/_app/tickets'
+    | '/email/unsubscribe'
     | '/v/$token'
+    | '/lovable/email/suppression'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -268,12 +330,24 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   TicketRoute: typeof TicketRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
+  EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   VTokenRoute: typeof VTokenRoute
+  LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
+  LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
+  LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ticket': {
       id: '/ticket'
       path: '/ticket'
@@ -307,6 +381,13 @@ declare module '@tanstack/react-router' {
       path: '/v/$token'
       fullPath: '/v/$token'
       preLoaderRoute: typeof VTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/tickets': {
@@ -407,6 +488,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCadastrosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
       path: '/lovable/email/queue/process'
@@ -458,8 +560,13 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   TicketRoute: TicketRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
+  EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   VTokenRoute: VTokenRoute,
+  LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
+  LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
+  LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

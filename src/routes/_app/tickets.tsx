@@ -52,27 +52,37 @@ function whatsappUrl(phone: string | null) {
   return `https://wa.me/${digits}`;
 }
 
-function renderTpl(tpl: string, vars: Record<string, string>) {
-  return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? "");
-}
+import { sendTransactionalEmail } from "@/lib/email/send";
 
-async function notifyDecision(t: TicketRequest, decision: "approved" | "rejected", reviewNotes: string) {
-  // Best-effort: fetch template and email_templates table; queue/send if email infra exists.
-  // For now we only render and log — actual sending kicks in once the email domain is configured.
-  const key = decision === "approved" ? "ticket_approved" : "ticket_rejected";
-  const { data: tpl } = await supabase.from("email_templates").select("subject, body_html").eq("key", key).maybeSingle();
-  const { data: brand } = await supabase.from("app_branding").select("brand_name").eq("id", true).maybeSingle();
-  if (!tpl) return;
-  const vars = {
-    requester_name: t.requester_name,
-    title: t.title,
-    review_notes: reviewNotes || "",
-    brand_name: brand?.brand_name ?? "",
+async function notifyDecision(
+  t: TicketRequest,
+  decision: "approved" | "rejected",
+  reviewNotes: string,
+  trackUrl?: string | null,
+) {
+  const { data: brand } = await supabase
+    .from("app_branding")
+    .select("brand_name, logo_url, primary_color")
+    .eq("id", true)
+    .maybeSingle();
+
+  const templateName = decision === "approved" ? "ticket-approved" : "ticket-rejected";
+  const templateData: Record<string, unknown> = {
+    requesterName: t.requester_name,
+    ticketTitle: t.title,
+    brandName: brand?.brand_name ?? "Equipe.io",
+    brandLogoUrl: brand?.logo_url ?? null,
+    primaryColor: brand?.primary_color ?? "#3b82f6",
   };
-  const subject = renderTpl(tpl.subject, vars);
-  const body = renderTpl(tpl.body_html, vars);
-  // TODO: send via /lovable/email/transactional/send once email domain is configured
-  console.info("[ticket-email]", { to: t.requester_email, subject, body });
+  if (decision === "approved" && trackUrl) templateData.trackUrl = trackUrl;
+  if (decision === "rejected") templateData.reviewNotes = reviewNotes;
+
+  await sendTransactionalEmail({
+    templateName,
+    recipientEmail: t.requester_email,
+    idempotencyKey: `ticket-${t.id}-${decision}`,
+    templateData,
+  });
 }
 
 function TicketsPage() {
@@ -127,6 +137,7 @@ function TicketsPage() {
 
   const approve = useMutation({
     mutationFn: async (t: TicketRequest) => {
+      const clientToken = crypto.randomUUID().replace(/-/g, "");
       const { data: proj, error: pErr } = await supabase
         .from("projects").insert({
           title: t.title,
@@ -136,7 +147,7 @@ function TicketsPage() {
           due_date: t.desired_due_date,
           reference_links: t.reference_links ?? [],
           has_reference: (t.reference_links?.length ?? 0) > 0,
-          client_token: crypto.randomUUID().replace(/-/g, ""),
+          client_token: clientToken,
           created_by: user?.id,
         }).select("id").single();
       if (pErr) throw pErr;
@@ -160,10 +171,21 @@ function TicketsPage() {
       }).eq("id", t.id);
       if (uErr) throw uErr;
 
-      await notifyDecision(t, "approved", "");
+      const trackUrl = `${window.location.origin}/v/${clientToken}`;
+      try {
+        await notifyDecision(t, "approved", "", trackUrl);
+      } catch (e: any) {
+        console.error("[ticket-email] approve failed", e);
+        return { emailFailed: true as const, error: e?.message };
+      }
+      return { emailFailed: false as const };
     },
-    onSuccess: () => {
-      toast.success("Ticket aprovado e projeto criado");
+    onSuccess: (res) => {
+      if (res?.emailFailed) {
+        toast.warning("Ticket aprovado, mas o e-mail não foi enviado");
+      } else {
+        toast.success("Ticket aprovado e projeto criado");
+      }
       qc.invalidateQueries({ queryKey: ["ticket_requests"] });
       setSelected(null);
     },
@@ -177,10 +199,20 @@ function TicketsPage() {
         reviewed_by: user?.id, reviewed_at: new Date().toISOString(),
       }).eq("id", t.id);
       if (error) throw error;
-      await notifyDecision(t, "rejected", note);
+      try {
+        await notifyDecision(t, "rejected", note);
+      } catch (e: any) {
+        console.error("[ticket-email] reject failed", e);
+        return { emailFailed: true as const };
+      }
+      return { emailFailed: false as const };
     },
-    onSuccess: () => {
-      toast.success("Ticket recusado");
+    onSuccess: (res) => {
+      if (res?.emailFailed) {
+        toast.warning("Ticket recusado, mas o e-mail não foi enviado");
+      } else {
+        toast.success("Ticket recusado");
+      }
       qc.invalidateQueries({ queryKey: ["ticket_requests"] });
       setSelected(null); setRejectNote("");
     },
