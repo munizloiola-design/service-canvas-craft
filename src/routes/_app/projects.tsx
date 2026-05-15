@@ -154,7 +154,7 @@ function ProjectsPage() {
   };
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto">
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
       <header className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Demandas</h1>
@@ -276,7 +276,7 @@ function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, 
   });
 
   if (statuses.length === 0) {
-    return <Card className="p-8 text-center text-sm text-muted-foreground">Crie etapas em <strong>Cadastros → Etapas do fluxo</strong> para usar o kanban.</Card>;
+    return <Card className="p-4 md:p-8 text-center text-sm text-muted-foreground">Crie etapas em <strong>Cadastros → Etapas do fluxo</strong> para usar o kanban.</Card>;
   }
 
   const cols = [...statuses, { id: "__none__", name: "Sem etapa", color: "#64748b", sort_order: 999 } as Status];

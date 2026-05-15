@@ -68,11 +68,11 @@ function PermissoesPage() {
   });
 
   if (!isAdmin) {
-    return <div className="p-8"><p className="text-muted-foreground">Apenas administradores podem editar permissões.</p></div>;
+    return <div className="p-4 md:p-8"><p className="text-muted-foreground">Apenas administradores podem editar permissões.</p></div>;
   }
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <header className="mb-6">
         <h1 className="text-3xl font-semibold tracking-tight">Permissões</h1>
         <p className="text-muted-foreground mt-1">Defina o que cada papel pode fazer em cada área do sistema.</p>

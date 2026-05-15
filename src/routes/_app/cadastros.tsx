@@ -80,14 +80,14 @@ function CadastrosPage() {
 
   if (!isManager) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <p className="text-muted-foreground">Apenas administradores e gerentes podem gerenciar cadastros.</p>
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <header className="mb-6">
         <h1 className="text-3xl font-semibold tracking-tight">Cadastros</h1>
         <p className="text-muted-foreground mt-1">Configure os dados base usados pelas demandas.</p>
@@ -208,7 +208,7 @@ function CrudTable({ table }: { table: typeof TABLES[number] }) {
       </div>
 
       <div className="border rounded-md divide-y">
-        {rows.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">Nenhum registro</p>}
+        {rows.length === 0 && <p className="p-4 md:p-8 text-center text-sm text-muted-foreground">Nenhum registro</p>}
         {rows.map((r) => (
           <div key={String(r.id)} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40">
             {"color" in r && r.color ? (

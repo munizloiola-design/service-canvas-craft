@@ -112,7 +112,7 @@ function DashboardPage() {
   const available = (Object.keys(WIDGETS) as WidgetKey[]).filter((k) => !usedKeys.has(k));
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <header className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
