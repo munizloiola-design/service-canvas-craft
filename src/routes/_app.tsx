@@ -54,65 +54,91 @@ function AppLayout() {
   const initials = (user.email ?? "U").slice(0, 2).toUpperCase();
   const primaryRole = roles[0] ?? "membro";
 
+  const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  const SidebarContent = (
+    <>
+      <div className="px-6 py-5 flex items-center gap-2 border-b border-sidebar-border">
+        {branding.logo_url ? (
+          <img src={branding.logo_url} alt="logo" className="h-8 w-8 rounded-md object-contain" />
+        ) : (
+          <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
+            <Briefcase className="h-4 w-4" />
+          </div>
+        )}
+        <span className="font-semibold truncate">{branding.brand_name}</span>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        {visibleNav.map((item) => {
+          const active = pathname.startsWith(item.to);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                active
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="border-t border-sidebar-border p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <Avatar className="h-9 w-9">
+            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{initials}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{user.email}</p>
+            <Badge variant="secondary" className="text-[10px] capitalize mt-0.5">{primaryRole}</Badge>
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" className="w-full justify-start"
+          onClick={async () => { await signOut(); navigate({ to: "/login" }); }}>
+          <LogOut className="h-4 w-4 mr-2" /> Sair
+        </Button>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen flex bg-background">
-      <aside className="w-64 shrink-0 border-r bg-sidebar text-sidebar-foreground flex flex-col">
-        <div className="px-6 py-5 flex items-center gap-2 border-b border-sidebar-border">
+      <aside className="hidden md:flex w-64 shrink-0 border-r bg-sidebar text-sidebar-foreground flex-col">
+        {SidebarContent}
+      </aside>
+
+      {/* Mobile topbar */}
+      <header className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-sidebar text-sidebar-foreground border-b border-sidebar-border flex items-center justify-between px-3">
+        <div className="flex items-center gap-2">
           {branding.logo_url ? (
-            <img src={branding.logo_url} alt="logo" className="h-8 w-8 rounded-md object-contain" />
+            <img src={branding.logo_url} alt="logo" className="h-7 w-7 rounded-md object-contain" />
           ) : (
-            <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
+            <div className="h-7 w-7 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
               <Briefcase className="h-4 w-4" />
             </div>
           )}
-          <span className="font-semibold truncate">{branding.brand_name}</span>
+          <span className="font-semibold text-sm truncate">{branding.brand_name}</span>
         </div>
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-9 w-9"><Menu className="h-5 w-5" /></Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-72 bg-sidebar text-sidebar-foreground flex flex-col">
+            <SheetTitle className="sr-only">Menu</SheetTitle>
+            {SidebarContent}
+          </SheetContent>
+        </Sheet>
+      </header>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {visibleNav.map((item) => {
-            const active = pathname.startsWith(item.to);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="border-t border-sidebar-border p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <Avatar className="h-9 w-9">
-              <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user.email}</p>
-              <Badge variant="secondary" className="text-[10px] capitalize mt-0.5">{primaryRole}</Badge>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start"
-            onClick={async () => { await signOut(); navigate({ to: "/login" }); }}
-          >
-            <LogOut className="h-4 w-4 mr-2" /> Sair
-          </Button>
-        </div>
-      </aside>
-
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto pt-14 md:pt-0 min-w-0">
         <Outlet />
       </main>
     </div>
