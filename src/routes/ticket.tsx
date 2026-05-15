@@ -132,6 +132,14 @@ function PublicTicketPage() {
       };
       const { error } = await supabase.from("ticket_requests").insert(payload);
       if (error) throw error;
+      // Save autofill
+      try {
+        localStorage.setItem(AUTOFILL_KEY, JSON.stringify({
+          name, email,
+          phone: String(fd.get("phone") || ""),
+          company: String(fd.get("company") || ""),
+        }));
+      } catch {}
       setDone(true);
     } catch (err: any) {
       toast.error(err.message ?? "Falha ao enviar solicitação");
