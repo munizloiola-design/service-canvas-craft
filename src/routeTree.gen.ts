@@ -9,10 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TicketRouteImport } from './routes/ticket'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VTokenRouteImport } from './routes/v.$token'
+import { Route as AppTicketsRouteImport } from './routes/_app/tickets'
 import { Route as AppTeamRouteImport } from './routes/_app/team'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
 import { Route as AppPermissoesRouteImport } from './routes/_app/permissoes'
@@ -26,6 +28,11 @@ import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
 
+const TicketRoute = TicketRouteImport.update({
+  id: '/ticket',
+  path: '/ticket',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -44,6 +51,11 @@ const VTokenRoute = VTokenRouteImport.update({
   id: '/v/$token',
   path: '/v/$token',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppTicketsRoute = AppTicketsRouteImport.update({
+  id: '/tickets',
+  path: '/tickets',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppTeamRoute = AppTeamRouteImport.update({
   id: '/team',
@@ -109,6 +121,7 @@ const AppCadastrosRoute = AppCadastrosRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/ticket': typeof TicketRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
   '/dashboard': typeof AppDashboardRoute
@@ -121,11 +134,13 @@ export interface FileRoutesByFullPath {
   '/permissoes': typeof AppPermissoesRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
+  '/tickets': typeof AppTicketsRoute
   '/v/$token': typeof VTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/ticket': typeof TicketRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
   '/dashboard': typeof AppDashboardRoute
@@ -138,6 +153,7 @@ export interface FileRoutesByTo {
   '/permissoes': typeof AppPermissoesRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
+  '/tickets': typeof AppTicketsRoute
   '/v/$token': typeof VTokenRoute
 }
 export interface FileRoutesById {
@@ -145,6 +161,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/ticket': typeof TicketRoute
   '/_app/cadastros': typeof AppCadastrosRoute
   '/_app/calendario': typeof AppCalendarioRoute
   '/_app/dashboard': typeof AppDashboardRoute
@@ -157,6 +174,7 @@ export interface FileRoutesById {
   '/_app/permissoes': typeof AppPermissoesRoute
   '/_app/projects': typeof AppProjectsRoute
   '/_app/team': typeof AppTeamRoute
+  '/_app/tickets': typeof AppTicketsRoute
   '/v/$token': typeof VTokenRoute
 }
 export interface FileRouteTypes {
@@ -164,6 +182,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/ticket'
     | '/cadastros'
     | '/calendario'
     | '/dashboard'
@@ -176,11 +195,13 @@ export interface FileRouteTypes {
     | '/permissoes'
     | '/projects'
     | '/team'
+    | '/tickets'
     | '/v/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
+    | '/ticket'
     | '/cadastros'
     | '/calendario'
     | '/dashboard'
@@ -193,12 +214,14 @@ export interface FileRouteTypes {
     | '/permissoes'
     | '/projects'
     | '/team'
+    | '/tickets'
     | '/v/$token'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/login'
+    | '/ticket'
     | '/_app/cadastros'
     | '/_app/calendario'
     | '/_app/dashboard'
@@ -211,6 +234,7 @@ export interface FileRouteTypes {
     | '/_app/permissoes'
     | '/_app/projects'
     | '/_app/team'
+    | '/_app/tickets'
     | '/v/$token'
   fileRoutesById: FileRoutesById
 }
@@ -218,11 +242,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  TicketRoute: typeof TicketRoute
   VTokenRoute: typeof VTokenRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/ticket': {
+      id: '/ticket'
+      path: '/ticket'
+      fullPath: '/ticket'
+      preLoaderRoute: typeof TicketRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -250,6 +282,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/v/$token'
       preLoaderRoute: typeof VTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/tickets': {
+      id: '/_app/tickets'
+      path: '/tickets'
+      fullPath: '/tickets'
+      preLoaderRoute: typeof AppTicketsRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/team': {
       id: '/_app/team'
@@ -351,6 +390,7 @@ interface AppRouteChildren {
   AppPermissoesRoute: typeof AppPermissoesRoute
   AppProjectsRoute: typeof AppProjectsRoute
   AppTeamRoute: typeof AppTeamRoute
+  AppTicketsRoute: typeof AppTicketsRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -366,6 +406,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPermissoesRoute: AppPermissoesRoute,
   AppProjectsRoute: AppProjectsRoute,
   AppTeamRoute: AppTeamRoute,
+  AppTicketsRoute: AppTicketsRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -374,18 +415,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  TicketRoute: TicketRoute,
   VTokenRoute: VTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

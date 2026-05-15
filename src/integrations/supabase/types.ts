@@ -825,6 +825,81 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_requests: {
+        Row: {
+          attachments: Json
+          company: string | null
+          created_at: string
+          created_project_id: string | null
+          description: string
+          desired_due_date: string | null
+          id: string
+          media_type_id: string | null
+          reference_links: string[]
+          requester_email: string
+          requester_name: string
+          requester_phone: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          attachments?: Json
+          company?: string | null
+          created_at?: string
+          created_project_id?: string | null
+          description: string
+          desired_due_date?: string | null
+          id?: string
+          media_type_id?: string | null
+          reference_links?: string[]
+          requester_email: string
+          requester_name: string
+          requester_phone?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          attachments?: Json
+          company?: string | null
+          created_at?: string
+          created_project_id?: string | null
+          description?: string
+          desired_due_date?: string | null
+          id?: string
+          media_type_id?: string | null
+          reference_links?: string[]
+          requester_email?: string
+          requester_name?: string
+          requester_phone?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_requests_created_project_id_fkey"
+            columns: ["created_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_requests_media_type_id_fkey"
+            columns: ["media_type_id"]
+            isOneToOne: false
+            referencedRelation: "media_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string

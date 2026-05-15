@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/lib/auth-context";
 
-export type Resource = "dashboard" | "projects" | "financeiro" | "orcamento" | "equipamentos" | "team" | "cadastros" | "calendario" | "facebook" | "diguinho" | "integracoes";
+export type Resource = "dashboard" | "projects" | "financeiro" | "orcamento" | "equipamentos" | "team" | "cadastros" | "calendario" | "facebook" | "diguinho" | "integracoes" | "tickets";
 export type Action = "view" | "create" | "edit" | "delete";
 
 export type Permission = { role: AppRole; resource: string; action: string };

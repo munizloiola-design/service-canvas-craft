@@ -1,67 +1,73 @@
-# Fase 2 — Workflow, permissões, calendários e dashboard
 
-## 1. Status configurável nas demandas
+## Objetivo
 
-Já existe a tabela `workflow_statuses` (name, color, sort_order, is_final, is_review, is_client_validation). Vou:
+Criar uma página pública (sem login) onde qualquer pessoa com o link possa abrir uma solicitação. O pedido entra em uma **fila de aprovação** dentro do sistema; um gerente revisa e converte (ou recusa) o ticket em projeto no Kanban.
 
-- Criar página **Cadastros → Status** para CRUD (gerentes/admin) com drag-to-reorder.
-- Em `projects.tsx`, trocar o seletor fixo de status pela lista dinâmica de `workflow_statuses` (já há `status_id`, mas o código ainda usa o enum `status`). Manter compatibilidade lendo `status_id` quando presente.
-- Toda mudança de status grava em `project_transitions` (já existe).
+## Fluxo
 
-## 2. Permissões granulares por área
+```text
+Cliente → /ticket (público) → submit → tabela ticket_requests (status: pendente)
+                                              │
+                                  Gerente acessa /tickets (interno)
+                                              │
+                              Aprovar ──► cria projeto + move anexos → status: aprovado
+                              Recusar ──► registra motivo               → status: recusado
+```
 
-Hoje só existem 3 papéis (`admin`, `gerente`, `membro`) via `user_roles`. Para permissões finas sem reescrever tudo:
+## Banco de dados (migration)
 
-- Nova tabela `role_permissions(role app_role, resource text, action text)` — ex.: `('membro','financeiro','view')`.
-- Função `has_permission(_uid, _resource, _action)` security definer.
-- Tela **Cadastros → Permissões**: matriz papel × recurso (financeiro, orçamento, equipamentos, equipe, cadastros, projetos) × ações (view, create, edit, delete).
-- No frontend, hook `usePermission(resource, action)` esconde itens do menu e botões.
-- RLS continua usando `is_manager` para escrita; a granularidade extra fica no app layer (suficiente para UI; o backstop RLS continua).
+**Tabela `ticket_requests`**
+- Identificação: `requester_name`, `requester_email`, `requester_phone`, `company`
+- Conteúdo: `title`, `description`, `media_type_id` (FK opcional), `desired_due_date`, `reference_links` (text[])
+- Anexos: `attachments` (jsonb com `{path, name, size, mime}`)
+- Workflow: `status` ('pendente' | 'aprovado' | 'recusado'), `review_notes`, `reviewed_by`, `reviewed_at`, `created_project_id`
+- Padrão: `id`, `created_at`
 
-## 3. Calendários
+**RLS**
+- INSERT: público (`anon` + `authenticated`) — qualquer um envia
+- SELECT/UPDATE/DELETE: apenas `is_manager(auth.uid())`
 
-Nova rota `/calendario` com duas abas:
+**Storage**
+- Novo bucket privado `ticket-attachments`
+- Policy de INSERT pública (anon pode subir em `public/<uuid>/...`)
+- SELECT/DELETE só para managers
 
-- **Prazo**: eventos = `projects.due_date`.
-- **Postagem**: eventos = `projects.post_date`.
+**Permissões**
+- Novo recurso `tickets` em `role_permissions` (view para admin/gerente)
 
-Componente baseado em `react-big-calendar` (mês/semana/dia), cores por status, clique abre o projeto.
+## Backend (server functions)
 
-## 4. Filtros avançados em Projetos
+`src/lib/tickets.functions.ts`
+- `submitTicket` — público, sem auth middleware. Valida com Zod (limites de tamanho), insere em `ticket_requests`. Recebe paths de anexos já enviados.
+- `uploadTicketAttachment` — público, recebe FormData, valida mime/tamanho (máx 10MB, até 5 arquivos), grava no bucket usando `supabaseAdmin`, retorna o path.
+- `approveTicket` — manager only: cria registro em `projects` (status inicial, copia título/descrição/media_type/links/due_date), move anexos para `project-files`, cria registros em `project_attachments`, marca request como aprovado com `created_project_id`.
+- `rejectTicket` — manager only: salva `review_notes` e marca recusado.
+- `listTicketRequests` — manager only, com filtro por status.
 
-Em `/projects`, adicionar barra de filtros combináveis (botão "+ Adicionar filtro"):
-cliente, responsável, status, prioridade, tipo de mídia, decisão do cliente, intervalo de datas (prazo/postagem). Estado salvo na URL (search params via TanStack Router) para compartilhar.
+## Rotas
 
-## 5. Cronômetro oculto de status
+**Pública** — `src/routes/ticket.tsx`
+- Sem layout `_app`, design alinhado ao sistema (mesmo card/tipografia da tela de login)
+- Form com: nome, e-mail, telefone, empresa, título, descrição, tipo de mídia (select carregado de `media_types`), prazo desejado, links de referência (lista dinâmica), uploader de até 5 anexos
+- Validação client-side (zod + react-hook-form), feedback de sucesso com mensagem "Recebemos sua solicitação"
+- SEO: title/description próprios
 
-- Coluna `entered_at timestamptz` em `project_transitions` (já temos `created_at`, basta usar).
-- View materializada não — fazemos query agregada: para cada projeto, somar `(próximo created_at - created_at)` por `from_status_id` ⇒ tempo médio em cada status.
-- Novo endpoint via `createServerFn` `getStatusDurations()` retorna `{ status_id, avg_seconds, count }`.
-- Card no dashboard "Tempo médio por status".
+**Interna** — `src/routes/_app/tickets.tsx`
+- Lista de solicitações com tabs: Pendentes / Aprovadas / Recusadas
+- Cada item abre Sheet com detalhes, anexos para download e botões **Aprovar** (cria projeto e redireciona para `/projects`) ou **Recusar** (textarea de motivo)
+- Item de menu na sidebar (`Tickets`, ícone Inbox), visível conforme permissão
 
-## 6. Dashboard personalizável
+## Pontos de UI/UX
 
-- Nova tabela `dashboard_widgets(user_id, widget_key, position int, size text, config jsonb)`.
-- Catálogo de widgets: Resumo financeiro, Cash flow 12m, Projetos por status, Tempo médio por status, Próximos prazos, Receitas recorrentes, Carga por profissional, Margem média (orçamentos), Equipamentos depreciados.
-- Modo "editar dashboard": adicionar/remover/reordenar (drag) widgets, salvar por usuário.
-- Default: 4 widgets pré-configurados para novos usuários.
+- Página pública compacta, responsiva, sem sidebar; logo + título "Abrir solicitação"
+- Após envio: tela de confirmação com opção "enviar outra"
+- Uploader mostra progresso por arquivo e bloqueia submit enquanto sobe
+- Badge na sidebar com contagem de pendentes (consulta leve via server fn)
 
-## Detalhes técnicos
+## Itens fora do escopo desta fase
 
-- Migração única: `role_permissions` + seed default + função `has_permission` + (se necessário) índice em `project_transitions(project_id, created_at)`.
-- Dependências novas: `react-big-calendar`, `@dnd-kit/core` + `@dnd-kit/sortable` (drag de status e widgets).
-- Server functions em `src/lib/`: `permissions.functions.ts`, `analytics.functions.ts` (durações, agregados do dashboard).
-- Hooks: `usePermission`, `useDashboardLayout`.
-- Sidebar ganha entrada **Calendário**; **Cadastros** ganha sub-itens Status e Permissões.
+- Notificações por e-mail / Diguinho ao receber ticket (pode entrar depois)
+- Branding customizável por cliente
+- Link individual por cliente (token) — fica para uma evolução futura
 
-## Ordem de execução
-
-1. Migração (permissões + helpers).
-2. Status dinâmicos + tela de cadastro.
-3. Permissões + matriz + hook.
-4. Filtros em projetos + URL state.
-5. Calendário.
-6. Cronômetro de status (server fn + card).
-7. Dashboard personalizável.
-
-Posso começar pela etapa 1 ou prefere reordenar?
+Posso seguir com a implementação?
