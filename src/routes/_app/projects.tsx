@@ -62,6 +62,7 @@ function ProjectsPage() {
   const { isManager } = useAuth();
   const [view, setView] = useState<"kanban" | "list">("kanban");
   const [open, setOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [visibleCols, setVisibleCols] = useState<string[]>(ALL_COLUMNS.map((c) => c.key));
   const [filters, setFilters] = useState<ActiveFilter[]>([]);
