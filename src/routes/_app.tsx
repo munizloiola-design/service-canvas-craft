@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Navigate, Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
 import { usePermissions, type Resource } from "@/lib/permissions";
-import { LayoutDashboard, FolderKanban, Users, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Users, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck, Facebook, Sparkles, Plug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,9 @@ const navItems: { to: string; label: string; icon: typeof LayoutDashboard; resou
   { to: "/orcamento", label: "Orçamento", icon: Calculator, resource: "orcamento" },
   { to: "/equipamentos", label: "Equipamentos", icon: Wrench, resource: "equipamentos" },
   { to: "/team", label: "Equipe", icon: Users, resource: "team" },
+  { to: "/facebook", label: "Facebook Ads", icon: Facebook, resource: "facebook" },
+  { to: "/diguinho", label: "Diguinho IA", icon: Sparkles, resource: "diguinho" },
+  { to: "/integracoes", label: "Integrações", icon: Plug, resource: "integracoes" },
   { to: "/cadastros", label: "Cadastros", icon: Settings, resource: "cadastros" },
   { to: "/permissoes", label: "Permissões", icon: ShieldCheck, resource: "cadastros", adminOnly: true },
 ];

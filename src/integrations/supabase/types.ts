@@ -338,6 +338,36 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_meta: {
+        Row: {
+          access_token: string
+          ad_account_id: string
+          connected_at: string
+          display_name: string | null
+          page_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          ad_account_id: string
+          connected_at?: string
+          display_name?: string | null
+          page_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          ad_account_id?: string
+          connected_at?: string
+          display_name?: string | null
+          page_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       media_types: {
         Row: {
           created_at: string

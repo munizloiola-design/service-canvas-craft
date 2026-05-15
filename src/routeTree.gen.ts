@@ -17,8 +17,11 @@ import { Route as AppTeamRouteImport } from './routes/_app/team'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
 import { Route as AppPermissoesRouteImport } from './routes/_app/permissoes'
 import { Route as AppOrcamentoRouteImport } from './routes/_app/orcamento'
+import { Route as AppIntegracoesRouteImport } from './routes/_app/integracoes'
 import { Route as AppFinanceiroRouteImport } from './routes/_app/financeiro'
+import { Route as AppFacebookRouteImport } from './routes/_app/facebook'
 import { Route as AppEquipamentosRouteImport } from './routes/_app/equipamentos'
+import { Route as AppDiguinhoRouteImport } from './routes/_app/diguinho'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
@@ -62,14 +65,29 @@ const AppOrcamentoRoute = AppOrcamentoRouteImport.update({
   path: '/orcamento',
   getParentRoute: () => AppRoute,
 } as any)
+const AppIntegracoesRoute = AppIntegracoesRouteImport.update({
+  id: '/integracoes',
+  path: '/integracoes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFacebookRoute = AppFacebookRouteImport.update({
+  id: '/facebook',
+  path: '/facebook',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppEquipamentosRoute = AppEquipamentosRouteImport.update({
   id: '/equipamentos',
   path: '/equipamentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDiguinhoRoute = AppDiguinhoRouteImport.update({
+  id: '/diguinho',
+  path: '/diguinho',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -94,8 +112,11 @@ export interface FileRoutesByFullPath {
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
   '/dashboard': typeof AppDashboardRoute
+  '/diguinho': typeof AppDiguinhoRoute
   '/equipamentos': typeof AppEquipamentosRoute
+  '/facebook': typeof AppFacebookRoute
   '/financeiro': typeof AppFinanceiroRoute
+  '/integracoes': typeof AppIntegracoesRoute
   '/orcamento': typeof AppOrcamentoRoute
   '/permissoes': typeof AppPermissoesRoute
   '/projects': typeof AppProjectsRoute
@@ -108,8 +129,11 @@ export interface FileRoutesByTo {
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
   '/dashboard': typeof AppDashboardRoute
+  '/diguinho': typeof AppDiguinhoRoute
   '/equipamentos': typeof AppEquipamentosRoute
+  '/facebook': typeof AppFacebookRoute
   '/financeiro': typeof AppFinanceiroRoute
+  '/integracoes': typeof AppIntegracoesRoute
   '/orcamento': typeof AppOrcamentoRoute
   '/permissoes': typeof AppPermissoesRoute
   '/projects': typeof AppProjectsRoute
@@ -124,8 +148,11 @@ export interface FileRoutesById {
   '/_app/cadastros': typeof AppCadastrosRoute
   '/_app/calendario': typeof AppCalendarioRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/diguinho': typeof AppDiguinhoRoute
   '/_app/equipamentos': typeof AppEquipamentosRoute
+  '/_app/facebook': typeof AppFacebookRoute
   '/_app/financeiro': typeof AppFinanceiroRoute
+  '/_app/integracoes': typeof AppIntegracoesRoute
   '/_app/orcamento': typeof AppOrcamentoRoute
   '/_app/permissoes': typeof AppPermissoesRoute
   '/_app/projects': typeof AppProjectsRoute
@@ -140,8 +167,11 @@ export interface FileRouteTypes {
     | '/cadastros'
     | '/calendario'
     | '/dashboard'
+    | '/diguinho'
     | '/equipamentos'
+    | '/facebook'
     | '/financeiro'
+    | '/integracoes'
     | '/orcamento'
     | '/permissoes'
     | '/projects'
@@ -154,8 +184,11 @@ export interface FileRouteTypes {
     | '/cadastros'
     | '/calendario'
     | '/dashboard'
+    | '/diguinho'
     | '/equipamentos'
+    | '/facebook'
     | '/financeiro'
+    | '/integracoes'
     | '/orcamento'
     | '/permissoes'
     | '/projects'
@@ -169,8 +202,11 @@ export interface FileRouteTypes {
     | '/_app/cadastros'
     | '/_app/calendario'
     | '/_app/dashboard'
+    | '/_app/diguinho'
     | '/_app/equipamentos'
+    | '/_app/facebook'
     | '/_app/financeiro'
+    | '/_app/integracoes'
     | '/_app/orcamento'
     | '/_app/permissoes'
     | '/_app/projects'
@@ -243,6 +279,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrcamentoRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/integracoes': {
+      id: '/_app/integracoes'
+      path: '/integracoes'
+      fullPath: '/integracoes'
+      preLoaderRoute: typeof AppIntegracoesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/financeiro': {
       id: '/_app/financeiro'
       path: '/financeiro'
@@ -250,11 +293,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinanceiroRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/facebook': {
+      id: '/_app/facebook'
+      path: '/facebook'
+      fullPath: '/facebook'
+      preLoaderRoute: typeof AppFacebookRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/equipamentos': {
       id: '/_app/equipamentos'
       path: '/equipamentos'
       fullPath: '/equipamentos'
       preLoaderRoute: typeof AppEquipamentosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/diguinho': {
+      id: '/_app/diguinho'
+      path: '/diguinho'
+      fullPath: '/diguinho'
+      preLoaderRoute: typeof AppDiguinhoRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dashboard': {
@@ -285,8 +342,11 @@ interface AppRouteChildren {
   AppCadastrosRoute: typeof AppCadastrosRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppDiguinhoRoute: typeof AppDiguinhoRoute
   AppEquipamentosRoute: typeof AppEquipamentosRoute
+  AppFacebookRoute: typeof AppFacebookRoute
   AppFinanceiroRoute: typeof AppFinanceiroRoute
+  AppIntegracoesRoute: typeof AppIntegracoesRoute
   AppOrcamentoRoute: typeof AppOrcamentoRoute
   AppPermissoesRoute: typeof AppPermissoesRoute
   AppProjectsRoute: typeof AppProjectsRoute
@@ -297,8 +357,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppCadastrosRoute: AppCadastrosRoute,
   AppCalendarioRoute: AppCalendarioRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppDiguinhoRoute: AppDiguinhoRoute,
   AppEquipamentosRoute: AppEquipamentosRoute,
+  AppFacebookRoute: AppFacebookRoute,
   AppFinanceiroRoute: AppFinanceiroRoute,
+  AppIntegracoesRoute: AppIntegracoesRoute,
   AppOrcamentoRoute: AppOrcamentoRoute,
   AppPermissoesRoute: AppPermissoesRoute,
   AppProjectsRoute: AppProjectsRoute,
