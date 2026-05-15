@@ -13,6 +13,7 @@ export const Route = createFileRoute("/_app")({
 const navItems: { to: string; label: string; icon: typeof LayoutDashboard; resource: Resource; adminOnly?: boolean }[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, resource: "dashboard" },
   { to: "/projects", label: "Projetos", icon: FolderKanban, resource: "projects" },
+  { to: "/tickets", label: "Tickets", icon: Inbox, resource: "tickets" },
   { to: "/calendario", label: "Calendário", icon: CalendarDays, resource: "calendario" },
   { to: "/financeiro", label: "Financeiro", icon: DollarSign, resource: "financeiro" },
   { to: "/orcamento", label: "Orçamento", icon: Calculator, resource: "orcamento" },
