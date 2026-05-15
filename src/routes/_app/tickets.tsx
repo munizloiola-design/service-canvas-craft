@@ -53,7 +53,7 @@ function TicketsPage() {
         .eq("status", tab)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as TicketRequest[];
+      return (data ?? []) as unknown as TicketRequest[];
     },
   });
 
