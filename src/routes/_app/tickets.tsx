@@ -52,27 +52,37 @@ function whatsappUrl(phone: string | null) {
   return `https://wa.me/${digits}`;
 }
 
-function renderTpl(tpl: string, vars: Record<string, string>) {
-  return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? "");
-}
+import { sendTransactionalEmail } from "@/lib/email/send";
 
-async function notifyDecision(t: TicketRequest, decision: "approved" | "rejected", reviewNotes: string) {
-  // Best-effort: fetch template and email_templates table; queue/send if email infra exists.
-  // For now we only render and log — actual sending kicks in once the email domain is configured.
-  const key = decision === "approved" ? "ticket_approved" : "ticket_rejected";
-  const { data: tpl } = await supabase.from("email_templates").select("subject, body_html").eq("key", key).maybeSingle();
-  const { data: brand } = await supabase.from("app_branding").select("brand_name").eq("id", true).maybeSingle();
-  if (!tpl) return;
-  const vars = {
-    requester_name: t.requester_name,
-    title: t.title,
-    review_notes: reviewNotes || "",
-    brand_name: brand?.brand_name ?? "",
+async function notifyDecision(
+  t: TicketRequest,
+  decision: "approved" | "rejected",
+  reviewNotes: string,
+  trackUrl?: string | null,
+) {
+  const { data: brand } = await supabase
+    .from("app_branding")
+    .select("brand_name, logo_url, primary_color")
+    .eq("id", true)
+    .maybeSingle();
+
+  const templateName = decision === "approved" ? "ticket-approved" : "ticket-rejected";
+  const templateData: Record<string, unknown> = {
+    requesterName: t.requester_name,
+    ticketTitle: t.title,
+    brandName: brand?.brand_name ?? "Equipe.io",
+    brandLogoUrl: brand?.logo_url ?? null,
+    primaryColor: brand?.primary_color ?? "#3b82f6",
   };
-  const subject = renderTpl(tpl.subject, vars);
-  const body = renderTpl(tpl.body_html, vars);
-  // TODO: send via /lovable/email/transactional/send once email domain is configured
-  console.info("[ticket-email]", { to: t.requester_email, subject, body });
+  if (decision === "approved" && trackUrl) templateData.trackUrl = trackUrl;
+  if (decision === "rejected") templateData.reviewNotes = reviewNotes;
+
+  await sendTransactionalEmail({
+    templateName,
+    recipientEmail: t.requester_email,
+    idempotencyKey: `ticket-${t.id}-${decision}`,
+    templateData,
+  });
 }
 
 function TicketsPage() {
