@@ -371,22 +371,37 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail }:
   );
 }
 
-function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, roles, members }: {
+function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, roles, members, editProject, existingAssignees }: {
   onClose: () => void;
   clients: Client[]; mediaTypes: MediaType[]; statuses: Status[]; priorities: Priority[];
   roles: Role[]; members: Profile[];
+  editProject?: Project | null;
+  existingAssignees?: Assignee[];
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const isEdit = !!editProject;
   const [files, setFiles] = useState<File[]>([]);
-  const [refLinks, setRefLinks] = useState<string[]>([""]);
-  const [assignees, setAssignees] = useState<{ user_id: string; role_id: string }[]>([{ user_id: "", role_id: "" }]);
-  const [hasRef, setHasRef] = useState(false);
+  const [refLinks, setRefLinks] = useState<string[]>(
+    editProject?.reference_links && editProject.reference_links.length ? [...editProject.reference_links] : [""]
+  );
+  const [assignees, setAssignees] = useState<{ user_id: string; role_id: string }[]>(
+    existingAssignees && existingAssignees.length
+      ? existingAssignees.map((a) => ({ user_id: a.user_id, role_id: a.role_id ?? "" }))
+      : [{ user_id: "", role_id: "" }]
+  );
+  const [hasRef, setHasRef] = useState(!!editProject?.has_reference);
 
-  const create = useMutation({
+  const { data: existingAttachments = [] } = useQuery({
+    queryKey: ["attachments", editProject?.id, "edit"],
+    enabled: isEdit,
+    queryFn: async () => (await supabase.from("project_attachments").select("*").eq("project_id", editProject!.id)).data ?? [],
+  });
+
+  const save = useMutation({
     mutationFn: async (form: HTMLFormElement) => {
       const fd = new FormData(form);
-      const payload = {
+      const base = {
         title: String(fd.get("title")),
         description: String(fd.get("description") || "") || null,
         notes: String(fd.get("notes") || "") || null,
@@ -400,25 +415,37 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         has_reference: hasRef,
         reference_links: refLinks.map((s) => s.trim()).filter(Boolean),
         budget: fd.get("budget") ? Number(fd.get("budget")) : null,
-        client_token: crypto.randomUUID().replace(/-/g, ""),
-        created_by: user?.id,
       };
-      const { data, error } = await supabase.from("projects").insert(payload).select("id").single();
-      if (error) throw error;
+
+      let projectId: string;
+      if (isEdit) {
+        const { error } = await supabase.from("projects").update(base).eq("id", editProject!.id);
+        if (error) throw error;
+        projectId = editProject!.id;
+        await supabase.from("project_assignees").delete().eq("project_id", projectId);
+      } else {
+        const { data, error } = await supabase.from("projects").insert({
+          ...base,
+          client_token: crypto.randomUUID().replace(/-/g, ""),
+          created_by: user?.id,
+        }).select("id").single();
+        if (error) throw error;
+        projectId = data.id;
+      }
 
       const validAssignees = assignees.filter((a) => a.user_id);
       if (validAssignees.length) {
         await supabase.from("project_assignees").insert(
-          validAssignees.map((a) => ({ project_id: data.id, user_id: a.user_id, role_id: a.role_id || null }))
+          validAssignees.map((a) => ({ project_id: projectId, user_id: a.user_id, role_id: a.role_id || null }))
         );
       }
 
       for (const file of files) {
-        const path = `${data.id}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const path = `${projectId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
         const up = await supabase.storage.from("project-files").upload(path, file);
         if (up.error) { toast.error(`Falha em ${file.name}`); continue; }
         await supabase.from("project_attachments").insert({
-          project_id: data.id, file_name: file.name, file_path: path,
+          project_id: projectId, file_name: file.name, file_path: path,
           file_size: file.size, mime_type: file.type, uploaded_by: user!.id,
         });
       }
@@ -426,34 +453,49 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["projects"] });
       qc.invalidateQueries({ queryKey: ["project_assignees"] });
-      toast.success("Demanda criada");
+      qc.invalidateQueries({ queryKey: ["attachments"] });
+      toast.success(isEdit ? "Demanda atualizada" : "Demanda criada");
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const removeAttachment = useMutation({
+    mutationFn: async (att: { id: string; file_path: string }) => {
+      await supabase.storage.from("project-files").remove([att.file_path]);
+      const { error } = await supabase.from("project_attachments").delete().eq("id", att.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["attachments", editProject?.id, "edit"] });
+      qc.invalidateQueries({ queryKey: ["attachments"] });
+      toast.success("Anexo removido");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
-    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader><DialogTitle>Nova demanda</DialogTitle></DialogHeader>
-      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); create.mutate(e.currentTarget); }}>
+    <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
+      <DialogHeader><DialogTitle>{isEdit ? "Editar demanda" : "Nova demanda"}</DialogTitle></DialogHeader>
+      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save.mutate(e.currentTarget); }}>
         <div className="space-y-2">
           <Label htmlFor="title">Título *</Label>
-          <Input id="title" name="title" required />
+          <Input id="title" name="title" required defaultValue={editProject?.title ?? ""} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Empresa / Cliente"><Select name="client_id"><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></Field>
-          <Field label="Tipo de mídia"><Select name="media_type_id"><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{mediaTypes.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></Field>
-          <Field label="Etapa inicial"><Select name="status_id" defaultValue={statuses[0]?.id}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></Field>
-          <Field label="Prioridade"><Select name="priority_id"><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <Field label="Início"><Input name="start_date" type="date" /></Field>
-          <Field label="Prazo"><Input name="due_date" type="date" /></Field>
-          <Field label="Postagem"><Input name="post_date" type="date" /></Field>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="Empresa / Cliente"><Select name="client_id" defaultValue={editProject?.client_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></Field>
+          <Field label="Tipo de mídia"><Select name="media_type_id" defaultValue={editProject?.media_type_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{mediaTypes.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></Field>
+          <Field label="Etapa"><Select name="status_id" defaultValue={editProject?.status_id ?? statuses[0]?.id}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></Field>
+          <Field label="Prioridade"><Select name="priority_id" defaultValue={editProject?.priority_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field>
         </div>
 
-        <Field label="Valor (R$)"><Input name="budget" type="number" step="0.01" /></Field>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Field label="Início"><Input name="start_date" type="date" defaultValue={editProject?.start_date ?? ""} /></Field>
+          <Field label="Prazo"><Input name="due_date" type="date" defaultValue={editProject?.due_date ?? ""} /></Field>
+          <Field label="Postagem"><Input name="post_date" type="date" defaultValue={editProject?.post_date ?? ""} /></Field>
+        </div>
+
+        <Field label="Valor (R$)"><Input name="budget" type="number" step="0.01" defaultValue={editProject?.budget ?? ""} /></Field>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -501,11 +543,27 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
           ))}
         </div>
 
-        <Field label="Briefing / Descrição"><Textarea name="description" rows={3} /></Field>
-        <Field label="Observações internas"><Textarea name="notes" rows={2} /></Field>
+        <Field label="Briefing / Descrição"><Textarea name="description" rows={3} defaultValue={editProject?.description ?? ""} /></Field>
+        <Field label="Observações internas"><Textarea name="notes" rows={2} defaultValue={editProject?.notes ?? ""} /></Field>
+
+        {isEdit && existingAttachments.length > 0 && (
+          <div className="space-y-2">
+            <Label>Anexos existentes</Label>
+            <ul className="space-y-1">
+              {existingAttachments.map((a: any) => (
+                <li key={a.id} className="flex items-center justify-between gap-2 p-2 rounded bg-muted/50 text-xs">
+                  <span className="inline-flex items-center gap-1 truncate"><Paperclip className="h-3 w-3" />{a.file_name}</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => { if (confirm(`Remover ${a.file_name}?`)) removeAttachment.mutate({ id: a.id, file_path: a.file_path }); }}>
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="space-y-2">
-          <Label>Anexos de referência</Label>
+          <Label>{isEdit ? "Adicionar novos anexos" : "Anexos de referência"}</Label>
           <Input type="file" multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
           {files.length > 0 && (
             <ul className="text-xs text-muted-foreground space-y-0.5">
@@ -515,7 +573,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         </div>
 
         <DialogFooter>
-          <Button type="submit" disabled={create.isPending}>{create.isPending ? "Salvando..." : "Criar demanda"}</Button>
+          <Button type="submit" disabled={save.isPending}>{save.isPending ? "Salvando..." : (isEdit ? "Salvar alterações" : "Criar demanda")}</Button>
         </DialogFooter>
       </form>
     </DialogContent>
