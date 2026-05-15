@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_branding: {
+        Row: {
+          accent_color: string
+          brand_name: string
+          favicon_url: string | null
+          id: boolean
+          logo_url: string | null
+          primary_color: string
+          suggestions: string | null
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string
+          brand_name?: string
+          favicon_url?: string | null
+          id?: boolean
+          logo_url?: string | null
+          primary_color?: string
+          suggestions?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string
+          brand_name?: string
+          favicon_url?: string | null
+          id?: boolean
+          logo_url?: string | null
+          primary_color?: string
+          suggestions?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       budget_simulations: {
         Row: {
           created_at: string
@@ -143,6 +176,30 @@ export type Database = {
           id?: string
           role?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      email_templates: {
+        Row: {
+          body_html: string
+          id: string
+          key: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body_html: string
+          id?: string
+          key: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          id?: string
+          key?: string
+          subject?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -834,6 +891,7 @@ export type Database = {
           description: string
           desired_due_date: string | null
           id: string
+          internal_notes: string | null
           media_type_id: string | null
           reference_links: string[]
           requester_email: string
@@ -853,6 +911,7 @@ export type Database = {
           description: string
           desired_due_date?: string | null
           id?: string
+          internal_notes?: string | null
           media_type_id?: string | null
           reference_links?: string[]
           requester_email: string
@@ -872,6 +931,7 @@ export type Database = {
           description?: string
           desired_due_date?: string | null
           id?: string
+          internal_notes?: string | null
           media_type_id?: string | null
           reference_links?: string[]
           requester_email?: string
