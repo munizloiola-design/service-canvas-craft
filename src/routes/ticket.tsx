@@ -154,10 +154,14 @@ function PublicTicketPage() {
       <div className="min-h-screen bg-muted/30 py-10 px-4">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-center gap-2 mb-6">
-            <div className="h-9 w-9 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
-              <Briefcase className="h-5 w-5" />
-            </div>
-            <span className="font-semibold text-lg">Equipe.io</span>
+            {branding.logo_url ? (
+              <img src={branding.logo_url} alt="logo" className="h-9 w-9 rounded-md object-contain" />
+            ) : (
+              <div className="h-9 w-9 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
+                <Briefcase className="h-5 w-5" />
+              </div>
+            )}
+            <span className="font-semibold text-lg">{branding.brand_name}</span>
           </div>
 
           {done ? (
