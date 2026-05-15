@@ -137,6 +137,7 @@ function TicketsPage() {
 
   const approve = useMutation({
     mutationFn: async (t: TicketRequest) => {
+      const clientToken = crypto.randomUUID().replace(/-/g, "");
       const { data: proj, error: pErr } = await supabase
         .from("projects").insert({
           title: t.title,
@@ -146,7 +147,7 @@ function TicketsPage() {
           due_date: t.desired_due_date,
           reference_links: t.reference_links ?? [],
           has_reference: (t.reference_links?.length ?? 0) > 0,
-          client_token: crypto.randomUUID().replace(/-/g, ""),
+          client_token: clientToken,
           created_by: user?.id,
         }).select("id").single();
       if (pErr) throw pErr;
@@ -170,10 +171,21 @@ function TicketsPage() {
       }).eq("id", t.id);
       if (uErr) throw uErr;
 
-      await notifyDecision(t, "approved", "");
+      const trackUrl = `${window.location.origin}/v/${clientToken}`;
+      try {
+        await notifyDecision(t, "approved", "", trackUrl);
+      } catch (e: any) {
+        console.error("[ticket-email] approve failed", e);
+        return { emailFailed: true as const, error: e?.message };
+      }
+      return { emailFailed: false as const };
     },
-    onSuccess: () => {
-      toast.success("Ticket aprovado e projeto criado");
+    onSuccess: (res) => {
+      if (res?.emailFailed) {
+        toast.warning("Ticket aprovado, mas o e-mail não foi enviado");
+      } else {
+        toast.success("Ticket aprovado e projeto criado");
+      }
       qc.invalidateQueries({ queryKey: ["ticket_requests"] });
       setSelected(null);
     },
@@ -187,10 +199,20 @@ function TicketsPage() {
         reviewed_by: user?.id, reviewed_at: new Date().toISOString(),
       }).eq("id", t.id);
       if (error) throw error;
-      await notifyDecision(t, "rejected", note);
+      try {
+        await notifyDecision(t, "rejected", note);
+      } catch (e: any) {
+        console.error("[ticket-email] reject failed", e);
+        return { emailFailed: true as const };
+      }
+      return { emailFailed: false as const };
     },
-    onSuccess: () => {
-      toast.success("Ticket recusado");
+    onSuccess: (res) => {
+      if (res?.emailFailed) {
+        toast.warning("Ticket recusado, mas o e-mail não foi enviado");
+      } else {
+        toast.success("Ticket recusado");
+      }
       qc.invalidateQueries({ queryKey: ["ticket_requests"] });
       setSelected(null); setRejectNote("");
     },
