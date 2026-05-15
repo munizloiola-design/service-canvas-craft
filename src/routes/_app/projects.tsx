@@ -252,6 +252,7 @@ function ProjectsPage() {
         statuses={statuses} priorities={priorities} maps={maps}
         assignees={detailId ? (assigneesByProject.get(detailId) ?? []) : []}
         onClose={() => setDetailId(null)}
+        onEdit={(p) => { setDetailId(null); setEditingProject(p); setOpen(true); }}
       />
     </div>
   );
