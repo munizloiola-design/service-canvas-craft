@@ -29,17 +29,44 @@ const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 type MediaType = { id: string; name: string };
 
 function PublicTicketPage() {
+  const { branding } = useBranding();
   const [mediaTypes, setMediaTypes] = useState<MediaType[]>([]);
   const [refLinks, setRefLinks] = useState<string[]>([""]);
   const [files, setFiles] = useState<File[]>([]);
   const [mediaTypeId, setMediaTypeId] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [hasAutofill, setHasAutofill] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     supabase.from("media_types").select("id, name").order("sort_order")
       .then(({ data }) => setMediaTypes((data ?? []) as MediaType[]));
+    // Autofill from localStorage
+    try {
+      const raw = localStorage.getItem(AUTOFILL_KEY);
+      if (raw && formRef.current) {
+        const saved = JSON.parse(raw) as Record<string, string>;
+        for (const k of ["name", "email", "phone", "company"]) {
+          const el = formRef.current.elements.namedItem(k) as HTMLInputElement | null;
+          if (el && saved[k]) el.value = saved[k];
+        }
+        setHasAutofill(true);
+      }
+    } catch {}
   }, []);
+
+  const clearAutofill = () => {
+    localStorage.removeItem(AUTOFILL_KEY);
+    if (formRef.current) {
+      for (const k of ["name", "email", "phone", "company"]) {
+        const el = formRef.current.elements.namedItem(k) as HTMLInputElement | null;
+        if (el) el.value = "";
+      }
+    }
+    setHasAutofill(false);
+    toast.success("Dados salvos removidos");
+  };
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
