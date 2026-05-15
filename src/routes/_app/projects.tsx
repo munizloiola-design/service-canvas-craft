@@ -193,12 +193,15 @@ function ProjectsPage() {
             </DropdownMenu>
           )}
           {isManager && (
-            <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditingProject(null); }}>
               <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> Nova demanda</Button></DialogTrigger>
               <NewDemandDialog
-                onClose={() => setOpen(false)}
+                key={editingProject?.id ?? "new"}
+                editProject={editingProject}
+                onClose={() => { setOpen(false); setEditingProject(null); }}
                 clients={clients} mediaTypes={mediaTypes} statuses={statuses} priorities={priorities}
                 roles={roles} members={members}
+                existingAssignees={editingProject ? (assigneesByProject.get(editingProject.id) ?? []) : []}
               />
             </Dialog>
           )}
