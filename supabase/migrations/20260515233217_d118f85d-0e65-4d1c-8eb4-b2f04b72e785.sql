@@ -1,0 +1,1 @@
+CREATE POLICY "bs_update" ON public.budget_simulations FOR UPDATE TO authenticated USING (is_manager(auth.uid())) WITH CHECK (is_manager(auth.uid()));
