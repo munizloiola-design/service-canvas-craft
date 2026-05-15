@@ -633,10 +633,17 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
 
   return (
     <Dialog open={!!project} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{project.title}</DialogTitle></DialogHeader>
         <div className="space-y-4 text-sm">
-          <div className="grid grid-cols-2 gap-3">
+          {isManager && (
+            <div className="flex justify-end">
+              <Button size="sm" variant="outline" onClick={() => onEdit(project)}>
+                <Pencil className="h-4 w-4 mr-1" /> Editar demanda
+              </Button>
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Info label="Cliente" value={project.client_id ? (maps.client.get(project.client_id) as string) : "—"} />
             <Info label="Tipo de mídia" value={project.media_type_id ? (maps.media.get(project.media_type_id) as string) : "—"} />
             <div>
