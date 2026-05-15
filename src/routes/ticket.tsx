@@ -1,6 +1,7 @@
 import { createFileRoute, HeadContent } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "@/lib/branding-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,11 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Briefcase, Plus, X, Upload, CheckCircle2, Loader2 } from "lucide-react";
 
+const AUTOFILL_KEY = "ticket_form_autofill_v1";
+
 export const Route = createFileRoute("/ticket")({
   component: PublicTicketPage,
   head: () => ({
     meta: [
-      { title: "Abrir solicitação | Equipe.io" },
+      { title: "Abrir solicitação" },
       { name: "description", content: "Envie uma nova solicitação de projeto para a nossa equipe." },
     ],
   }),
@@ -26,17 +29,44 @@ const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 type MediaType = { id: string; name: string };
 
 function PublicTicketPage() {
+  const { branding } = useBranding();
   const [mediaTypes, setMediaTypes] = useState<MediaType[]>([]);
   const [refLinks, setRefLinks] = useState<string[]>([""]);
   const [files, setFiles] = useState<File[]>([]);
   const [mediaTypeId, setMediaTypeId] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [hasAutofill, setHasAutofill] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     supabase.from("media_types").select("id, name").order("sort_order")
       .then(({ data }) => setMediaTypes((data ?? []) as MediaType[]));
+    // Autofill from localStorage
+    try {
+      const raw = localStorage.getItem(AUTOFILL_KEY);
+      if (raw && formRef.current) {
+        const saved = JSON.parse(raw) as Record<string, string>;
+        for (const k of ["name", "email", "phone", "company"]) {
+          const el = formRef.current.elements.namedItem(k) as HTMLInputElement | null;
+          if (el && saved[k]) el.value = saved[k];
+        }
+        setHasAutofill(true);
+      }
+    } catch {}
   }, []);
+
+  const clearAutofill = () => {
+    localStorage.removeItem(AUTOFILL_KEY);
+    if (formRef.current) {
+      for (const k of ["name", "email", "phone", "company"]) {
+        const el = formRef.current.elements.namedItem(k) as HTMLInputElement | null;
+        if (el) el.value = "";
+      }
+    }
+    setHasAutofill(false);
+    toast.success("Dados salvos removidos");
+  };
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
@@ -102,6 +132,14 @@ function PublicTicketPage() {
       };
       const { error } = await supabase.from("ticket_requests").insert(payload);
       if (error) throw error;
+      // Save autofill
+      try {
+        localStorage.setItem(AUTOFILL_KEY, JSON.stringify({
+          name, email,
+          phone: String(fd.get("phone") || ""),
+          company: String(fd.get("company") || ""),
+        }));
+      } catch {}
       setDone(true);
     } catch (err: any) {
       toast.error(err.message ?? "Falha ao enviar solicitação");
@@ -116,10 +154,14 @@ function PublicTicketPage() {
       <div className="min-h-screen bg-muted/30 py-10 px-4">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-center gap-2 mb-6">
-            <div className="h-9 w-9 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
-              <Briefcase className="h-5 w-5" />
-            </div>
-            <span className="font-semibold text-lg">Equipe.io</span>
+            {branding.logo_url ? (
+              <img src={branding.logo_url} alt="logo" className="h-9 w-9 rounded-md object-contain" />
+            ) : (
+              <div className="h-9 w-9 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
+                <Briefcase className="h-5 w-5" />
+              </div>
+            )}
+            <span className="font-semibold text-lg">{branding.brand_name}</span>
           </div>
 
           {done ? (
@@ -150,7 +192,15 @@ function PublicTicketPage() {
                 </p>
               </header>
 
-              <form onSubmit={submit} className="space-y-5">
+              {hasAutofill && (
+                <div className="mb-4 flex items-center justify-between text-xs bg-muted/40 border rounded-md px-3 py-2">
+                  <span className="text-muted-foreground">Preenchemos seus dados da última vez.</span>
+                  <button type="button" onClick={clearAutofill} className="text-primary hover:underline">
+                    Limpar
+                  </button>
+                </div>
+              )}
+              <form ref={formRef} onSubmit={submit} className="space-y-5">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="name">Seu nome *</Label>

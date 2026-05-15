@@ -17,6 +17,7 @@ import { Route as VTokenRouteImport } from './routes/v.$token'
 import { Route as AppTicketsRouteImport } from './routes/_app/tickets'
 import { Route as AppTeamRouteImport } from './routes/_app/team'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
+import { Route as AppPersonalizacaoRouteImport } from './routes/_app/personalizacao'
 import { Route as AppPermissoesRouteImport } from './routes/_app/permissoes'
 import { Route as AppOrcamentoRouteImport } from './routes/_app/orcamento'
 import { Route as AppIntegracoesRouteImport } from './routes/_app/integracoes'
@@ -65,6 +66,11 @@ const AppTeamRoute = AppTeamRouteImport.update({
 const AppProjectsRoute = AppProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPersonalizacaoRoute = AppPersonalizacaoRouteImport.update({
+  id: '/personalizacao',
+  path: '/personalizacao',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPermissoesRoute = AppPermissoesRouteImport.update({
@@ -132,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/integracoes': typeof AppIntegracoesRoute
   '/orcamento': typeof AppOrcamentoRoute
   '/permissoes': typeof AppPermissoesRoute
+  '/personalizacao': typeof AppPersonalizacaoRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
   '/tickets': typeof AppTicketsRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/integracoes': typeof AppIntegracoesRoute
   '/orcamento': typeof AppOrcamentoRoute
   '/permissoes': typeof AppPermissoesRoute
+  '/personalizacao': typeof AppPersonalizacaoRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
   '/tickets': typeof AppTicketsRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/_app/integracoes': typeof AppIntegracoesRoute
   '/_app/orcamento': typeof AppOrcamentoRoute
   '/_app/permissoes': typeof AppPermissoesRoute
+  '/_app/personalizacao': typeof AppPersonalizacaoRoute
   '/_app/projects': typeof AppProjectsRoute
   '/_app/team': typeof AppTeamRoute
   '/_app/tickets': typeof AppTicketsRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/integracoes'
     | '/orcamento'
     | '/permissoes'
+    | '/personalizacao'
     | '/projects'
     | '/team'
     | '/tickets'
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/integracoes'
     | '/orcamento'
     | '/permissoes'
+    | '/personalizacao'
     | '/projects'
     | '/team'
     | '/tickets'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/_app/integracoes'
     | '/_app/orcamento'
     | '/_app/permissoes'
+    | '/_app/personalizacao'
     | '/_app/projects'
     | '/_app/team'
     | '/_app/tickets'
@@ -302,6 +314,13 @@ declare module '@tanstack/react-router' {
       path: '/projects'
       fullPath: '/projects'
       preLoaderRoute: typeof AppProjectsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/personalizacao': {
+      id: '/_app/personalizacao'
+      path: '/personalizacao'
+      fullPath: '/personalizacao'
+      preLoaderRoute: typeof AppPersonalizacaoRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/permissoes': {
@@ -388,6 +407,7 @@ interface AppRouteChildren {
   AppIntegracoesRoute: typeof AppIntegracoesRoute
   AppOrcamentoRoute: typeof AppOrcamentoRoute
   AppPermissoesRoute: typeof AppPermissoesRoute
+  AppPersonalizacaoRoute: typeof AppPersonalizacaoRoute
   AppProjectsRoute: typeof AppProjectsRoute
   AppTeamRoute: typeof AppTeamRoute
   AppTicketsRoute: typeof AppTicketsRoute
@@ -404,6 +424,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIntegracoesRoute: AppIntegracoesRoute,
   AppOrcamentoRoute: AppOrcamentoRoute,
   AppPermissoesRoute: AppPermissoesRoute,
+  AppPersonalizacaoRoute: AppPersonalizacaoRoute,
   AppProjectsRoute: AppProjectsRoute,
   AppTeamRoute: AppTeamRoute,
   AppTicketsRoute: AppTicketsRoute,
@@ -421,13 +442,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
