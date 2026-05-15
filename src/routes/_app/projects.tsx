@@ -584,11 +584,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div className="space-y-2"><Label>{label}</Label>{children}</div>;
 }
 
-function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose }: {
+function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose, onEdit }: {
   project: Project | null; statuses: Status[]; priorities: Priority[];
   maps: Record<string, Map<string, unknown>>;
   assignees: Assignee[];
   onClose: () => void;
+  onEdit: (p: Project) => void;
 }) {
   const qc = useQueryClient();
   const { isManager } = useAuth();
