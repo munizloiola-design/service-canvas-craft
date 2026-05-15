@@ -37,6 +37,7 @@ function OrcamentoPage() {
     [fixed],
   );
 
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [hours, setHours] = useState(40);
   const [fixedTotal, setFixedTotal] = useState(0);
@@ -44,8 +45,29 @@ function OrcamentoPage() {
   const [taxPct, setTaxPct] = useState(6);
   const [pros, setPros] = useState<Pro[]>([]);
 
-  useEffect(() => { setFixedTotal(Math.round(fixedMonthly * 100) / 100); }, [fixedMonthly]);
-  useEffect(() => { if (settings) setTaxPct(Number(settings.tax_pct ?? 6)); }, [settings]);
+  useEffect(() => { if (!editingId) setFixedTotal(Math.round(fixedMonthly * 100) / 100); }, [fixedMonthly, editingId]);
+  useEffect(() => { if (settings && !editingId) setTaxPct(Number(settings.tax_pct ?? 6)); }, [settings, editingId]);
+
+  const resetForm = () => {
+    setEditingId(null);
+    setName("");
+    setHours(40);
+    setFixedTotal(Math.round(fixedMonthly * 100) / 100);
+    setProfitPct(30);
+    setTaxPct(Number(settings?.tax_pct ?? 6));
+    setPros([]);
+  };
+
+  const loadSim = (s: any) => {
+    setEditingId(s.id);
+    setName(s.name ?? "");
+    setHours(Number(s.hours ?? 0));
+    setFixedTotal(Number(s.fixed_cost_total ?? 0));
+    setProfitPct(Number(s.profit_pct ?? 0));
+    setTaxPct(Number(s.tax_pct ?? 0));
+    setPros(Array.isArray(s.professionals) ? (s.professionals as Pro[]) : []);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const calc = useMemo(() => {
     const proCost = pros.reduce((s, p) => s + p.hourly_cost * p.hours, 0);
