@@ -122,6 +122,30 @@ export type Database = {
         }
         Relationships: []
       }
+      diguinho_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       equipments: {
         Row: {
           acquisition_date: string
@@ -164,6 +188,30 @@ export type Database = {
           notes?: string | null
           type?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      facebook_insights_cache: {
+        Row: {
+          ad_account_id: string
+          date_preset: string
+          fetched_at: string
+          id: string
+          payload: Json
+        }
+        Insert: {
+          ad_account_id: string
+          date_preset: string
+          fetched_at?: string
+          id?: string
+          payload: Json
+        }
+        Update: {
+          ad_account_id?: string
+          date_preset?: string
+          fetched_at?: string
+          id?: string
+          payload?: Json
         }
         Relationships: []
       }
