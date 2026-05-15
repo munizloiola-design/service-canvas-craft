@@ -1,6 +1,7 @@
 import { createFileRoute, HeadContent } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "@/lib/branding-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,11 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Briefcase, Plus, X, Upload, CheckCircle2, Loader2 } from "lucide-react";
 
+const AUTOFILL_KEY = "ticket_form_autofill_v1";
+
 export const Route = createFileRoute("/ticket")({
   component: PublicTicketPage,
   head: () => ({
     meta: [
-      { title: "Abrir solicitação | Equipe.io" },
+      { title: "Abrir solicitação" },
       { name: "description", content: "Envie uma nova solicitação de projeto para a nossa equipe." },
     ],
   }),
