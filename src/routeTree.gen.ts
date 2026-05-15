@@ -28,6 +28,7 @@ import { Route as AppDiguinhoRouteImport } from './routes/_app/diguinho'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 
 const TicketRoute = TicketRouteImport.update({
   id: '/ticket',
@@ -123,6 +124,12 @@ const AppCadastrosRoute = AppCadastrosRouteImport.update({
   path: '/cadastros',
   getParentRoute: () => AppRoute,
 } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/team': typeof AppTeamRoute
   '/tickets': typeof AppTicketsRoute
   '/v/$token': typeof VTokenRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -163,6 +171,7 @@ export interface FileRoutesByTo {
   '/team': typeof AppTeamRoute
   '/tickets': typeof AppTicketsRoute
   '/v/$token': typeof VTokenRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -185,6 +194,7 @@ export interface FileRoutesById {
   '/_app/team': typeof AppTeamRoute
   '/_app/tickets': typeof AppTicketsRoute
   '/v/$token': typeof VTokenRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/tickets'
     | '/v/$token'
+    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/tickets'
     | '/v/$token'
+    | '/lovable/email/queue/process'
   id:
     | '__root__'
     | '/'
@@ -248,6 +260,7 @@ export interface FileRouteTypes {
     | '/_app/team'
     | '/_app/tickets'
     | '/v/$token'
+    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -256,6 +269,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   TicketRoute: typeof TicketRoute
   VTokenRoute: typeof VTokenRoute
+  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -393,6 +407,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCadastrosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -438,7 +459,18 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   TicketRoute: TicketRoute,
   VTokenRoute: VTokenRoute,
+  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
