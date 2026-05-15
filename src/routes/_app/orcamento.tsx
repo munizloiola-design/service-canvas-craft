@@ -92,16 +92,38 @@ function OrcamentoPage() {
   const save = useMutation({
     mutationFn: async () => {
       const { data: u } = await supabase.auth.getUser();
-      const { error } = await supabase.from("budget_simulations").insert({
+      const payload = {
         name: name || `Simulação ${new Date().toLocaleDateString("pt-BR")}`,
         hours, fixed_cost_total: fixedTotal,
         professionals: pros as any, profit_pct: profitPct, tax_pct: taxPct,
         total_cost: calc.baseCost, suggested_price: calc.suggested,
-        created_by: u.user?.id,
-      });
+      };
+      if (editingId) {
+        const { error } = await supabase.from("budget_simulations").update(payload).eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("budget_simulations").insert({ ...payload, created_by: u.user?.id });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["budget_sims"] });
+      toast.success(editingId ? "Simulação atualizada" : "Simulação salva");
+      resetForm();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const removeSim = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("budget_simulations").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["budget_sims"] }); toast.success("Simulação salva"); },
+    onSuccess: (_d, id) => {
+      qc.invalidateQueries({ queryKey: ["budget_sims"] });
+      toast.success("Simulação removida");
+      if (editingId === id) resetForm();
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
