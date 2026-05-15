@@ -24,11 +24,13 @@ const navItems: { to: string; label: string; icon: typeof LayoutDashboard; resou
   { to: "/diguinho", label: "Diguinho IA", icon: Sparkles, resource: "diguinho" },
   { to: "/integracoes", label: "Integrações", icon: Plug, resource: "integracoes" },
   { to: "/cadastros", label: "Cadastros", icon: Settings, resource: "cadastros" },
+  { to: "/personalizacao", label: "Personalização", icon: Palette, resource: "branding" },
   { to: "/permissoes", label: "Permissões", icon: ShieldCheck, resource: "cadastros", adminOnly: true },
 ];
 
 function AppLayout() {
   const { user, loading, signOut, roles, hasRole } = useAuth();
+  const { branding } = useBranding();
   const { can, loading: permsLoading } = usePermissions();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -54,10 +56,14 @@ function AppLayout() {
     <div className="min-h-screen flex bg-background">
       <aside className="w-64 shrink-0 border-r bg-sidebar text-sidebar-foreground flex flex-col">
         <div className="px-6 py-5 flex items-center gap-2 border-b border-sidebar-border">
-          <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
-            <Briefcase className="h-4 w-4" />
-          </div>
-          <span className="font-semibold">Equipe.io</span>
+          {branding.logo_url ? (
+            <img src={branding.logo_url} alt="logo" className="h-8 w-8 rounded-md object-contain" />
+          ) : (
+            <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
+              <Briefcase className="h-4 w-4" />
+            </div>
+          )}
+          <span className="font-semibold truncate">{branding.brand_name}</span>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
