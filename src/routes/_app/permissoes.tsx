@@ -19,12 +19,17 @@ const ROLES = [
 const RESOURCES = [
   { key: "dashboard", label: "Dashboard" },
   { key: "projects", label: "Demandas / Projetos" },
+  { key: "tickets", label: "Tickets" },
   { key: "calendario", label: "Calendário" },
   { key: "financeiro", label: "Financeiro" },
   { key: "orcamento", label: "Orçamento" },
   { key: "equipamentos", label: "Equipamentos" },
   { key: "team", label: "Equipe" },
+  { key: "facebook", label: "Facebook Ads" },
+  { key: "diguinho", label: "Diguinho IA" },
+  { key: "integracoes", label: "Integrações" },
   { key: "cadastros", label: "Cadastros" },
+  { key: "branding", label: "Personalização" },
 ] as const;
 
 const ACTIONS = ["view", "create", "edit", "delete"] as const;
