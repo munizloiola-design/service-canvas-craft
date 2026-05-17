@@ -31,7 +31,7 @@ const navItems: { to: string; label: string; icon: typeof LayoutDashboard; resou
 ];
 
 function AppLayout() {
-  const { user, loading, signOut, roles, hasRole } = useAuth();
+  const { user, loading, signOut, roles, hasRole, isClient } = useAuth();
   const { branding } = useBranding();
   const { can, loading: permsLoading } = usePermissions();
   const navigate = useNavigate();
