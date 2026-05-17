@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download } from "lucide-react";
 
-export const Route = createFileRoute("/_portal/aprovados")({ component: PortalAprovados });
+export const Route = createFileRoute("/portal/aprovados")({ component: PortalAprovados });
 
 type P = { id: string; title: string; description: string | null; deliverable_path: string | null; post_date: string | null; client_decided_at: string | null; client_feedback: string | null };
 

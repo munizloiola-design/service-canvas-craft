@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Briefcase, CalendarDays, ClipboardCheck, CheckCircle2, LogOut } from "lucide-react";
 
-export const Route = createFileRoute("/_portal")({ component: PortalLayout });
+export const Route = createFileRoute("/portal")({ component: PortalLayout });
 
 const nav = [
   { to: "/portal/calendario", label: "Calendário", icon: CalendarDays },

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Download, Link as LinkIcon, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_portal/pendentes")({ component: PortalPendentes });
+export const Route = createFileRoute("/portal/pendentes")({ component: PortalPendentes });
 
 type P = { id: string; title: string; description: string | null; deliverable_path: string | null; reference_links: string[]; due_date: string | null; post_date: string | null };
 

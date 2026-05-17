@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Link as LinkIcon, Download } from "lucide-react";
 
-export const Route = createFileRoute("/_portal/calendario")({ component: PortalCalendario });
+export const Route = createFileRoute("/portal/calendario")({ component: PortalCalendario });
 
 type P = { id: string; title: string; description: string | null; due_date: string | null; post_date: string | null; status_id: string | null; client_id: string | null; media_type_id: string | null; client_decision: string | null; deliverable_path: string | null; reference_links: string[] };
 
