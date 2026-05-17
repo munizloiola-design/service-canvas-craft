@@ -71,10 +71,15 @@ function AppLayout() {
   if (!user) return <Navigate to="/login" />;
   if (isClient) return <Navigate to="/portal/calendario" />;
 
-  const visibleNav = navItems.filter((item) => {
-    if (item.adminOnly && !hasRole("admin")) return false;
-    return can(item.resource, "view");
-  });
+  const visibleGroups = navGroups
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((item) => {
+        if (item.adminOnly && !hasRole("admin")) return false;
+        return can(item.resource, "view");
+      }),
+    }))
+    .filter((g) => g.items.length > 0);
 
   const initials = (user.email ?? "U").slice(0, 2).toUpperCase();
   const primaryRole = roles[0] ?? "membro";
