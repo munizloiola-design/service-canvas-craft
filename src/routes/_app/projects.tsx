@@ -278,6 +278,7 @@ function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, 
 }) {
   const qc = useQueryClient();
   const { user } = useAuth();
+  const { canSee } = useFieldVisibility();
   const updateStatus = useMutation({
     mutationFn: async ({ id, status_id, from }: { id: string; status_id: string; from: string | null }) => {
       const { error } = await supabase.from("projects").update({ status_id }).eq("id", id);
