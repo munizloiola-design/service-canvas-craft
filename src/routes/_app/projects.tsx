@@ -732,35 +732,37 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
             )}
           </div>
 
-          <div className="border rounded-md p-3 bg-muted/30 space-y-2">
-            <Label className="text-xs uppercase">Material para o cliente</Label>
-            {project.deliverable_path ? (
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm truncate">Arquivo enviado ✓</span>
-                <Button variant="outline" size="sm" onClick={() => downloadFile(project.deliverable_path!)}><Download className="h-3.5 w-3.5 mr-1" /> Baixar</Button>
-              </div>
-            ) : (
-              <Input type="file" onChange={(e) => e.target.files?.[0] && uploadDeliverable(e.target.files[0])} />
-            )}
-
-            {validationUrl && (
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Link de validação do cliente</Label>
-                <div className="flex gap-2">
-                  <Input value={validationUrl} readOnly className="text-xs" />
-                  <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(validationUrl); toast.success("Copiado"); }}>
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
+          {canSee("deliverable_path") && (
+            <div className="border rounded-md p-3 bg-muted/30 space-y-2">
+              <Label className="text-xs uppercase">Material para o cliente</Label>
+              {project.deliverable_path ? (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm truncate">Arquivo enviado ✓</span>
+                  <Button variant="outline" size="sm" onClick={() => downloadFile(project.deliverable_path!)}><Download className="h-3.5 w-3.5 mr-1" /> Baixar</Button>
                 </div>
-                {project.client_decision && (
-                  <p className="text-xs mt-1">
-                    Decisão do cliente: <strong>{project.client_decision}</strong>
-                    {project.client_feedback && <> — "{project.client_feedback}"</>}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+              ) : (
+                <Input type="file" onChange={(e) => e.target.files?.[0] && uploadDeliverable(e.target.files[0])} />
+              )}
+
+              {validationUrl && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Link de validação do cliente</Label>
+                  <div className="flex gap-2">
+                    <Input value={validationUrl} readOnly className="text-xs" />
+                    <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(validationUrl); toast.success("Copiado"); }}>
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  {project.client_decision && canSee("client_feedback") && (
+                    <p className="text-xs mt-1">
+                      Decisão do cliente: <strong>{project.client_decision}</strong>
+                      {project.client_feedback && <> — "{project.client_feedback}"</>}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {isManager && (
             <DialogFooter>
