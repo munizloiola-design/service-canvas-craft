@@ -1286,6 +1286,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_user_role: {
+        Args: {
+          _actor: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _target: string
+        }
+        Returns: boolean
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -1349,6 +1357,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      role_rank: {
+        Args: { _role: Database["public"]["Enums"]["app_role"] }
+        Returns: number
+      }
       submit_client_decision: {
         Args: { _decision: string; _feedback: string; _token: string }
         Returns: boolean
@@ -1357,6 +1369,7 @@ export type Database = {
         Args: { _decision: string; _feedback: string; _project_id: string }
         Returns: boolean
       }
+      user_max_rank: { Args: { _uid: string }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "gerente" | "membro" | "cliente" | "admin_master"
