@@ -666,8 +666,8 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Info label="Cliente" value={project.client_id ? (maps.client.get(project.client_id) as string) : "—"} />
-            <Info label="Tipo de mídia" value={project.media_type_id ? (maps.media.get(project.media_type_id) as string) : "—"} />
+            {canSee("client_id") && <Info label="Cliente" value={project.client_id ? (maps.client.get(project.client_id) as string) : "—"} />}
+            {canSee("media_type") && <Info label="Tipo de mídia" value={project.media_type_id ? (maps.media.get(project.media_type_id) as string) : "—"} />}
             <div>
               <Label className="text-xs text-muted-foreground">Etapa</Label>
               <Select value={project.status_id ?? ""} onValueChange={(v) => updateField.mutate({ status_id: v })}>
@@ -675,17 +675,19 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
                 <SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Prioridade</Label>
-              <Select value={project.priority_id ?? ""} onValueChange={(v) => updateField.mutate({ priority_id: v })}>
-                <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="—" /></SelectTrigger>
-                <SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
+            {canSee("priority") && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Prioridade</Label>
+                <Select value={project.priority_id ?? ""} onValueChange={(v) => updateField.mutate({ priority_id: v })}>
+                  <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            )}
             <Info label="Início" value={project.start_date ? new Date(project.start_date).toLocaleDateString("pt-BR") : "—"} />
-            <Info label="Prazo" value={project.due_date ? new Date(project.due_date).toLocaleDateString("pt-BR") : "—"} />
-            <Info label="Postagem" value={project.post_date ? new Date(project.post_date).toLocaleDateString("pt-BR") : "—"} />
-            {pr && <Info label="Prioridade atual" value={pr.name} />}
+            {canSee("due_date") && <Info label="Prazo" value={project.due_date ? new Date(project.due_date).toLocaleDateString("pt-BR") : "—"} />}
+            {canSee("post_date") && <Info label="Postagem" value={project.post_date ? new Date(project.post_date).toLocaleDateString("pt-BR") : "—"} />}
+            {pr && canSee("priority") && <Info label="Prioridade atual" value={pr.name} />}
           </div>
 
           <div>
