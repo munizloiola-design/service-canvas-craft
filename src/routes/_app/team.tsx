@@ -285,9 +285,11 @@ function MemberDialog({
       const { error } = await supabase.from("profiles").update(payload).eq("id", memberId);
       if (error) throw error;
 
-      // role
-      await supabase.from("user_roles").delete().eq("user_id", memberId);
-      await supabase.from("user_roles").insert({ user_id: memberId, role: primaryRole });
+      // role — only if actor outranks target and the chosen role is below actor
+      if (canManageThisUser && ROLE_RANK[primaryRole] < actorRank) {
+        await supabase.from("user_roles").delete().eq("user_id", memberId);
+        await supabase.from("user_roles").insert({ user_id: memberId, role: primaryRole });
+      }
 
       // functions
       await supabase.from("user_functions").delete().eq("user_id", memberId);
