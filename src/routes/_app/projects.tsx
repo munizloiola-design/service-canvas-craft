@@ -830,6 +830,8 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
             </div>
           )}
 
+          <ProjectChat projectId={project.id} />
+
           {isManager && (
             <DialogFooter>
               <Button variant="ghost" className="text-destructive" onClick={() => { if (confirm("Remover demanda?")) remove.mutate(); }}>
