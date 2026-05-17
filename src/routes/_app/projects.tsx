@@ -360,7 +360,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail }:
       <table className="w-full text-sm">
         <thead className="bg-muted/40 border-b">
           <tr>
-            {ALL_COLUMNS.filter((c) => visibleCols.includes(c.key)).map((c) => (
+            {ALL_COLUMNS.filter((c) => allowedCols.includes(c.key)).map((c) => (
               <th key={c.key} className="text-left px-3 py-2 font-medium text-xs uppercase text-muted-foreground">{c.label}</th>
             ))}
             <th className="w-12"></th>
@@ -373,19 +373,19 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail }:
             const st = p.status_id ? (maps.status.get(p.status_id) as Status | undefined) : null;
             return (
               <tr key={p.id} className="border-b hover:bg-muted/30">
-                {visibleCols.includes("title") && <td className="px-3 py-2 font-medium">{p.title}</td>}
-                {visibleCols.includes("client") && <td className="px-3 py-2 text-muted-foreground">{p.client_id ? (maps.client.get(p.client_id) as string) : "—"}</td>}
-                {visibleCols.includes("media") && <td className="px-3 py-2 text-muted-foreground">{p.media_type_id ? (maps.media.get(p.media_type_id) as string) : "—"}</td>}
-                {visibleCols.includes("status") && <td className="px-3 py-2">{st ? <Badge className="border-0" style={{ background: `${st.color}25`, color: st.color }}>{st.name}</Badge> : "—"}</td>}
-                {visibleCols.includes("priority") && <td className="px-3 py-2">{pr ? <Badge className="border-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge> : "—"}</td>}
-                {visibleCols.includes("assignees") && <td className="px-3 py-2 text-xs text-muted-foreground">{ass.map((a) => maps.member.get(a.user_id) as string ?? "?").join(", ") || "—"}</td>}
-                {visibleCols.includes("due_date") && <td className="px-3 py-2 text-muted-foreground">{p.due_date ? new Date(p.due_date).toLocaleDateString("pt-BR") : "—"}</td>}
-                {visibleCols.includes("post_date") && <td className="px-3 py-2 text-muted-foreground">{p.post_date ? new Date(p.post_date).toLocaleDateString("pt-BR") : "—"}</td>}
+                {allowedCols.includes("title") && <td className="px-3 py-2 font-medium">{p.title}</td>}
+                {allowedCols.includes("client") && <td className="px-3 py-2 text-muted-foreground">{p.client_id ? (maps.client.get(p.client_id) as string) : "—"}</td>}
+                {allowedCols.includes("media") && <td className="px-3 py-2 text-muted-foreground">{p.media_type_id ? (maps.media.get(p.media_type_id) as string) : "—"}</td>}
+                {allowedCols.includes("status") && <td className="px-3 py-2">{st ? <Badge className="border-0" style={{ background: `${st.color}25`, color: st.color }}>{st.name}</Badge> : "—"}</td>}
+                {allowedCols.includes("priority") && <td className="px-3 py-2">{pr ? <Badge className="border-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge> : "—"}</td>}
+                {allowedCols.includes("assignees") && <td className="px-3 py-2 text-xs text-muted-foreground">{ass.map((a) => maps.member.get(a.user_id) as string ?? "?").join(", ") || "—"}</td>}
+                {allowedCols.includes("due_date") && <td className="px-3 py-2 text-muted-foreground">{p.due_date ? new Date(p.due_date).toLocaleDateString("pt-BR") : "—"}</td>}
+                {allowedCols.includes("post_date") && <td className="px-3 py-2 text-muted-foreground">{p.post_date ? new Date(p.post_date).toLocaleDateString("pt-BR") : "—"}</td>}
                 <td className="px-2"><Button variant="ghost" size="sm" onClick={() => onDetail(p.id)}><Eye className="h-3.5 w-3.5" /></Button></td>
               </tr>
             );
           })}
-          {projects.length === 0 && <tr><td colSpan={visibleCols.length + 1} className="text-center py-8 text-muted-foreground text-sm">Nenhuma demanda</td></tr>}
+          {projects.length === 0 && <tr><td colSpan={allowedCols.length + 1} className="text-center py-8 text-muted-foreground text-sm">Nenhuma demanda</td></tr>}
         </tbody>
       </table>
     </Card>
