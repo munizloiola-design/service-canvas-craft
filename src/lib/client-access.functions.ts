@@ -18,7 +18,7 @@ export const inviteClientUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => InviteSchema.parse(data))
   .handler(async ({ data, context }) => {
-    await assertManager(context.supabase, context.userId);
+    await assertManager(context.userId);
     const email = data.email.toLowerCase().trim();
 
     // Try to find existing user
@@ -72,7 +72,7 @@ export const removeClientAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => RemoveSchema.parse(data))
   .handler(async ({ data, context }) => {
-    await assertManager(context.supabase, context.userId);
+    await assertManager(context.userId);
     const { error } = await supabaseAdmin.from("client_users").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -81,7 +81,7 @@ export const removeClientAccess = createServerFn({ method: "POST" })
 export const listClientAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertManager(context.supabase, context.userId);
+    await assertManager(context.userId);
     const { data: links, error } = await supabaseAdmin
       .from("client_users")
       .select("id, user_id, client_id, created_at")
