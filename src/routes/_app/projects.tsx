@@ -17,7 +17,12 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuChe
 import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_app/projects")({ component: ProjectsPage });
+export const Route = createFileRoute("/_app/projects")({
+  component: ProjectsPage,
+  validateSearch: (s: Record<string, unknown>) => ({
+    detail: typeof s.detail === "string" ? s.detail : undefined,
+  }),
+});
 
 type Project = {
   id: string; title: string; description: string | null; notes: string | null;
