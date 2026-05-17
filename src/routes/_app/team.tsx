@@ -361,6 +361,40 @@ function MemberDialog({
           </TabsList>
 
           <TabsContent value="ficha" className="space-y-3 mt-4">
+            <div className="flex items-center gap-4 p-3 rounded-md border bg-muted/30">
+              <Avatar className="h-20 w-20">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={form.full_name} />}
+                <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
+                  {(form.full_name || "U").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <Label className="text-xs">Foto do membro</Label>
+                <div className="flex gap-2 mt-1">
+                  <label className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border bg-background hover:bg-muted cursor-pointer">
+                    <Upload className="h-3.5 w-3.5" />
+                    {uploading ? "Enviando..." : "Carregar foto"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleAvatarUpload(f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {avatarUrl && (
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setAvatarUrl(null)}>
+                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Remover
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">PNG ou JPG, até 5MB.</p>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Nome completo" value={form.full_name} onChange={(v) => setForm({ ...form, full_name: v })} />
               <Field label="Cargo" value={form.job_title} onChange={(v) => setForm({ ...form, job_title: v })} />
