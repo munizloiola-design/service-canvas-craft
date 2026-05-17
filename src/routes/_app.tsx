@@ -100,23 +100,44 @@ function AppLayout() {
         <span className="font-semibold truncate">{branding.brand_name}</span>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {visibleNav.map((item) => {
-          const active = pathname.startsWith(item.to);
-          const Icon = item.icon;
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-2">
+        {visibleGroups.map((group, idx) => {
+          const renderLink = (item: NavItem, indented = false) => {
+            const active = pathname.startsWith(item.to);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  indented ? "ml-2" : ""
+                } ${
+                  active
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          };
+
+          if (!group.label) {
+            return <div key={`g-${idx}`} className="space-y-1">{group.items.map((i) => renderLink(i))}</div>;
+          }
+
+          const groupActive = group.items.some((i) => pathname.startsWith(i.to));
           return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </Link>
+            <Collapsible key={group.label} defaultOpen={groupActive}>
+              <CollapsibleTrigger className="group flex w-full items-center justify-between px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors">
+                <span>{group.label}</span>
+                <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=closed]:-rotate-90" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-1 pt-1">
+                {group.items.map((i) => renderLink(i, true))}
+              </CollapsibleContent>
+            </Collapsible>
           );
         })}
       </nav>
