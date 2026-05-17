@@ -37,6 +37,11 @@ const ROLE_TONES: Record<AppRole, string> = {
 
 const ASSIGNABLE_ROLES: AppRole[] = ["admin_master", "admin", "gerente", "membro"];
 
+const ROLE_RANK: Record<AppRole, number> = {
+  admin_master: 4, admin: 3, gerente: 2, membro: 1, cliente: 0,
+};
+const maxRank = (rs: AppRole[]) => rs.reduce((m, r) => Math.max(m, ROLE_RANK[r] ?? -1), -1);
+
 type Profile = {
   id: string;
   full_name: string;
