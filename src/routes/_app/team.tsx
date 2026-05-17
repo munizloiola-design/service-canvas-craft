@@ -285,12 +285,13 @@ function MemberDialog({
         emergency_contact: form.emergency_contact || null,
         start_date: form.start_date || null,
         contract_type: form.contract_type || null,
+        avatar_url: avatarUrl,
       };
       const { error } = await supabase.from("profiles").update(payload).eq("id", memberId);
       if (error) throw error;
 
-      // role — only if actor outranks target and the chosen role is below actor
-      if (canManageThisUser && ROLE_RANK[primaryRole] < actorRank) {
+      // role — master can set any role; others only roles below their rank
+      if (canManageThisUser && (isMaster || ROLE_RANK[primaryRole] < actorRank)) {
         await supabase.from("user_roles").delete().eq("user_id", memberId);
         await supabase.from("user_roles").insert({ user_id: memberId, role: primaryRole });
       }
