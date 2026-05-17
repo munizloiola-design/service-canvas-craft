@@ -37,6 +37,11 @@ const ROLE_TONES: Record<AppRole, string> = {
 
 const ASSIGNABLE_ROLES: AppRole[] = ["admin_master", "admin", "gerente", "membro"];
 
+const ROLE_RANK: Record<AppRole, number> = {
+  admin_master: 4, admin: 3, gerente: 2, membro: 1, cliente: 0,
+};
+const maxRank = (rs: AppRole[]) => rs.reduce((m, r) => Math.max(m, ROLE_RANK[r] ?? -1), -1);
+
 type Profile = {
   id: string;
   full_name: string;
@@ -230,6 +235,12 @@ function MemberDialog({
   memberFunctionIds: string[];
   onSaved: () => void;
 }) {
+  const { roles: actorRoles } = useAuth();
+  const actorRank = maxRank(actorRoles);
+  const targetRank = maxRank(roles);
+  const canManageThisUser = actorRank > targetRank;
+  const allowedRoles = ASSIGNABLE_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
+
   const [primaryRole, setPrimaryRole] = useState<AppRole>(roles[0] ?? "membro");
   const [selectedFns, setSelectedFns] = useState<string[]>(memberFunctionIds);
   const [form, setForm] = useState({
@@ -274,9 +285,11 @@ function MemberDialog({
       const { error } = await supabase.from("profiles").update(payload).eq("id", memberId);
       if (error) throw error;
 
-      // role
-      await supabase.from("user_roles").delete().eq("user_id", memberId);
-      await supabase.from("user_roles").insert({ user_id: memberId, role: primaryRole });
+      // role — only if actor outranks target and the chosen role is below actor
+      if (canManageThisUser && ROLE_RANK[primaryRole] < actorRank) {
+        await supabase.from("user_roles").delete().eq("user_id", memberId);
+        await supabase.from("user_roles").insert({ user_id: memberId, role: primaryRole });
+      }
 
       // functions
       await supabase.from("user_functions").delete().eq("user_id", memberId);
@@ -338,12 +351,18 @@ function MemberDialog({
           <TabsContent value="funcoes" className="space-y-4 mt-4">
             <div>
               <Label className="text-xs">Papel principal</Label>
-              <Select value={primaryRole} onValueChange={(v) => setPrimaryRole(v as AppRole)}>
+              <Select value={primaryRole} onValueChange={(v) => setPrimaryRole(v as AppRole)} disabled={!canManageThisUser || allowedRoles.length === 0}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ASSIGNABLE_ROLES.map((r) => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
+                  {allowedRoles.map((r) => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {!canManageThisUser && (
+                <p className="text-[11px] text-muted-foreground mt-1">Você não tem permissão para alterar o papel deste membro (papel igual ou superior ao seu).</p>
+              )}
+              {canManageThisUser && allowedRoles.length === 0 && (
+                <p className="text-[11px] text-muted-foreground mt-1">Seu papel não permite atribuir nenhum nível.</p>
+              )}
             </div>
             <div>
               <Label className="text-xs mb-2 block">Subfunções (colaborador)</Label>
