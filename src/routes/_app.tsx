@@ -45,6 +45,7 @@ function AppLayout() {
     );
   }
   if (!user) return <Navigate to="/login" />;
+  if (isClient) return <Navigate to="/portal/calendario" />;
 
   const visibleNav = navItems.filter((item) => {
     if (item.adminOnly && !hasRole("admin")) return false;
