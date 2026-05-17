@@ -262,7 +262,7 @@ function ProjectsPage() {
         project={projects.find((p) => p.id === detailId) ?? null}
         statuses={statuses} priorities={priorities} maps={maps}
         assignees={detailId ? (assigneesByProject.get(detailId) ?? []) : []}
-        onClose={() => setDetailId(null)}
+        onClose={() => { setDetailId(null); if (search.detail) navigate({ to: "/projects", search: {} }); }}
         onEdit={(p) => { setDetailId(null); setEditingProject(p); setOpen(true); }}
       />
     </div>
