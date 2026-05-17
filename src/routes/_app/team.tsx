@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AlertCircle, Activity, Clock, Hourglass, ShieldAlert, Pencil } from "lucide-react";
+import { AlertCircle, Activity, Clock, Hourglass, ShieldAlert, Pencil, Upload, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/team")({ component: TeamPage });
@@ -53,6 +53,7 @@ type Profile = {
   emergency_contact: string | null;
   start_date: string | null;
   contract_type: string | null;
+  avatar_url: string | null;
 };
 
 function TeamPage() {
@@ -152,6 +153,7 @@ function TeamPage() {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar className="h-12 w-12">
+                    {m.avatar_url && <AvatarImage src={m.avatar_url} alt={m.full_name} />}
                     <AvatarFallback className="bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
@@ -235,14 +237,16 @@ function MemberDialog({
   memberFunctionIds: string[];
   onSaved: () => void;
 }) {
-  const { roles: actorRoles } = useAuth();
+  const { roles: actorRoles, isMaster } = useAuth();
   const actorRank = maxRank(actorRoles);
   const targetRank = maxRank(roles);
-  const canManageThisUser = actorRank > targetRank;
-  const allowedRoles = ASSIGNABLE_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
+  const canManageThisUser = isMaster || actorRank > targetRank;
+  const allowedRoles = isMaster ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
 
   const [primaryRole, setPrimaryRole] = useState<AppRole>(roles[0] ?? "membro");
   const [selectedFns, setSelectedFns] = useState<string[]>(memberFunctionIds);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar_url ?? null);
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     full_name: profile.full_name ?? "",
     job_title: profile.job_title ?? "",
@@ -281,12 +285,13 @@ function MemberDialog({
         emergency_contact: form.emergency_contact || null,
         start_date: form.start_date || null,
         contract_type: form.contract_type || null,
+        avatar_url: avatarUrl,
       };
       const { error } = await supabase.from("profiles").update(payload).eq("id", memberId);
       if (error) throw error;
 
-      // role — only if actor outranks target and the chosen role is below actor
-      if (canManageThisUser && ROLE_RANK[primaryRole] < actorRank) {
+      // role — master can set any role; others only roles below their rank
+      if (canManageThisUser && (isMaster || ROLE_RANK[primaryRole] < actorRank)) {
         await supabase.from("user_roles").delete().eq("user_id", memberId);
         await supabase.from("user_roles").insert({ user_id: memberId, role: primaryRole });
       }
@@ -317,6 +322,30 @@ function MemberDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  async function handleAvatarUpload(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione uma imagem");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Imagem deve ter no máximo 5MB");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${memberId}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+      setAvatarUrl(pub.publicUrl);
+      toast.success("Foto carregada. Clique em Salvar para confirmar.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -332,6 +361,40 @@ function MemberDialog({
           </TabsList>
 
           <TabsContent value="ficha" className="space-y-3 mt-4">
+            <div className="flex items-center gap-4 p-3 rounded-md border bg-muted/30">
+              <Avatar className="h-20 w-20">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={form.full_name} />}
+                <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
+                  {(form.full_name || "U").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <Label className="text-xs">Foto do membro</Label>
+                <div className="flex gap-2 mt-1">
+                  <label className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border bg-background hover:bg-muted cursor-pointer">
+                    <Upload className="h-3.5 w-3.5" />
+                    {uploading ? "Enviando..." : "Carregar foto"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleAvatarUpload(f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {avatarUrl && (
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setAvatarUrl(null)}>
+                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Remover
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">PNG ou JPG, até 5MB.</p>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Nome completo" value={form.full_name} onChange={(v) => setForm({ ...form, full_name: v })} />
               <Field label="Cargo" value={form.job_title} onChange={(v) => setForm({ ...form, job_title: v })} />
