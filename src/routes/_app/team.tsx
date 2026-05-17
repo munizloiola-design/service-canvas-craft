@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AlertCircle, Activity, Clock, Hourglass, ShieldAlert, Pencil } from "lucide-react";
+import { AlertCircle, Activity, Clock, Hourglass, ShieldAlert, Pencil, Upload, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/team")({ component: TeamPage });
