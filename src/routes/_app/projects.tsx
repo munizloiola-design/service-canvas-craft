@@ -614,6 +614,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
 }) {
   const qc = useQueryClient();
   const { isManager } = useAuth();
+  const { canSee } = useFieldVisibility();
 
   const { data: attachments = [] } = useQuery({
     queryKey: ["attachments", project?.id], enabled: !!project?.id,
