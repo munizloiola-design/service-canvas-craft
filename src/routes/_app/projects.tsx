@@ -18,6 +18,7 @@ import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Cop
 import { toast } from "sonner";
 import { useFieldVisibility } from "@/lib/field-visibility";
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
+import { ProjectChat } from "@/components/ProjectChat";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
@@ -828,6 +829,8 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
               )}
             </div>
           )}
+
+          <ProjectChat projectId={project.id} />
 
           {isManager && (
             <DialogFooter>

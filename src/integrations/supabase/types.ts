@@ -782,6 +782,30 @@ export type Database = {
           },
         ]
       }
+      project_comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          project_id: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          project_id: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+        }
+        Relationships: []
+      }
       project_roles: {
         Row: {
           created_at: string
