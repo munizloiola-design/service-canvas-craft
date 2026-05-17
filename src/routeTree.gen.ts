@@ -11,10 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as TicketRouteImport } from './routes/ticket'
+import { Route as PortalRouteImport } from './routes/portal'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PortalIndexRouteImport } from './routes/portal/index'
 import { Route as VTokenRouteImport } from './routes/v.$token'
+import { Route as PortalPendentesRouteImport } from './routes/portal/pendentes'
+import { Route as PortalCalendarioRouteImport } from './routes/portal/calendario'
+import { Route as PortalAprovadosRouteImport } from './routes/portal/aprovados'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AppTicketsRouteImport } from './routes/_app/tickets'
 import { Route as AppTeamRouteImport } from './routes/_app/team'
@@ -47,6 +52,11 @@ const TicketRoute = TicketRouteImport.update({
   path: '/ticket',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalRoute = PortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -61,10 +71,30 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalIndexRoute = PortalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalRoute,
+} as any)
 const VTokenRoute = VTokenRouteImport.update({
   id: '/v/$token',
   path: '/v/$token',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PortalPendentesRoute = PortalPendentesRouteImport.update({
+  id: '/pendentes',
+  path: '/pendentes',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalCalendarioRoute = PortalCalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalAprovadosRoute = PortalAprovadosRouteImport.update({
+  id: '/aprovados',
+  path: '/aprovados',
+  getParentRoute: () => PortalRoute,
 } as any)
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
@@ -178,6 +208,7 @@ const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/portal': typeof PortalRouteWithChildren
   '/ticket': typeof TicketRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/cadastros': typeof AppCadastrosRoute
@@ -195,7 +226,11 @@ export interface FileRoutesByFullPath {
   '/team': typeof AppTeamRoute
   '/tickets': typeof AppTicketsRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/portal/aprovados': typeof PortalAprovadosRoute
+  '/portal/calendario': typeof PortalCalendarioRoute
+  '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
+  '/portal/': typeof PortalIndexRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -223,7 +258,11 @@ export interface FileRoutesByTo {
   '/team': typeof AppTeamRoute
   '/tickets': typeof AppTicketsRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/portal/aprovados': typeof PortalAprovadosRoute
+  '/portal/calendario': typeof PortalCalendarioRoute
+  '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
+  '/portal': typeof PortalIndexRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -236,6 +275,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/portal': typeof PortalRouteWithChildren
   '/ticket': typeof TicketRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_app/cadastros': typeof AppCadastrosRoute
@@ -253,7 +293,11 @@ export interface FileRoutesById {
   '/_app/team': typeof AppTeamRoute
   '/_app/tickets': typeof AppTicketsRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/portal/aprovados': typeof PortalAprovadosRoute
+  '/portal/calendario': typeof PortalCalendarioRoute
+  '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
+  '/portal/': typeof PortalIndexRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -266,6 +310,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/portal'
     | '/ticket'
     | '/unsubscribe'
     | '/cadastros'
@@ -283,7 +328,11 @@ export interface FileRouteTypes {
     | '/team'
     | '/tickets'
     | '/email/unsubscribe'
+    | '/portal/aprovados'
+    | '/portal/calendario'
+    | '/portal/pendentes'
     | '/v/$token'
+    | '/portal/'
     | '/lovable/email/suppression'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -311,7 +360,11 @@ export interface FileRouteTypes {
     | '/team'
     | '/tickets'
     | '/email/unsubscribe'
+    | '/portal/aprovados'
+    | '/portal/calendario'
+    | '/portal/pendentes'
     | '/v/$token'
+    | '/portal'
     | '/lovable/email/suppression'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -323,6 +376,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/login'
+    | '/portal'
     | '/ticket'
     | '/unsubscribe'
     | '/_app/cadastros'
@@ -340,7 +394,11 @@ export interface FileRouteTypes {
     | '/_app/team'
     | '/_app/tickets'
     | '/email/unsubscribe'
+    | '/portal/aprovados'
+    | '/portal/calendario'
+    | '/portal/pendentes'
     | '/v/$token'
+    | '/portal/'
     | '/lovable/email/suppression'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -353,6 +411,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  PortalRoute: typeof PortalRouteWithChildren
   TicketRoute: typeof TicketRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
@@ -381,6 +440,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TicketRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal': {
+      id: '/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof PortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -402,12 +468,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal/': {
+      id: '/portal/'
+      path: '/'
+      fullPath: '/portal/'
+      preLoaderRoute: typeof PortalIndexRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/v/$token': {
       id: '/v/$token'
       path: '/v/$token'
       fullPath: '/v/$token'
       preLoaderRoute: typeof VTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/portal/pendentes': {
+      id: '/portal/pendentes'
+      path: '/pendentes'
+      fullPath: '/portal/pendentes'
+      preLoaderRoute: typeof PortalPendentesRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/calendario': {
+      id: '/portal/calendario'
+      path: '/calendario'
+      fullPath: '/portal/calendario'
+      preLoaderRoute: typeof PortalCalendarioRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/aprovados': {
+      id: '/portal/aprovados'
+      path: '/aprovados'
+      fullPath: '/portal/aprovados'
+      preLoaderRoute: typeof PortalAprovadosRouteImport
+      parentRoute: typeof PortalRoute
     }
     '/email/unsubscribe': {
       id: '/email/unsubscribe'
@@ -595,10 +689,28 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface PortalRouteChildren {
+  PortalAprovadosRoute: typeof PortalAprovadosRoute
+  PortalCalendarioRoute: typeof PortalCalendarioRoute
+  PortalPendentesRoute: typeof PortalPendentesRoute
+  PortalIndexRoute: typeof PortalIndexRoute
+}
+
+const PortalRouteChildren: PortalRouteChildren = {
+  PortalAprovadosRoute: PortalAprovadosRoute,
+  PortalCalendarioRoute: PortalCalendarioRoute,
+  PortalPendentesRoute: PortalPendentesRoute,
+  PortalIndexRoute: PortalIndexRoute,
+}
+
+const PortalRouteWithChildren =
+  PortalRoute._addFileChildren(PortalRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  PortalRoute: PortalRouteWithChildren,
   TicketRoute: TicketRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
@@ -613,3 +725,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
