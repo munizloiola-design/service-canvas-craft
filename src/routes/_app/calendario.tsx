@@ -118,7 +118,7 @@ function CalendarioPage() {
                     const st = p.status_id ? statusMap.get(p.status_id) : null;
                     return (
                       <button key={p.id}
-                        onClick={() => navigate({ to: "/projects" })}
+                        onClick={() => navigate({ to: "/projects", search: { detail: p.id } })}
                         className="w-full text-left text-[10px] px-1 py-0.5 rounded truncate hover:opacity-80"
                         style={st ? { background: `${st.color}25`, color: st.color } : { background: "var(--muted)" }}
                         title={`${p.title}${p.client_id ? ` — ${clientMap.get(p.client_id) ?? ""}` : ""}`}>

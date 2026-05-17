@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,12 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuChe
 import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_app/projects")({ component: ProjectsPage });
+export const Route = createFileRoute("/_app/projects")({
+  component: ProjectsPage,
+  validateSearch: (s: Record<string, unknown>) => ({
+    detail: typeof s.detail === "string" ? s.detail : undefined,
+  }),
+});
 
 type Project = {
   id: string; title: string; description: string | null; notes: string | null;
@@ -60,12 +65,18 @@ const FILTER_LABELS: Record<FilterKey, string> = {
 
 function ProjectsPage() {
   const { isManager } = useAuth();
+  const navigate = useNavigate();
+  const search = Route.useSearch();
   const [view, setView] = useState<"kanban" | "list">("kanban");
   const [open, setOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [visibleCols, setVisibleCols] = useState<string[]>(ALL_COLUMNS.map((c) => c.key));
   const [filters, setFilters] = useState<ActiveFilter[]>([]);
+
+  useEffect(() => {
+    if (search.detail) setDetailId(search.detail);
+  }, [search.detail]);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -251,7 +262,7 @@ function ProjectsPage() {
         project={projects.find((p) => p.id === detailId) ?? null}
         statuses={statuses} priorities={priorities} maps={maps}
         assignees={detailId ? (assigneesByProject.get(detailId) ?? []) : []}
-        onClose={() => setDetailId(null)}
+        onClose={() => { setDetailId(null); if (search.detail) navigate({ to: "/projects", search: {} }); }}
         onEdit={(p) => { setDetailId(null); setEditingProject(p); setOpen(true); }}
       />
     </div>

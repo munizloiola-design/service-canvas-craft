@@ -31,7 +31,7 @@ const navItems: { to: string; label: string; icon: typeof LayoutDashboard; resou
 ];
 
 function AppLayout() {
-  const { user, loading, signOut, roles, hasRole } = useAuth();
+  const { user, loading, signOut, roles, hasRole, isClient } = useAuth();
   const { branding } = useBranding();
   const { can, loading: permsLoading } = usePermissions();
   const navigate = useNavigate();
@@ -45,6 +45,7 @@ function AppLayout() {
     );
   }
   if (!user) return <Navigate to="/login" />;
+  if (isClient) return <Navigate to="/portal/calendario" />;
 
   const visibleNav = navItems.filter((item) => {
     if (item.adminOnly && !hasRole("admin")) return false;

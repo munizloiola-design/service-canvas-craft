@@ -1,4 +1,4 @@
-import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -14,11 +14,10 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { user, signIn, signUp, loading } = useAuth();
-  const navigate = useNavigate();
+  const { user, signIn, signUp, loading, isClient } = useAuth();
   const [busy, setBusy] = useState(false);
 
-  if (!loading && user) return <Navigate to="/dashboard" />;
+  if (!loading && user) return <Navigate to={isClient ? "/portal/calendario" : "/dashboard"} />;
 
   const handleSignIn = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -28,7 +27,7 @@ function LoginPage() {
     setBusy(false);
     if (error) return toast.error(error);
     toast.success("Bem-vindo!");
-    navigate({ to: "/dashboard" });
+    // navigation handled by Navigate above when roles load
   };
 
   const handleSignUp = async (e: FormEvent<HTMLFormElement>) => {
