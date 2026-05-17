@@ -15,7 +15,6 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const { user, signIn, signUp, loading, isClient } = useAuth();
-  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
 
   if (!loading && user) return <Navigate to={isClient ? "/portal/calendario" : "/dashboard"} />;
