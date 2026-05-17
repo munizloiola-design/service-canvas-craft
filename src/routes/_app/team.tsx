@@ -260,8 +260,17 @@ function MemberDialog({
 
   const saveProfile = useMutation({
     mutationFn: async () => {
-      const payload: Record<string, string | null> = {};
-      for (const [k, v] of Object.entries(form)) payload[k] = v === "" ? null : v;
+      const payload = {
+        full_name: form.full_name,
+        job_title: form.job_title || null,
+        phone: form.phone || null,
+        birth_date: form.birth_date || null,
+        document: form.document || null,
+        address: form.address || null,
+        emergency_contact: form.emergency_contact || null,
+        start_date: form.start_date || null,
+        contract_type: form.contract_type || null,
+      };
       const { error } = await supabase.from("profiles").update(payload).eq("id", memberId);
       if (error) throw error;
 
