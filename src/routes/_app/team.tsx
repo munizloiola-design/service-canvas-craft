@@ -349,12 +349,18 @@ function MemberDialog({
           <TabsContent value="funcoes" className="space-y-4 mt-4">
             <div>
               <Label className="text-xs">Papel principal</Label>
-              <Select value={primaryRole} onValueChange={(v) => setPrimaryRole(v as AppRole)}>
+              <Select value={primaryRole} onValueChange={(v) => setPrimaryRole(v as AppRole)} disabled={!canManageThisUser || allowedRoles.length === 0}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ASSIGNABLE_ROLES.map((r) => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
+                  {allowedRoles.map((r) => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {!canManageThisUser && (
+                <p className="text-[11px] text-muted-foreground mt-1">Você não tem permissão para alterar o papel deste membro (papel igual ou superior ao seu).</p>
+              )}
+              {canManageThisUser && allowedRoles.length === 0 && (
+                <p className="text-[11px] text-muted-foreground mt-1">Seu papel não permite atribuir nenhum nível.</p>
+              )}
             </div>
             <div>
               <Label className="text-xs mb-2 block">Subfunções (colaborador)</Label>
