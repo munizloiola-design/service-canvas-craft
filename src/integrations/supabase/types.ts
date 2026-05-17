@@ -89,6 +89,35 @@ export type Database = {
         }
         Relationships: []
       }
+      client_users: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_users_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           contact_name: string | null
@@ -1154,6 +1183,10 @@ export type Database = {
           title: string
         }[]
       }
+      has_client_access: {
+        Args: { _client_id: string; _uid: string }
+        Returns: boolean
+      }
       has_permission: {
         Args: { _action: string; _resource: string; _uid: string }
         Returns: boolean
@@ -1165,6 +1198,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_client_user: { Args: { _uid: string }; Returns: boolean }
       is_manager: { Args: { _uid: string }; Returns: boolean }
       move_to_dlq: {
         Args: {
@@ -1185,6 +1219,10 @@ export type Database = {
       }
       submit_client_decision: {
         Args: { _decision: string; _feedback: string; _token: string }
+        Returns: boolean
+      }
+      submit_client_decision_authed: {
+        Args: { _decision: string; _feedback: string; _project_id: string }
         Returns: boolean
       }
     }
