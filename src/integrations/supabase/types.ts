@@ -151,6 +151,30 @@ export type Database = {
         }
         Relationships: []
       }
+      collaborator_functions: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       dashboard_widgets: {
         Row: {
           config: Json
@@ -511,6 +535,38 @@ export type Database = {
         }
         Relationships: []
       }
+      function_field_visibility: {
+        Row: {
+          field_key: string
+          function_id: string
+          id: string
+          updated_at: string
+          visible: boolean
+        }
+        Insert: {
+          field_key: string
+          function_id: string
+          id?: string
+          updated_at?: string
+          visible?: boolean
+        }
+        Update: {
+          field_key?: string
+          function_id?: string
+          id?: string
+          updated_at?: string
+          visible?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "function_field_visibility_function_id_fkey"
+            columns: ["function_id"]
+            isOneToOne: false
+            referencedRelation: "collaborator_functions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_meta: {
         Row: {
           access_token: string
@@ -594,36 +650,54 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
           avatar_url: string | null
+          birth_date: string | null
           commission_pct: number
+          contract_type: string | null
           created_at: string
+          document: string | null
+          emergency_contact: string | null
           full_name: string
           hourly_cost: number
           id: string
           job_title: string | null
           phone: string | null
+          start_date: string | null
           updated_at: string
         }
         Insert: {
+          address?: string | null
           avatar_url?: string | null
+          birth_date?: string | null
           commission_pct?: number
+          contract_type?: string | null
           created_at?: string
+          document?: string | null
+          emergency_contact?: string | null
           full_name?: string
           hourly_cost?: number
           id: string
           job_title?: string | null
           phone?: string | null
+          start_date?: string | null
           updated_at?: string
         }
         Update: {
+          address?: string | null
           avatar_url?: string | null
+          birth_date?: string | null
           commission_pct?: number
+          contract_type?: string | null
           created_at?: string
+          document?: string | null
+          emergency_contact?: string | null
           full_name?: string
           hourly_cost?: number
           id?: string
           job_title?: string | null
           phone?: string | null
+          start_date?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -998,6 +1072,30 @@ export type Database = {
         }
         Relationships: []
       }
+      team_private_notes: {
+        Row: {
+          content: string
+          id: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       text_snippets: {
         Row: {
           content: string
@@ -1096,6 +1194,35 @@ export type Database = {
             columns: ["media_type_id"]
             isOneToOne: false
             referencedRelation: "media_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_functions: {
+        Row: {
+          created_at: string
+          function_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          function_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          function_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_functions_function_id_fkey"
+            columns: ["function_id"]
+            isOneToOne: false
+            referencedRelation: "collaborator_functions"
             referencedColumns: ["id"]
           },
         ]
@@ -1200,6 +1327,11 @@ export type Database = {
       }
       is_client_user: { Args: { _uid: string }; Returns: boolean }
       is_manager: { Args: { _uid: string }; Returns: boolean }
+      is_master: { Args: { _uid: string }; Returns: boolean }
+      is_project_assignee: {
+        Args: { _project_id: string; _uid: string }
+        Returns: boolean
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -1227,7 +1359,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "gerente" | "membro" | "cliente"
+      app_role: "admin" | "gerente" | "membro" | "cliente" | "admin_master"
       media_type:
         | "post"
         | "story"
@@ -1376,7 +1508,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "gerente", "membro", "cliente"],
+      app_role: ["admin", "gerente", "membro", "cliente", "admin_master"],
       media_type: [
         "post",
         "story",

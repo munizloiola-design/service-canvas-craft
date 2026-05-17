@@ -12,6 +12,7 @@ import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth-context";
 import { PermissionsProvider } from "@/lib/permissions";
 import { BrandingProvider } from "@/lib/branding-context";
+import { FieldVisibilityProvider } from "@/lib/field-visibility";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -106,8 +107,10 @@ function RootComponent() {
       <AuthProvider>
         <BrandingProvider>
           <PermissionsProvider>
-            <Outlet />
-            <Toaster richColors position="top-right" />
+            <FieldVisibilityProvider>
+              <Outlet />
+              <Toaster richColors position="top-right" />
+            </FieldVisibilityProvider>
           </PermissionsProvider>
         </BrandingProvider>
       </AuthProvider>
