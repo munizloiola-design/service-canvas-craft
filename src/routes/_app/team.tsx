@@ -53,6 +53,7 @@ type Profile = {
   emergency_contact: string | null;
   start_date: string | null;
   contract_type: string | null;
+  avatar_url: string | null;
 };
 
 function TeamPage() {
