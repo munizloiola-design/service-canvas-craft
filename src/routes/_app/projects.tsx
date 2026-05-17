@@ -347,6 +347,14 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail }:
   assigneesByProject: Map<string, Assignee[]>;
   onDetail: (id: string) => void;
 }) {
+  const { canSee } = useFieldVisibility();
+  const colKeyToField: Record<string, string | null> = {
+    client: "client_id", media: "media_type", priority: "priority",
+    due_date: "due_date", post_date: "post_date",
+  };
+  const allowedCols = visibleCols.filter((k) => {
+    const f = colKeyToField[k]; return !f || canSee(f as never);
+  });
   return (
     <Card className="overflow-x-auto">
       <table className="w-full text-sm">
