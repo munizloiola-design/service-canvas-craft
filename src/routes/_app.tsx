@@ -60,6 +60,8 @@ function AppLayout() {
   const { can, loading: permsLoading } = usePermissions();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   if (loading || permsLoading) {
     return (
@@ -83,9 +85,6 @@ function AppLayout() {
 
   const initials = (user.email ?? "U").slice(0, 2).toUpperCase();
   const primaryRole = roles[0] ?? "membro";
-
-  const [mobileOpen, setMobileOpen] = useState(false);
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   const SidebarContent = (
     <>

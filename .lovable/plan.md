@@ -1,50 +1,44 @@
-## Reorganização do menu lateral em categorias com submenus
+## Correção: Rules of Hooks em `src/routes/_app.tsx`
 
-Hoje o menu em `src/routes/_app.tsx` é uma lista plana de 14 itens. Vou agrupá-los em categorias colapsáveis usando o componente `Collapsible` (já disponível) dentro do sidebar atual, sem trocar o layout geral.
+### Problema
 
-### Proposta de agrupamento
+No `AppLayout`, os hooks `useState(false)` para `mobileOpen` e o `useEffect` que fecha o menu mobile estão sendo chamados **depois** de três `return` condicionais (loading spinner, `<Navigate to="/login" />` e `<Navigate to="/portal/calendario" />`). Isso quebra as Rules of Hooks do React — a ordem dos hooks muda entre renders (ex.: quando `loading` passa de `true` para `false`), gerando o aviso/erro "React has detected a change in the order of Hooks" e podendo causar comportamento inconsistente do menu.
 
-```text
-Dashboard
-
-Operação
-  ├─ Projetos
-  ├─ Tickets
-  ├─ Calendário
-  └─ Equipamentos
-
-Financeiro
-  ├─ Financeiro
-  └─ Orçamento
-
-Marketing
-  ├─ Facebook Ads
-  └─ Diguinho IA
-
-Equipe
-
-Configurações
-  ├─ Cadastros
-  ├─ Integrações
-  ├─ Personalização
-  └─ Permissões (admin)
+```tsx
+if (loading || permsLoading) return <Spinner/>;
+if (!user) return <Navigate .../>;
+if (isClient) return <Navigate .../>;
+...
+const [mobileOpen, setMobileOpen] = useState(false);   // ❌ hook após early return
+useEffect(() => { setMobileOpen(false); }, [pathname]); // ❌ hook após early return
 ```
 
-### Como vai funcionar
+### Solução
 
-- Cada categoria vira um cabeçalho clicável (com chevron) que expande/recolhe os itens filhos.
-- A categoria que contém a rota ativa abre automaticamente ao carregar.
-- Categorias sem itens visíveis (por permissão) somem inteiras — nada de cabeçalho vazio.
-- Visual: cabeçalho em `text-xs uppercase tracking-wide text-sidebar-foreground/50`, itens filhos com leve recuo (`pl-3`) mantendo o mesmo estilo de hover/active de hoje.
-- Mobile (Sheet) usa exatamente a mesma estrutura — sem mudanças adicionais.
+Mover **todos** os hooks (`useState`, `useEffect`) para o topo da função, antes de qualquer `return` condicional. Os cálculos derivados (`visibleGroups`, `initials`, `primaryRole`) podem permanecer depois dos early returns, pois não são hooks.
 
-### Detalhes técnicos
+Estrutura final:
 
-- Editar apenas `src/routes/_app.tsx`:
-  - Substituir o array plano `navItems` por uma estrutura `navGroups: { label, items: NavItem[] }[]`.
-  - Filtrar itens por `can(resource, 'view')` + `adminOnly` antes de renderizar o grupo; pular grupos vazios.
-  - Renderizar cada grupo com `Collapsible` / `CollapsibleTrigger` / `CollapsibleContent` (`@/components/ui/collapsible`, já no projeto).
-  - `defaultOpen` do grupo = `group.items.some(i => pathname.startsWith(i.to))`.
-- Nenhuma alteração em rotas, permissões, portal do cliente ou backend.
+```tsx
+function AppLayout() {
+  // 1. Todos os hooks primeiro
+  const { user, loading, signOut, roles, hasRole, isClient } = useAuth();
+  const { branding } = useBranding();
+  const { can, loading: permsLoading } = usePermissions();
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
-Posso confirmar e implementar?
+  // 2. Early returns
+  if (loading || permsLoading) return <Spinner/>;
+  if (!user) return <Navigate to="/login" />;
+  if (isClient) return <Navigate to="/portal/calendario" />;
+
+  // 3. Derivados e render
+  const visibleGroups = ...;
+  ...
+}
+```
+
+Nenhuma outra alteração de comportamento, layout ou rotas.
