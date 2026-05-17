@@ -153,6 +153,7 @@ function TeamPage() {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar className="h-12 w-12">
+                    {m.avatar_url && <AvatarImage src={m.avatar_url} alt={m.full_name} />}
                     <AvatarFallback className="bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
