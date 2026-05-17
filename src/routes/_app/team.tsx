@@ -235,6 +235,12 @@ function MemberDialog({
   memberFunctionIds: string[];
   onSaved: () => void;
 }) {
+  const { roles: actorRoles } = useAuth();
+  const actorRank = maxRank(actorRoles);
+  const targetRank = maxRank(roles);
+  const canManageThisUser = actorRank > targetRank;
+  const allowedRoles = ASSIGNABLE_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
+
   const [primaryRole, setPrimaryRole] = useState<AppRole>(roles[0] ?? "membro");
   const [selectedFns, setSelectedFns] = useState<string[]>(memberFunctionIds);
   const [form, setForm] = useState({
