@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuChe
 import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useFieldVisibility } from "@/lib/field-visibility";
+import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
@@ -293,51 +294,115 @@ function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, 
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
+  );
+
   if (statuses.length === 0) {
     return <Card className="p-4 md:p-8 text-center text-sm text-muted-foreground">Crie etapas em <strong>Cadastros → Etapas do fluxo</strong> para usar o kanban.</Card>;
   }
 
   const cols = [...statuses, { id: "__none__", name: "Sem etapa", color: "#64748b", sort_order: 999 } as Status];
 
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over) return;
+    const from = (active.data.current as { from: string | null } | undefined)?.from ?? null;
+    const to = String(over.id);
+    if (to === (from ?? "__none__")) return;
+    const newStatusId = to === "__none__" ? null : to;
+    // optimistic update
+    qc.setQueryData<Project[]>(["projects"], (old) =>
+      old ? old.map((p) => (p.id === active.id ? { ...p, status_id: newStatusId } : p)) : old,
+    );
+    if (newStatusId) updateStatus.mutate({ id: String(active.id), status_id: newStatusId, from });
+  };
+
   return (
-    <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.min(cols.length, 5)}, minmax(0, 1fr))` }}>
-      {cols.map((col) => {
-        const items = projects.filter((p) => (p.status_id ?? "__none__") === col.id);
-        return (
-          <div key={col.id} className="flex flex-col">
-            <div className="rounded-t-lg px-3 py-2 flex items-center justify-between border-l-4" style={{ borderColor: col.color, background: `${col.color}15` }}>
-              <h3 className="text-sm font-semibold">{col.name}</h3>
-              <span className="text-xs bg-background/80 rounded px-2">{items.length}</span>
-            </div>
-            <div className="bg-card border border-t-0 rounded-b-lg p-2 space-y-2 min-h-[200px]">
-              {items.map((p) => {
-                const pr = p.priority_id ? (maps.priority.get(p.priority_id) as Priority | undefined) : null;
-                const ass = assigneesByProject.get(p.id) ?? [];
-                return (
-                  <Card key={p.id} className="p-2.5 hover:shadow-md cursor-pointer" onClick={() => onDetail(p.id)}>
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h4 className="font-medium text-sm leading-snug">{p.title}</h4>
-                      {pr && canSee("priority") && <Badge className="border-0 text-[10px] shrink-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge>}
-                    </div>
-                    {p.client_id && canSee("client_id") && <p className="text-xs text-muted-foreground">{maps.client.get(p.client_id) as string}</p>}
-                    {p.media_type_id && canSee("media_type") && <span className="inline-block text-[10px] bg-secondary px-1.5 py-0.5 rounded mt-1">{maps.media.get(p.media_type_id) as string}</span>}
-                    <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground mt-2">
-                      {p.due_date && canSee("due_date") && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(p.due_date).toLocaleDateString("pt-BR")}</span>}
-                      {ass.length > 0 && <span>{ass.length} resp.</span>}
-                    </div>
-                    <Select value={p.status_id ?? ""} onValueChange={(v) => updateStatus.mutate({ id: p.id, status_id: v, from: p.status_id })}>
-                      <SelectTrigger className="h-6 text-[11px] mt-2" onClick={(e) => e.stopPropagation()}><SelectValue placeholder="Mover para..." /></SelectTrigger>
-                      <SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </Card>
-                );
-              })}
-              {items.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Vazio</p>}
-            </div>
-          </div>
-        );
-      })}
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:[grid-template-columns:repeat(var(--kanban-cols),minmax(0,1fr))] lg:overflow-x-auto"
+        style={{ ["--kanban-cols" as never]: Math.min(cols.length, 5) }}>
+        {cols.map((col) => (
+          <KanbanColumn key={col.id} col={col}
+            items={projects.filter((p) => (p.status_id ?? "__none__") === col.id)}
+            statuses={statuses} priorities={priorities} maps={maps}
+            assigneesByProject={assigneesByProject} canSee={canSee}
+            onDetail={onDetail}
+            onStatusChange={(id, status_id, from) => updateStatus.mutate({ id, status_id, from })} />
+        ))}
+      </div>
+    </DndContext>
+  );
+}
+
+function KanbanColumn({ col, items, statuses, priorities, maps, assigneesByProject, canSee, onDetail, onStatusChange }: {
+  col: Status; items: Project[]; statuses: Status[]; priorities: Priority[];
+  maps: Record<string, Map<string, unknown>>;
+  assigneesByProject: Map<string, Assignee[]>;
+  canSee: (k: never) => boolean;
+  onDetail: (id: string) => void;
+  onStatusChange: (id: string, status_id: string, from: string | null) => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: col.id });
+  return (
+    <div className="flex flex-col">
+      <div className="rounded-t-lg px-3 py-2 flex items-center justify-between border-l-4" style={{ borderColor: col.color, background: `${col.color}15` }}>
+        <h3 className="text-sm font-semibold">{col.name}</h3>
+        <span className="text-xs bg-background/80 rounded px-2">{items.length}</span>
+      </div>
+      <div ref={setNodeRef}
+        className={`bg-card border border-t-0 rounded-b-lg p-2 space-y-2 min-h-[120px] md:min-h-[200px] transition-shadow ${isOver ? "ring-2 ring-primary" : ""}`}>
+        {items.map((p) => (
+          <KanbanCard key={p.id} project={p} statuses={statuses} priorities={priorities}
+            maps={maps} assigneesByProject={assigneesByProject} canSee={canSee}
+            onDetail={onDetail} onStatusChange={onStatusChange} />
+        ))}
+        {items.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Vazio</p>}
+      </div>
     </div>
+  );
+}
+
+function KanbanCard({ project: p, statuses, priorities: _priorities, maps, assigneesByProject, canSee, onDetail, onStatusChange }: {
+  project: Project; statuses: Status[]; priorities: Priority[];
+  maps: Record<string, Map<string, unknown>>;
+  assigneesByProject: Map<string, Assignee[]>;
+  canSee: (k: never) => boolean;
+  onDetail: (id: string) => void;
+  onStatusChange: (id: string, status_id: string, from: string | null) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: p.id, data: { from: p.status_id },
+  });
+  const pr = p.priority_id ? (maps.priority.get(p.priority_id) as Priority | undefined) : null;
+  const ass = assigneesByProject.get(p.id) ?? [];
+  const style: React.CSSProperties = {
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    opacity: isDragging ? 0.5 : 1,
+    touchAction: "none",
+  };
+  return (
+    <Card ref={setNodeRef} style={style} {...attributes} {...listeners}
+      className="p-2.5 hover:shadow-md cursor-grab active:cursor-grabbing"
+      onClick={() => !isDragging && onDetail(p.id)}>
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <h4 className="font-medium text-sm leading-snug">{p.title}</h4>
+        {pr && canSee("priority" as never) && <Badge className="border-0 text-[10px] shrink-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge>}
+      </div>
+      {p.client_id && canSee("client_id" as never) && <p className="text-xs text-muted-foreground">{maps.client.get(p.client_id) as string}</p>}
+      {p.media_type_id && canSee("media_type" as never) && <span className="inline-block text-[10px] bg-secondary px-1.5 py-0.5 rounded mt-1">{maps.media.get(p.media_type_id) as string}</span>}
+      <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground mt-2">
+        {p.due_date && canSee("due_date" as never) && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(p.due_date).toLocaleDateString("pt-BR")}</span>}
+        {ass.length > 0 && <span>{ass.length} resp.</span>}
+      </div>
+      <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+        <Select value={p.status_id ?? ""} onValueChange={(v) => onStatusChange(p.id, v, p.status_id)}>
+          <SelectTrigger className="h-6 text-[11px] mt-2"><SelectValue placeholder="Mover para..." /></SelectTrigger>
+          <SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+    </Card>
   );
 }
 

@@ -1,104 +1,41 @@
-# Plano: Níveis de acesso, subfunções e Equipe expandida
+## Objetivo
 
-## 1. Hierarquia de papéis
+Melhorar o kanban no mobile: colunas empilhadas verticalmente e arrastar/soltar cards entre etapas funcionando tanto no touch quanto no mouse.
 
-Criar novo papel `admin_master` no enum `app_role`, acima de `admin`.
+(O pedido do Meta Business em iframe fica pulado — Meta bloqueia embed via header de segurança.)
 
-```
-admin_master  →  acesso total + anotações privadas + config de visibilidade
-admin         →  como hoje (gestão geral, sem anotações privadas)
-gerente       →  como hoje
-membro        →  colaborador (ver item 2)
-cliente       →  como hoje (portal)
-```
+## Mudanças
 
-- Migração: `ALTER TYPE app_role ADD VALUE 'admin_master'`
-- O primeiro usuário do sistema vira `admin_master` automaticamente (ajustar `handle_new_user`).
-- Funções helper: `is_master(uid)`, atualizar `is_manager` para incluir master.
-- Tela de Equipe ganha botão "Promover a Admin Master" (visível só para masters).
+### 1. Layout responsivo do kanban
+Arquivo: `src/routes/_app/projects.tsx` (componente `KanbanView`, ~linha 303)
 
-## 2. Subfunções de colaborador
+- Substituir o `gridTemplateColumns` fixo por classes responsivas:
+  - **Mobile (<768px)**: 1 coluna, etapas empilhadas verticalmente; cada coluna ocupa largura total e os cards ficam visíveis em sequência.
+  - **Tablet (≥768px)**: 2 colunas.
+  - **Desktop (≥1024px)**: layout horizontal atual (até 5 colunas lado a lado, com scroll horizontal se houver mais etapas).
+- Ajustar altura mínima e padding para o empilhamento ficar legível.
 
-Nova tabela `collaborator_functions` com os tipos fixos:
-Social Media, Designer, Motion Designer, Videomaker, Editor de Vídeo, Fotógrafo, Revisor, Redator.
+### 2. Drag-and-drop com `@dnd-kit`
+Biblioteca: `@dnd-kit/core` + `@dnd-kit/sortable` (suporte nativo a touch e mouse, leve, sem dependências de React DnD).
 
-Nova tabela `user_functions (user_id, function_id)` — colaborador pode ter 1+ funções.
+- Instalar via `bun add @dnd-kit/core @dnd-kit/sortable`.
+- Envolver o `KanbanView` em `<DndContext>` configurado com `PointerSensor` + `TouchSensor` (ativação por pequeno delay para não conflitar com scroll/tap no mobile).
+- Cada coluna vira um `useDroppable` (id = `status_id`).
+- Cada card vira um `useDraggable` (id = `project_id`, dados = `{ from_status_id }`).
+- No `onDragEnd`:
+  - Se `over.id !== active.data.from_status_id`, disparar a mesma mutation `updateStatus` que já existe (atualiza `projects.status_id` + insere em `project_transitions`).
+  - Atualização otimista local via `queryClient.setQueryData(["projects"], ...)` para o card "saltar" na hora.
+- Manter o `<Select>` "Mover para..." dentro do card como fallback acessível (útil em telas onde drag é desconfortável).
+- Indicação visual: coluna alvo fica com `ring-2 ring-primary` durante o hover; card arrastado fica `opacity-50`.
 
-### Acesso a demandas (tickets/projetos)
+### 3. Considerações
+- Colaborador só pode arrastar cards em que está atribuído (RLS já bloqueia update, mas o handler também valida `isManager || isAssignee` antes da mutation para evitar erro feio).
+- Em etapas finais/validação de cliente, manter a regra atual (sem restrição extra agora).
+- O detalhe do card (clique para abrir) continua funcionando — o `DndContext` usa delay/distância mínima para diferenciar tap de drag.
 
-- **Colaborador só vê demandas onde está em `project_assignees`** (já existe a tabela).
-- Atualizar RLS de `projects`: SELECT para `membro` exige existir linha em `project_assignees` com aquele user_id.
-- Mesma regra para `project_attachments`, `project_transitions`.
+## Resumo dos arquivos tocados
 
-### Visibilidade de campos por subfunção
+- `package.json` — adicionar `@dnd-kit/core`, `@dnd-kit/sortable`.
+- `src/routes/_app/projects.tsx` — refatorar `KanbanView` (layout responsivo + DnD).
 
-Nova tabela `function_field_visibility`:
-```
-function_id | field_key | visible (bool)
-```
-Campos cobertos: `budget`, `client_id`, `due_date`, `post_date`, `priority`, `description`, `notes`, `reference_links`, `deliverable_path`, `client_feedback`, `media_type`.
-
-Nova tela **Permissões → aba "Visibilidade por função"**: matriz funções × campos com checkboxes (só admin_master edita).
-
-Frontend: hook `useVisibleProjectFields()` filtra os campos exibidos no card/detalhe da demanda conforme as funções do usuário logado. Backend não retorna campos ocultos via server function dedicada para colaboradores.
-
-## 3. Equipe — métricas + ficha + anotações privadas
-
-Página `/equipe` (renomeia atual `team.tsx`) reorganizada em 3 áreas por membro:
-
-### a) Métricas (visível a admins e gerentes)
-
-Calculadas via server function a partir de `projects` + `project_transitions`:
-- **Atrasadas**: assignee + `due_date < hoje` + status não-final
-- **Ativas**: assignee + status não-final + não atrasada
-- **Pendentes**: assignee + status inicial (aguardando começar)
-- **Tempo médio por status**: diferença entre `project_transitions` consecutivas, agrupada por `to_status_id`, média em horas
-
-### b) Ficha de cadastro (admin_master edita; o próprio usuário vê)
-
-Estende `profiles` com: `birth_date`, `document` (CPF), `address`, `emergency_contact`, `start_date`, `contract_type`.
-
-### c) Anotações privadas (admin_master only)
-
-Nova tabela `team_private_notes (user_id, content, updated_at, updated_by)`.
-RLS: SELECT/INSERT/UPDATE/DELETE apenas para `is_master(auth.uid())`.
-Editor markdown simples, histórico via `updated_at`.
-
-## 4. Facebook publishing
-
-**Adiado** conforme decisão. Sem mudanças neste plano.
-
-## 5. Itens técnicos
-
-```text
-Migrações Supabase:
-  - ALTER TYPE app_role ADD VALUE 'admin_master'
-  - função is_master(uid)
-  - tabelas: collaborator_functions, user_functions,
-            function_field_visibility, team_private_notes
-  - ALTER TABLE profiles ADD colunas de ficha
-  - atualizar RLS de projects/attachments/transitions
-  - seed das 8 subfunções
-
-Frontend:
-  - src/lib/auth-context.tsx → adicionar isMaster
-  - src/lib/permissions.tsx → expor visibleFields()
-  - src/routes/_app/permissoes.tsx → nova aba "Visibilidade"
-  - src/routes/_app/team.tsx → reorganização (métricas, ficha, anotações)
-  - novo componente FieldGuard para esconder campos em projects.tsx
-  - server fn: getTeamMetrics, getAvgTimePerStatus
-
-Menu lateral:
-  - "Permissões" só para admin_master/admin
-  - Equipe ganha sub-rotas: Visão geral / Métricas / Anotações (master)
-```
-
-## Ordem de execução
-
-1. Migração (papel + tabelas + RLS) — exige aprovação
-2. Auth context + helpers (`isMaster`, `useVisibleProjectFields`)
-3. Tela Permissões: aba Visibilidade
-4. Tela Equipe: métricas + ficha + anotações privadas
-5. Aplicar `FieldGuard` nas telas de demandas/tickets
-
-Aprovar para eu começar pela migração?
+Nenhuma mudança de banco, RLS ou outra tela.
