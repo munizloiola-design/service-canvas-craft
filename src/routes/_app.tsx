@@ -3,31 +3,55 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { usePermissions, type Resource } from "@/lib/permissions";
 import { useBranding } from "@/lib/branding-context";
-import { LayoutDashboard, FolderKanban, Users, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck, Facebook, Sparkles, Plug, Inbox, Palette, Menu } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Users, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck, Facebook, Sparkles, Plug, Inbox, Palette, Menu, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
 
-const navItems: { to: string; label: string; icon: typeof LayoutDashboard; resource: Resource; adminOnly?: boolean }[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, resource: "dashboard" },
-  { to: "/projects", label: "Projetos", icon: FolderKanban, resource: "projects" },
-  { to: "/tickets", label: "Tickets", icon: Inbox, resource: "tickets" },
-  { to: "/calendario", label: "Calendário", icon: CalendarDays, resource: "calendario" },
-  { to: "/financeiro", label: "Financeiro", icon: DollarSign, resource: "financeiro" },
-  { to: "/orcamento", label: "Orçamento", icon: Calculator, resource: "orcamento" },
-  { to: "/equipamentos", label: "Equipamentos", icon: Wrench, resource: "equipamentos" },
-  { to: "/team", label: "Equipe", icon: Users, resource: "team" },
-  { to: "/facebook", label: "Facebook Ads", icon: Facebook, resource: "facebook" },
-  { to: "/diguinho", label: "Diguinho IA", icon: Sparkles, resource: "diguinho" },
-  { to: "/integracoes", label: "Integrações", icon: Plug, resource: "integracoes" },
-  { to: "/cadastros", label: "Cadastros", icon: Settings, resource: "cadastros" },
-  { to: "/personalizacao", label: "Personalização", icon: Palette, resource: "branding" },
-  { to: "/permissoes", label: "Permissões", icon: ShieldCheck, resource: "cadastros", adminOnly: true },
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; resource: Resource; adminOnly?: boolean };
+type NavGroup = { label?: string; items: NavItem[] };
+
+const navGroups: NavGroup[] = [
+  { items: [{ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, resource: "dashboard" }] },
+  {
+    label: "Operação",
+    items: [
+      { to: "/projects", label: "Projetos", icon: FolderKanban, resource: "projects" },
+      { to: "/tickets", label: "Tickets", icon: Inbox, resource: "tickets" },
+      { to: "/calendario", label: "Calendário", icon: CalendarDays, resource: "calendario" },
+      { to: "/equipamentos", label: "Equipamentos", icon: Wrench, resource: "equipamentos" },
+    ],
+  },
+  {
+    label: "Financeiro",
+    items: [
+      { to: "/financeiro", label: "Financeiro", icon: DollarSign, resource: "financeiro" },
+      { to: "/orcamento", label: "Orçamento", icon: Calculator, resource: "orcamento" },
+    ],
+  },
+  {
+    label: "Marketing",
+    items: [
+      { to: "/facebook", label: "Facebook Ads", icon: Facebook, resource: "facebook" },
+      { to: "/diguinho", label: "Diguinho IA", icon: Sparkles, resource: "diguinho" },
+    ],
+  },
+  { items: [{ to: "/team", label: "Equipe", icon: Users, resource: "team" }] },
+  {
+    label: "Configurações",
+    items: [
+      { to: "/cadastros", label: "Cadastros", icon: Settings, resource: "cadastros" },
+      { to: "/integracoes", label: "Integrações", icon: Plug, resource: "integracoes" },
+      { to: "/personalizacao", label: "Personalização", icon: Palette, resource: "branding" },
+      { to: "/permissoes", label: "Permissões", icon: ShieldCheck, resource: "cadastros", adminOnly: true },
+    ],
+  },
 ];
 
 function AppLayout() {
@@ -47,10 +71,15 @@ function AppLayout() {
   if (!user) return <Navigate to="/login" />;
   if (isClient) return <Navigate to="/portal/calendario" />;
 
-  const visibleNav = navItems.filter((item) => {
-    if (item.adminOnly && !hasRole("admin")) return false;
-    return can(item.resource, "view");
-  });
+  const visibleGroups = navGroups
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((item) => {
+        if (item.adminOnly && !hasRole("admin")) return false;
+        return can(item.resource, "view");
+      }),
+    }))
+    .filter((g) => g.items.length > 0);
 
   const initials = (user.email ?? "U").slice(0, 2).toUpperCase();
   const primaryRole = roles[0] ?? "membro";
@@ -71,23 +100,44 @@ function AppLayout() {
         <span className="font-semibold truncate">{branding.brand_name}</span>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {visibleNav.map((item) => {
-          const active = pathname.startsWith(item.to);
-          const Icon = item.icon;
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-2">
+        {visibleGroups.map((group, idx) => {
+          const renderLink = (item: NavItem, indented = false) => {
+            const active = pathname.startsWith(item.to);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  indented ? "ml-2" : ""
+                } ${
+                  active
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          };
+
+          if (!group.label) {
+            return <div key={`g-${idx}`} className="space-y-1">{group.items.map((i) => renderLink(i))}</div>;
+          }
+
+          const groupActive = group.items.some((i) => pathname.startsWith(i.to));
           return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </Link>
+            <Collapsible key={group.label} defaultOpen={groupActive}>
+              <CollapsibleTrigger className="group flex w-full items-center justify-between px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors">
+                <span>{group.label}</span>
+                <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=closed]:-rotate-90" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-1 pt-1">
+                {group.items.map((i) => renderLink(i, true))}
+              </CollapsibleContent>
+            </Collapsible>
           );
         })}
       </nav>
