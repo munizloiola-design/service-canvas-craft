@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useFieldVisibility } from "@/lib/field-visibility";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
@@ -277,6 +278,7 @@ function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, 
 }) {
   const qc = useQueryClient();
   const { user } = useAuth();
+  const { canSee } = useFieldVisibility();
   const updateStatus = useMutation({
     mutationFn: async ({ id, status_id, from }: { id: string; status_id: string; from: string | null }) => {
       const { error } = await supabase.from("projects").update({ status_id }).eq("id", id);
@@ -315,12 +317,12 @@ function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, 
                   <Card key={p.id} className="p-2.5 hover:shadow-md cursor-pointer" onClick={() => onDetail(p.id)}>
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <h4 className="font-medium text-sm leading-snug">{p.title}</h4>
-                      {pr && <Badge className="border-0 text-[10px] shrink-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge>}
+                      {pr && canSee("priority") && <Badge className="border-0 text-[10px] shrink-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge>}
                     </div>
-                    {p.client_id && <p className="text-xs text-muted-foreground">{maps.client.get(p.client_id) as string}</p>}
-                    {p.media_type_id && <span className="inline-block text-[10px] bg-secondary px-1.5 py-0.5 rounded mt-1">{maps.media.get(p.media_type_id) as string}</span>}
+                    {p.client_id && canSee("client_id") && <p className="text-xs text-muted-foreground">{maps.client.get(p.client_id) as string}</p>}
+                    {p.media_type_id && canSee("media_type") && <span className="inline-block text-[10px] bg-secondary px-1.5 py-0.5 rounded mt-1">{maps.media.get(p.media_type_id) as string}</span>}
                     <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground mt-2">
-                      {p.due_date && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(p.due_date).toLocaleDateString("pt-BR")}</span>}
+                      {p.due_date && canSee("due_date") && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(p.due_date).toLocaleDateString("pt-BR")}</span>}
                       {ass.length > 0 && <span>{ass.length} resp.</span>}
                     </div>
                     <Select value={p.status_id ?? ""} onValueChange={(v) => updateStatus.mutate({ id: p.id, status_id: v, from: p.status_id })}>
@@ -345,12 +347,20 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail }:
   assigneesByProject: Map<string, Assignee[]>;
   onDetail: (id: string) => void;
 }) {
+  const { canSee } = useFieldVisibility();
+  const colKeyToField: Record<string, string | null> = {
+    client: "client_id", media: "media_type", priority: "priority",
+    due_date: "due_date", post_date: "post_date",
+  };
+  const allowedCols = visibleCols.filter((k) => {
+    const f = colKeyToField[k]; return !f || canSee(f as never);
+  });
   return (
     <Card className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-muted/40 border-b">
           <tr>
-            {ALL_COLUMNS.filter((c) => visibleCols.includes(c.key)).map((c) => (
+            {ALL_COLUMNS.filter((c) => allowedCols.includes(c.key)).map((c) => (
               <th key={c.key} className="text-left px-3 py-2 font-medium text-xs uppercase text-muted-foreground">{c.label}</th>
             ))}
             <th className="w-12"></th>
@@ -363,19 +373,19 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail }:
             const st = p.status_id ? (maps.status.get(p.status_id) as Status | undefined) : null;
             return (
               <tr key={p.id} className="border-b hover:bg-muted/30">
-                {visibleCols.includes("title") && <td className="px-3 py-2 font-medium">{p.title}</td>}
-                {visibleCols.includes("client") && <td className="px-3 py-2 text-muted-foreground">{p.client_id ? (maps.client.get(p.client_id) as string) : "—"}</td>}
-                {visibleCols.includes("media") && <td className="px-3 py-2 text-muted-foreground">{p.media_type_id ? (maps.media.get(p.media_type_id) as string) : "—"}</td>}
-                {visibleCols.includes("status") && <td className="px-3 py-2">{st ? <Badge className="border-0" style={{ background: `${st.color}25`, color: st.color }}>{st.name}</Badge> : "—"}</td>}
-                {visibleCols.includes("priority") && <td className="px-3 py-2">{pr ? <Badge className="border-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge> : "—"}</td>}
-                {visibleCols.includes("assignees") && <td className="px-3 py-2 text-xs text-muted-foreground">{ass.map((a) => maps.member.get(a.user_id) as string ?? "?").join(", ") || "—"}</td>}
-                {visibleCols.includes("due_date") && <td className="px-3 py-2 text-muted-foreground">{p.due_date ? new Date(p.due_date).toLocaleDateString("pt-BR") : "—"}</td>}
-                {visibleCols.includes("post_date") && <td className="px-3 py-2 text-muted-foreground">{p.post_date ? new Date(p.post_date).toLocaleDateString("pt-BR") : "—"}</td>}
+                {allowedCols.includes("title") && <td className="px-3 py-2 font-medium">{p.title}</td>}
+                {allowedCols.includes("client") && <td className="px-3 py-2 text-muted-foreground">{p.client_id ? (maps.client.get(p.client_id) as string) : "—"}</td>}
+                {allowedCols.includes("media") && <td className="px-3 py-2 text-muted-foreground">{p.media_type_id ? (maps.media.get(p.media_type_id) as string) : "—"}</td>}
+                {allowedCols.includes("status") && <td className="px-3 py-2">{st ? <Badge className="border-0" style={{ background: `${st.color}25`, color: st.color }}>{st.name}</Badge> : "—"}</td>}
+                {allowedCols.includes("priority") && <td className="px-3 py-2">{pr ? <Badge className="border-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge> : "—"}</td>}
+                {allowedCols.includes("assignees") && <td className="px-3 py-2 text-xs text-muted-foreground">{ass.map((a) => maps.member.get(a.user_id) as string ?? "?").join(", ") || "—"}</td>}
+                {allowedCols.includes("due_date") && <td className="px-3 py-2 text-muted-foreground">{p.due_date ? new Date(p.due_date).toLocaleDateString("pt-BR") : "—"}</td>}
+                {allowedCols.includes("post_date") && <td className="px-3 py-2 text-muted-foreground">{p.post_date ? new Date(p.post_date).toLocaleDateString("pt-BR") : "—"}</td>}
                 <td className="px-2"><Button variant="ghost" size="sm" onClick={() => onDetail(p.id)}><Eye className="h-3.5 w-3.5" /></Button></td>
               </tr>
             );
           })}
-          {projects.length === 0 && <tr><td colSpan={visibleCols.length + 1} className="text-center py-8 text-muted-foreground text-sm">Nenhuma demanda</td></tr>}
+          {projects.length === 0 && <tr><td colSpan={allowedCols.length + 1} className="text-center py-8 text-muted-foreground text-sm">Nenhuma demanda</td></tr>}
         </tbody>
       </table>
     </Card>
@@ -604,6 +614,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
 }) {
   const qc = useQueryClient();
   const { isManager } = useAuth();
+  const { canSee } = useFieldVisibility();
 
   const { data: attachments = [] } = useQuery({
     queryKey: ["attachments", project?.id], enabled: !!project?.id,
@@ -655,8 +666,8 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Info label="Cliente" value={project.client_id ? (maps.client.get(project.client_id) as string) : "—"} />
-            <Info label="Tipo de mídia" value={project.media_type_id ? (maps.media.get(project.media_type_id) as string) : "—"} />
+            {canSee("client_id") && <Info label="Cliente" value={project.client_id ? (maps.client.get(project.client_id) as string) : "—"} />}
+            {canSee("media_type") && <Info label="Tipo de mídia" value={project.media_type_id ? (maps.media.get(project.media_type_id) as string) : "—"} />}
             <div>
               <Label className="text-xs text-muted-foreground">Etapa</Label>
               <Select value={project.status_id ?? ""} onValueChange={(v) => updateField.mutate({ status_id: v })}>
@@ -664,17 +675,19 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
                 <SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Prioridade</Label>
-              <Select value={project.priority_id ?? ""} onValueChange={(v) => updateField.mutate({ priority_id: v })}>
-                <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="—" /></SelectTrigger>
-                <SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
+            {canSee("priority") && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Prioridade</Label>
+                <Select value={project.priority_id ?? ""} onValueChange={(v) => updateField.mutate({ priority_id: v })}>
+                  <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            )}
             <Info label="Início" value={project.start_date ? new Date(project.start_date).toLocaleDateString("pt-BR") : "—"} />
-            <Info label="Prazo" value={project.due_date ? new Date(project.due_date).toLocaleDateString("pt-BR") : "—"} />
-            <Info label="Postagem" value={project.post_date ? new Date(project.post_date).toLocaleDateString("pt-BR") : "—"} />
-            {pr && <Info label="Prioridade atual" value={pr.name} />}
+            {canSee("due_date") && <Info label="Prazo" value={project.due_date ? new Date(project.due_date).toLocaleDateString("pt-BR") : "—"} />}
+            {canSee("post_date") && <Info label="Postagem" value={project.post_date ? new Date(project.post_date).toLocaleDateString("pt-BR") : "—"} />}
+            {pr && canSee("priority") && <Info label="Prioridade atual" value={pr.name} />}
           </div>
 
           <div>
@@ -691,10 +704,10 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
             )}
           </div>
 
-          {project.description && <div><Label className="text-xs text-muted-foreground">Descrição</Label><p className="mt-1 whitespace-pre-wrap">{project.description}</p></div>}
-          {project.notes && <div><Label className="text-xs text-muted-foreground">Observações</Label><p className="mt-1 whitespace-pre-wrap">{project.notes}</p></div>}
+          {project.description && canSee("description") && <div><Label className="text-xs text-muted-foreground">Descrição</Label><p className="mt-1 whitespace-pre-wrap">{project.description}</p></div>}
+          {project.notes && canSee("notes") && <div><Label className="text-xs text-muted-foreground">Observações</Label><p className="mt-1 whitespace-pre-wrap">{project.notes}</p></div>}
 
-          {project.reference_links?.length > 0 && (
+          {project.reference_links?.length > 0 && canSee("reference_links") && (
             <div>
               <Label className="text-xs text-muted-foreground">Referências</Label>
               <ul className="mt-1 space-y-1">
@@ -719,35 +732,37 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
             )}
           </div>
 
-          <div className="border rounded-md p-3 bg-muted/30 space-y-2">
-            <Label className="text-xs uppercase">Material para o cliente</Label>
-            {project.deliverable_path ? (
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm truncate">Arquivo enviado ✓</span>
-                <Button variant="outline" size="sm" onClick={() => downloadFile(project.deliverable_path!)}><Download className="h-3.5 w-3.5 mr-1" /> Baixar</Button>
-              </div>
-            ) : (
-              <Input type="file" onChange={(e) => e.target.files?.[0] && uploadDeliverable(e.target.files[0])} />
-            )}
-
-            {validationUrl && (
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Link de validação do cliente</Label>
-                <div className="flex gap-2">
-                  <Input value={validationUrl} readOnly className="text-xs" />
-                  <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(validationUrl); toast.success("Copiado"); }}>
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
+          {canSee("deliverable_path") && (
+            <div className="border rounded-md p-3 bg-muted/30 space-y-2">
+              <Label className="text-xs uppercase">Material para o cliente</Label>
+              {project.deliverable_path ? (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm truncate">Arquivo enviado ✓</span>
+                  <Button variant="outline" size="sm" onClick={() => downloadFile(project.deliverable_path!)}><Download className="h-3.5 w-3.5 mr-1" /> Baixar</Button>
                 </div>
-                {project.client_decision && (
-                  <p className="text-xs mt-1">
-                    Decisão do cliente: <strong>{project.client_decision}</strong>
-                    {project.client_feedback && <> — "{project.client_feedback}"</>}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+              ) : (
+                <Input type="file" onChange={(e) => e.target.files?.[0] && uploadDeliverable(e.target.files[0])} />
+              )}
+
+              {validationUrl && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Link de validação do cliente</Label>
+                  <div className="flex gap-2">
+                    <Input value={validationUrl} readOnly className="text-xs" />
+                    <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(validationUrl); toast.success("Copiado"); }}>
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  {project.client_decision && canSee("client_feedback") && (
+                    <p className="text-xs mt-1">
+                      Decisão do cliente: <strong>{project.client_decision}</strong>
+                      {project.client_feedback && <> — "{project.client_feedback}"</>}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {isManager && (
             <DialogFooter>
