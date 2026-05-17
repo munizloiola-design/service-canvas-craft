@@ -317,12 +317,12 @@ function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, 
                   <Card key={p.id} className="p-2.5 hover:shadow-md cursor-pointer" onClick={() => onDetail(p.id)}>
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <h4 className="font-medium text-sm leading-snug">{p.title}</h4>
-                      {pr && <Badge className="border-0 text-[10px] shrink-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge>}
+                      {pr && canSee("priority") && <Badge className="border-0 text-[10px] shrink-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge>}
                     </div>
-                    {p.client_id && <p className="text-xs text-muted-foreground">{maps.client.get(p.client_id) as string}</p>}
-                    {p.media_type_id && <span className="inline-block text-[10px] bg-secondary px-1.5 py-0.5 rounded mt-1">{maps.media.get(p.media_type_id) as string}</span>}
+                    {p.client_id && canSee("client_id") && <p className="text-xs text-muted-foreground">{maps.client.get(p.client_id) as string}</p>}
+                    {p.media_type_id && canSee("media_type") && <span className="inline-block text-[10px] bg-secondary px-1.5 py-0.5 rounded mt-1">{maps.media.get(p.media_type_id) as string}</span>}
                     <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground mt-2">
-                      {p.due_date && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(p.due_date).toLocaleDateString("pt-BR")}</span>}
+                      {p.due_date && canSee("due_date") && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(p.due_date).toLocaleDateString("pt-BR")}</span>}
                       {ass.length > 0 && <span>{ass.length} resp.</span>}
                     </div>
                     <Select value={p.status_id ?? ""} onValueChange={(v) => updateStatus.mutate({ id: p.id, status_id: v, from: p.status_id })}>
