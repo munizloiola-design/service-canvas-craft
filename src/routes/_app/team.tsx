@@ -237,14 +237,16 @@ function MemberDialog({
   memberFunctionIds: string[];
   onSaved: () => void;
 }) {
-  const { roles: actorRoles } = useAuth();
+  const { roles: actorRoles, isMaster } = useAuth();
   const actorRank = maxRank(actorRoles);
   const targetRank = maxRank(roles);
-  const canManageThisUser = actorRank > targetRank;
-  const allowedRoles = ASSIGNABLE_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
+  const canManageThisUser = isMaster || actorRank > targetRank;
+  const allowedRoles = isMaster ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
 
   const [primaryRole, setPrimaryRole] = useState<AppRole>(roles[0] ?? "membro");
   const [selectedFns, setSelectedFns] = useState<string[]>(memberFunctionIds);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar_url ?? null);
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     full_name: profile.full_name ?? "",
     job_title: profile.job_title ?? "",
