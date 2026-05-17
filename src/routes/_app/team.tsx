@@ -16,12 +16,14 @@ const ROLE_LABELS: Record<AppRole, string> = {
   admin: "Administrador",
   gerente: "Gerente",
   membro: "Membro",
+  cliente: "Cliente",
 };
 
 const ROLE_TONES: Record<AppRole, string> = {
   admin: "bg-primary/15 text-primary border-primary/20",
   gerente: "bg-info/15 text-info border-info/20",
   membro: "bg-muted text-muted-foreground",
+  cliente: "bg-accent/15 text-accent-foreground border-accent/20",
 };
 
 function TeamPage() {
