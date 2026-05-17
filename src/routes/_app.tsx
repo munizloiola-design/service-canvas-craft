@@ -3,31 +3,55 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { usePermissions, type Resource } from "@/lib/permissions";
 import { useBranding } from "@/lib/branding-context";
-import { LayoutDashboard, FolderKanban, Users, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck, Facebook, Sparkles, Plug, Inbox, Palette, Menu } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Users, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck, Facebook, Sparkles, Plug, Inbox, Palette, Menu, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
 
-const navItems: { to: string; label: string; icon: typeof LayoutDashboard; resource: Resource; adminOnly?: boolean }[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, resource: "dashboard" },
-  { to: "/projects", label: "Projetos", icon: FolderKanban, resource: "projects" },
-  { to: "/tickets", label: "Tickets", icon: Inbox, resource: "tickets" },
-  { to: "/calendario", label: "Calendário", icon: CalendarDays, resource: "calendario" },
-  { to: "/financeiro", label: "Financeiro", icon: DollarSign, resource: "financeiro" },
-  { to: "/orcamento", label: "Orçamento", icon: Calculator, resource: "orcamento" },
-  { to: "/equipamentos", label: "Equipamentos", icon: Wrench, resource: "equipamentos" },
-  { to: "/team", label: "Equipe", icon: Users, resource: "team" },
-  { to: "/facebook", label: "Facebook Ads", icon: Facebook, resource: "facebook" },
-  { to: "/diguinho", label: "Diguinho IA", icon: Sparkles, resource: "diguinho" },
-  { to: "/integracoes", label: "Integrações", icon: Plug, resource: "integracoes" },
-  { to: "/cadastros", label: "Cadastros", icon: Settings, resource: "cadastros" },
-  { to: "/personalizacao", label: "Personalização", icon: Palette, resource: "branding" },
-  { to: "/permissoes", label: "Permissões", icon: ShieldCheck, resource: "cadastros", adminOnly: true },
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; resource: Resource; adminOnly?: boolean };
+type NavGroup = { label?: string; items: NavItem[] };
+
+const navGroups: NavGroup[] = [
+  { items: [{ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, resource: "dashboard" }] },
+  {
+    label: "Operação",
+    items: [
+      { to: "/projects", label: "Projetos", icon: FolderKanban, resource: "projects" },
+      { to: "/tickets", label: "Tickets", icon: Inbox, resource: "tickets" },
+      { to: "/calendario", label: "Calendário", icon: CalendarDays, resource: "calendario" },
+      { to: "/equipamentos", label: "Equipamentos", icon: Wrench, resource: "equipamentos" },
+    ],
+  },
+  {
+    label: "Financeiro",
+    items: [
+      { to: "/financeiro", label: "Financeiro", icon: DollarSign, resource: "financeiro" },
+      { to: "/orcamento", label: "Orçamento", icon: Calculator, resource: "orcamento" },
+    ],
+  },
+  {
+    label: "Marketing",
+    items: [
+      { to: "/facebook", label: "Facebook Ads", icon: Facebook, resource: "facebook" },
+      { to: "/diguinho", label: "Diguinho IA", icon: Sparkles, resource: "diguinho" },
+    ],
+  },
+  { items: [{ to: "/team", label: "Equipe", icon: Users, resource: "team" }] },
+  {
+    label: "Configurações",
+    items: [
+      { to: "/cadastros", label: "Cadastros", icon: Settings, resource: "cadastros" },
+      { to: "/integracoes", label: "Integrações", icon: Plug, resource: "integracoes" },
+      { to: "/personalizacao", label: "Personalização", icon: Palette, resource: "branding" },
+      { to: "/permissoes", label: "Permissões", icon: ShieldCheck, resource: "cadastros", adminOnly: true },
+    ],
+  },
 ];
 
 function AppLayout() {
