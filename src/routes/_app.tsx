@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
 
-type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; resource: Resource; adminOnly?: boolean };
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; resource: Resource; masterOnly?: boolean };
 type NavGroup = { label?: string; items: NavItem[] };
 
 const navGroups: NavGroup[] = [
@@ -49,13 +49,13 @@ const navGroups: NavGroup[] = [
       { to: "/cadastros", label: "Cadastros", icon: Settings, resource: "cadastros" },
       { to: "/integracoes", label: "Integrações", icon: Plug, resource: "integracoes" },
       { to: "/personalizacao", label: "Personalização", icon: Palette, resource: "branding" },
-      { to: "/permissoes", label: "Permissões", icon: ShieldCheck, resource: "cadastros", adminOnly: true },
+      { to: "/permissoes", label: "Permissões", icon: ShieldCheck, resource: "cadastros", masterOnly: true },
     ],
   },
 ];
 
 function AppLayout() {
-  const { user, loading, signOut, roles, hasRole, isClient } = useAuth();
+  const { user, loading, signOut, roles, hasRole, isClient, isMaster } = useAuth();
   const { branding } = useBranding();
   const { can, loading: permsLoading } = usePermissions();
   const navigate = useNavigate();
@@ -77,7 +77,7 @@ function AppLayout() {
     .map((g) => ({
       ...g,
       items: g.items.filter((item) => {
-        if (item.adminOnly && !hasRole("admin")) return false;
+        if (item.masterOnly && !isMaster) return false;
         return can(item.resource, "view");
       }),
     }))

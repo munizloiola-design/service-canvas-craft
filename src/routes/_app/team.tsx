@@ -13,13 +13,15 @@ export const Route = createFileRoute("/_app/team")({
 });
 
 const ROLE_LABELS: Record<AppRole, string> = {
+  admin_master: "Admin Master",
   admin: "Administrador",
   gerente: "Gerente",
-  membro: "Membro",
+  membro: "Colaborador",
   cliente: "Cliente",
 };
 
 const ROLE_TONES: Record<AppRole, string> = {
+  admin_master: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
   admin: "bg-primary/15 text-primary border-primary/20",
   gerente: "bg-info/15 text-info border-info/20",
   membro: "bg-muted text-muted-foreground",
