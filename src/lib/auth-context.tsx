@@ -14,6 +14,7 @@ type AuthState = {
   signOut: () => Promise<void>;
   hasRole: (r: AppRole) => boolean;
   isManager: boolean;
+  isClient: boolean;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
