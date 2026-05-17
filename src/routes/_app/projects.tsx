@@ -704,10 +704,10 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
             )}
           </div>
 
-          {project.description && <div><Label className="text-xs text-muted-foreground">Descrição</Label><p className="mt-1 whitespace-pre-wrap">{project.description}</p></div>}
-          {project.notes && <div><Label className="text-xs text-muted-foreground">Observações</Label><p className="mt-1 whitespace-pre-wrap">{project.notes}</p></div>}
+          {project.description && canSee("description") && <div><Label className="text-xs text-muted-foreground">Descrição</Label><p className="mt-1 whitespace-pre-wrap">{project.description}</p></div>}
+          {project.notes && canSee("notes") && <div><Label className="text-xs text-muted-foreground">Observações</Label><p className="mt-1 whitespace-pre-wrap">{project.notes}</p></div>}
 
-          {project.reference_links?.length > 0 && (
+          {project.reference_links?.length > 0 && canSee("reference_links") && (
             <div>
               <Label className="text-xs text-muted-foreground">Referências</Label>
               <ul className="mt-1 space-y-1">
