@@ -1,41 +1,43 @@
-## Objetivo
+## Diagnóstico
 
-Melhorar o kanban no mobile: colunas empilhadas verticalmente e arrastar/soltar cards entre etapas funcionando tanto no touch quanto no mouse.
+Você é Admin Master, mas ao tentar marcar/desmarcar checkboxes na tela **Permissões** aparece um erro do tipo "permission denied / RLS".
 
-(O pedido do Meta Business em iframe fica pulado — Meta bloqueia embed via header de segurança.)
+Causa: as políticas RLS da tabela `role_permissions` exigem o papel **`admin`** (literal):
 
-## Mudanças
+```
+rp_insert / rp_update / rp_delete  →  has_role(auth.uid(), 'admin')
+```
 
-### 1. Layout responsivo do kanban
-Arquivo: `src/routes/_app/projects.tsx` (componente `KanbanView`, ~linha 303)
+Como sua conta tem o papel `admin_master` (e não `admin`), o banco bloqueia o INSERT/UPDATE/DELETE — mesmo que o front-end já libere a UI para o master. A liberação no `permissions.tsx` (linha `roles.includes("admin_master")`) só afeta a tela; o banco continua negando.
 
-- Substituir o `gridTemplateColumns` fixo por classes responsivas:
-  - **Mobile (<768px)**: 1 coluna, etapas empilhadas verticalmente; cada coluna ocupa largura total e os cards ficam visíveis em sequência.
-  - **Tablet (≥768px)**: 2 colunas.
-  - **Desktop (≥1024px)**: layout horizontal atual (até 5 colunas lado a lado, com scroll horizontal se houver mais etapas).
-- Ajustar altura mínima e padding para o empilhamento ficar legível.
+O mesmo padrão pode estar afetando outras tabelas administrativas que usam `has_role(..., 'admin')` em vez de `is_manager` / `is_master`.
 
-### 2. Drag-and-drop com `@dnd-kit`
-Biblioteca: `@dnd-kit/core` + `@dnd-kit/sortable` (suporte nativo a touch e mouse, leve, sem dependências de React DnD).
+## O que vou fazer
 
-- Instalar via `bun add @dnd-kit/core @dnd-kit/sortable`.
-- Envolver o `KanbanView` em `<DndContext>` configurado com `PointerSensor` + `TouchSensor` (ativação por pequeno delay para não conflitar com scroll/tap no mobile).
-- Cada coluna vira um `useDroppable` (id = `status_id`).
-- Cada card vira um `useDraggable` (id = `project_id`, dados = `{ from_status_id }`).
-- No `onDragEnd`:
-  - Se `over.id !== active.data.from_status_id`, disparar a mesma mutation `updateStatus` que já existe (atualiza `projects.status_id` + insere em `project_transitions`).
-  - Atualização otimista local via `queryClient.setQueryData(["projects"], ...)` para o card "saltar" na hora.
-- Manter o `<Select>` "Mover para..." dentro do card como fallback acessível (útil em telas onde drag é desconfortável).
-- Indicação visual: coluna alvo fica com `ring-2 ring-primary` durante o hover; card arrastado fica `opacity-50`.
+1. **Migração SQL** ajustando as políticas RLS para que `admin_master` também passe:
+   - `role_permissions` (insert/update/delete): trocar `has_role(auth.uid(), 'admin')` por `is_master(auth.uid()) OR has_role(auth.uid(), 'admin')`.
+   - `profiles.profiles_admin_update`: idem (master poder editar perfis de qualquer pessoa).
+   - `projects.projects_insert_managers / projects_update_managers / projects_delete_managers`: trocar pela função `is_manager(auth.uid())` (que já inclui master, admin e gerente) para manter consistência.
+   - `project_attachments.attachments_delete_managers`: idem.
 
-### 3. Considerações
-- Colaborador só pode arrastar cards em que está atribuído (RLS já bloqueia update, mas o handler também valida `isManager || isAssignee` antes da mutation para evitar erro feio).
-- Em etapas finais/validação de cliente, manter a regra atual (sem restrição extra agora).
-- O detalhe do card (clique para abrir) continua funcionando — o `DndContext` usa delay/distância mínima para diferenciar tap de drag.
+2. **Não mexer** em `user_roles` (já usa `can_manage_user_role`, que tem bypass do master), nem nas tabelas que já usam `is_manager` / `is_master`.
 
-## Resumo dos arquivos tocados
+3. Após aprovar a migração, abrir a tela **Permissões** e validar que os checkboxes salvam sem erro.
 
-- `package.json` — adicionar `@dnd-kit/core`, `@dnd-kit/sortable`.
-- `src/routes/_app/projects.tsx` — refatorar `KanbanView` (layout responsivo + DnD).
+## Por que essa abordagem
 
-Nenhuma mudança de banco, RLS ou outra tela.
+- Mantém a hierarquia atual (admin / gerente / membro) intacta.
+- Centraliza o "poder total" no `is_master()`, que já existe e é `SECURITY DEFINER`.
+- Não precisa mudar nenhuma tela — só destrava o banco para o master.
+
+## Detalhes técnicos (resumo SQL)
+
+```sql
+-- exemplo (será aplicado a cada policy citada acima)
+DROP POLICY "rp_insert" ON public.role_permissions;
+CREATE POLICY "rp_insert" ON public.role_permissions
+  FOR INSERT TO authenticated
+  WITH CHECK (public.is_master(auth.uid()) OR public.has_role(auth.uid(), 'admin'));
+```
+
+Quer que eu siga com essa correção?
