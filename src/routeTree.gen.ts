@@ -18,6 +18,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalIndexRouteImport } from './routes/portal/index'
 import { Route as VTokenRouteImport } from './routes/v.$token'
 import { Route as PortalPendentesRouteImport } from './routes/portal/pendentes'
+import { Route as PortalEstrategiaRouteImport } from './routes/portal/estrategia'
 import { Route as PortalCalendarioRouteImport } from './routes/portal/calendario'
 import { Route as PortalAprovadosRouteImport } from './routes/portal/aprovados'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
@@ -85,6 +86,11 @@ const VTokenRoute = VTokenRouteImport.update({
 const PortalPendentesRoute = PortalPendentesRouteImport.update({
   id: '/pendentes',
   path: '/pendentes',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalEstrategiaRoute = PortalEstrategiaRouteImport.update({
+  id: '/estrategia',
+  path: '/estrategia',
   getParentRoute: () => PortalRoute,
 } as any)
 const PortalCalendarioRoute = PortalCalendarioRouteImport.update({
@@ -235,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
   '/portal/calendario': typeof PortalCalendarioRoute
+  '/portal/estrategia': typeof PortalEstrategiaRoute
   '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
   '/portal/': typeof PortalIndexRoute
@@ -268,6 +275,7 @@ export interface FileRoutesByTo {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
   '/portal/calendario': typeof PortalCalendarioRoute
+  '/portal/estrategia': typeof PortalEstrategiaRoute
   '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
   '/portal': typeof PortalIndexRoute
@@ -304,6 +312,7 @@ export interface FileRoutesById {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
   '/portal/calendario': typeof PortalCalendarioRoute
+  '/portal/estrategia': typeof PortalEstrategiaRoute
   '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
   '/portal/': typeof PortalIndexRoute
@@ -340,6 +349,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/portal/aprovados'
     | '/portal/calendario'
+    | '/portal/estrategia'
     | '/portal/pendentes'
     | '/v/$token'
     | '/portal/'
@@ -373,6 +383,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/portal/aprovados'
     | '/portal/calendario'
+    | '/portal/estrategia'
     | '/portal/pendentes'
     | '/v/$token'
     | '/portal'
@@ -408,6 +419,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/portal/aprovados'
     | '/portal/calendario'
+    | '/portal/estrategia'
     | '/portal/pendentes'
     | '/v/$token'
     | '/portal/'
@@ -499,6 +511,13 @@ declare module '@tanstack/react-router' {
       path: '/pendentes'
       fullPath: '/portal/pendentes'
       preLoaderRoute: typeof PortalPendentesRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/estrategia': {
+      id: '/portal/estrategia'
+      path: '/estrategia'
+      fullPath: '/portal/estrategia'
+      preLoaderRoute: typeof PortalEstrategiaRouteImport
       parentRoute: typeof PortalRoute
     }
     '/portal/calendario': {
@@ -713,6 +732,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 interface PortalRouteChildren {
   PortalAprovadosRoute: typeof PortalAprovadosRoute
   PortalCalendarioRoute: typeof PortalCalendarioRoute
+  PortalEstrategiaRoute: typeof PortalEstrategiaRoute
   PortalPendentesRoute: typeof PortalPendentesRoute
   PortalIndexRoute: typeof PortalIndexRoute
 }
@@ -720,6 +740,7 @@ interface PortalRouteChildren {
 const PortalRouteChildren: PortalRouteChildren = {
   PortalAprovadosRoute: PortalAprovadosRoute,
   PortalCalendarioRoute: PortalCalendarioRoute,
+  PortalEstrategiaRoute: PortalEstrategiaRoute,
   PortalPendentesRoute: PortalPendentesRoute,
   PortalIndexRoute: PortalIndexRoute,
 }
