@@ -87,17 +87,38 @@ function Resumo() {
   const taxes = incomes * (Number(settings?.tax_pct ?? 0) / 100);
   const depreciation = equipments.reduce((s: number, e: any) => s + (Number(e.acquisition_value) * Number(e.depreciation_pct_year) / 100) / 12, 0);
 
-  // 12-month chart
+  const fixedMonthlyOf = (c: any) => c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
+
+  // 12-month chart — Saídas inclui despesas avulsas + custos fixos rateados + impostos + depreciação
+  const taxPct = Number(settings?.tax_pct ?? 0) / 100;
   const chart = Array.from({ length: 12 }, (_, idx) => {
     const ref = subMonths(new Date(), 11 - idx);
     const s = startOfMonth(ref), e = endOfMonth(ref);
     const set = entries.filter((x) => { const d = parseISO(x.entry_date); return d >= s && d <= e; });
+    const ent = set.filter((x) => x.kind === "income").reduce((a, b) => a + Number(b.amount), 0);
+    const expAvulsas = set.filter((x) => x.kind === "expense").reduce((a, b) => a + Number(b.amount), 0);
+    const sai = expAvulsas + fixedMonthly + (ent * taxPct) + depreciation;
     return {
       mes: format(ref, "MMM/yy", { locale: ptBR }),
-      Entradas: set.filter((x) => x.kind === "income").reduce((a, b) => a + Number(b.amount), 0),
-      Saidas: set.filter((x) => x.kind === "expense").reduce((a, b) => a + Number(b.amount), 0),
+      Entradas: ent,
+      Saidas: sai,
+      Resultado: ent - sai,
     };
   });
+
+  // Previsão do mês — recorrências esperadas + lançamentos do mês
+  const recurringExpectedIncome = recurring.reduce((s: number, r: any) => s + Number(r.amount), 0);
+  const receitasPrevistas = Math.max(recurringExpectedIncome, incomes) + Math.max(0, incomes - recurringExpectedIncome);
+  // simplificação: previsão = max(esperado, já lançado) — ignora dupla contagem
+  const receitasPrev = Math.max(recurringExpectedIncome, incomes);
+  const despesasPrev = Math.max(expenses, 0) + fixedMonthly + (receitasPrev * taxPct) + depreciation;
+  const saldoPrev = receitasPrev - despesasPrev;
+  const saldoReal = incomes - expenses;
+
+  const recurringCount = recurring.length;
+  const recurringConfirmed = recurring.filter((r: any) =>
+    monthEntries.some((m) => m.kind === "income" && (m.description ?? "").trim().toLowerCase() === (r.description ?? "").trim().toLowerCase())
+  ).length;
 
   const liquido = incomes - expenses - fixedMonthly - taxes - depreciation;
 
@@ -113,10 +134,32 @@ function Resumo() {
       </div>
 
       <Card className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium">Previsão do mês</h3>
+          <span className="text-xs text-muted-foreground">{format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })}</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Stat label="Receitas previstas" value={fmtBRL(receitasPrev)} icon={<TrendingUp className="h-4 w-4 text-green-600" />} />
+          <Stat label="Despesas previstas" value={fmtBRL(despesasPrev)} icon={<TrendingDown className="h-4 w-4 text-red-600" />} />
+          <Stat label="Saldo previsto" value={fmtBRL(saldoPrev)} highlight={saldoPrev >= 0 ? "pos" : "neg"} />
+          <Stat label="Saldo realizado" value={fmtBRL(saldoReal)} highlight={saldoReal >= 0 ? "pos" : "neg"} />
+        </div>
+        {recurringCount > 0 && (
+          <div className="mt-4">
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-muted-foreground">Receitas recorrentes recebidas</span>
+              <span className="font-medium">{recurringConfirmed} de {recurringCount}</span>
+            </div>
+            <Progress value={(recurringConfirmed / recurringCount) * 100} />
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-4">
         <h3 className="font-medium mb-4">Últimos 12 meses</h3>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chart}>
+            <ComposedChart data={chart}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis dataKey="mes" />
               <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
@@ -124,7 +167,8 @@ function Resumo() {
               <Legend />
               <Bar dataKey="Entradas" fill="hsl(142 70% 45%)" />
               <Bar dataKey="Saidas" fill="hsl(0 70% 55%)" />
-            </BarChart>
+              <Line type="monotone" dataKey="Resultado" stroke="hsl(221 83% 53%)" strokeWidth={2} dot={{ r: 3 }} />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </Card>
