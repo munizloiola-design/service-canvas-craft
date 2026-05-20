@@ -89,6 +89,72 @@ export type Database = {
         }
         Relationships: []
       }
+      client_briefings: {
+        Row: {
+          analise_redes: string | null
+          arquetipo: string | null
+          canais: string | null
+          client_id: string
+          concorrencia: string | null
+          created_at: string
+          historia: string | null
+          id: string
+          indicadores: Json
+          materiais: Json
+          missao: string | null
+          objecoes: string | null
+          objetivos_mes: string | null
+          persona: string | null
+          publico_alvo: string | null
+          referencias: string | null
+          updated_at: string
+          valores: string | null
+          visao: string | null
+        }
+        Insert: {
+          analise_redes?: string | null
+          arquetipo?: string | null
+          canais?: string | null
+          client_id: string
+          concorrencia?: string | null
+          created_at?: string
+          historia?: string | null
+          id?: string
+          indicadores?: Json
+          materiais?: Json
+          missao?: string | null
+          objecoes?: string | null
+          objetivos_mes?: string | null
+          persona?: string | null
+          publico_alvo?: string | null
+          referencias?: string | null
+          updated_at?: string
+          valores?: string | null
+          visao?: string | null
+        }
+        Update: {
+          analise_redes?: string | null
+          arquetipo?: string | null
+          canais?: string | null
+          client_id?: string
+          concorrencia?: string | null
+          created_at?: string
+          historia?: string | null
+          id?: string
+          indicadores?: Json
+          materiais?: Json
+          missao?: string | null
+          objecoes?: string | null
+          objetivos_mes?: string | null
+          persona?: string | null
+          publico_alvo?: string | null
+          referencias?: string | null
+          updated_at?: string
+          valores?: string | null
+          visao?: string | null
+        }
+        Relationships: []
+      }
       client_users: {
         Row: {
           client_id: string
