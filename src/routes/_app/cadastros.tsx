@@ -97,116 +97,17 @@ function CadastrosPage() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex-wrap h-auto">
           {TABLES.map((t) => <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>)}
-          <TabsTrigger value="__client_access">Acesso de clientes</TabsTrigger>
         </TabsList>
         {TABLES.map((t) => (
           <TabsContent key={t.key} value={t.key} className="mt-4">
             <CrudTable table={t} />
           </TabsContent>
         ))}
-        <TabsContent value="__client_access" className="mt-4">
-          <ClientAccessPanel />
-        </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function ClientAccessPanel() {
-  const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [clientId, setClientId] = useState("");
-
-  const invite = useServerFn(inviteClientUser);
-  const remove = useServerFn(removeClientAccess);
-  const listFn = useServerFn(listClientAccess);
-
-  const { data: links = [], isLoading } = useQuery({
-    queryKey: ["client_access"],
-    queryFn: () => listFn({}),
-  });
-
-  const { data: clients = [] } = useQuery({
-    queryKey: ["clients"],
-    queryFn: async () => {
-      const { data } = await supabase.from("clients").select("id, name").order("name");
-      return (data ?? []) as { id: string; name: string }[];
-    },
-  });
-
-  const inviteMut = useMutation({
-    mutationFn: () => invite({ data: { email, client_id: clientId } }),
-    onSuccess: (r) => {
-      toast.success(r.invited ? "Convite enviado por e-mail" : "Acesso vinculado");
-      qc.invalidateQueries({ queryKey: ["client_access"] });
-      setOpen(false); setEmail(""); setClientId("");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const removeMut = useMutation({
-    mutationFn: (id: string) => remove({ data: { id } }),
-    onSuccess: () => { toast.success("Removido"); qc.invalidateQueries({ queryKey: ["client_access"] }); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  return (
-    <Card className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <span className="text-sm text-muted-foreground">{links.length} vínculo(s)</span>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm"><UserPlus className="h-4 w-4 mr-1" /> Conceder acesso</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Conceder acesso ao portal</DialogTitle></DialogHeader>
-            <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); inviteMut.mutate(); }}>
-              <div className="space-y-1">
-                <Label htmlFor="ca-email">E-mail do cliente *</Label>
-                <Input id="ca-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                <p className="text-xs text-muted-foreground">Se o usuário não existir, um convite será enviado por e-mail.</p>
-              </div>
-              <div className="space-y-1">
-                <Label>Cliente vinculado *</Label>
-                <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                  <SelectContent>
-                    {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <DialogFooter>
-                <Button type="submit" disabled={inviteMut.isPending || !email || !clientId}>
-                  {inviteMut.isPending ? "Salvando..." : "Salvar"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="border rounded-md divide-y">
-        {isLoading && <p className="p-6 text-center text-sm text-muted-foreground">Carregando...</p>}
-        {!isLoading && links.length === 0 && (
-          <p className="p-6 text-center text-sm text-muted-foreground">Nenhum cliente com acesso ao portal.</p>
-        )}
-        {links.map((l) => (
-          <div key={l.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{l.email || "(sem e-mail)"}</p>
-              <p className="text-xs text-muted-foreground truncate">{l.client_name}</p>
-            </div>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive"
-              onClick={() => { if (confirm("Remover acesso?")) removeMut.mutate(l.id); }}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
 
 function CrudTable({ table }: { table: typeof TABLES[number] }) {
   const qc = useQueryClient();
