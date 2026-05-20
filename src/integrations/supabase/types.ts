@@ -1385,6 +1385,7 @@ export type Database = {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: number
       }
+      slugify: { Args: { _t: string }; Returns: string }
       submit_client_decision: {
         Args: { _decision: string; _feedback: string; _token: string }
         Returns: boolean
@@ -1393,6 +1394,7 @@ export type Database = {
         Args: { _decision: string; _feedback: string; _project_id: string }
         Returns: boolean
       }
+      unaccent_safe: { Args: { _t: string }; Returns: string }
       user_max_rank: { Args: { _uid: string }; Returns: number }
     }
     Enums: {
