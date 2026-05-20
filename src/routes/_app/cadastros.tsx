@@ -22,17 +22,6 @@ type Field = { name: string; label: string; type?: "text" | "textarea" | "number
 
 const TABLES: { key: string; label: string; fields: Field[]; orderBy?: string }[] = [
   {
-    key: "clients", label: "Clientes",
-    fields: [
-      { name: "name", label: "Nome / Empresa", required: true },
-      { name: "contact_name", label: "Contato" },
-      { name: "email", label: "E-mail", type: "email" },
-      { name: "phone", label: "Telefone" },
-      { name: "notes", label: "Notas", type: "textarea" },
-    ],
-    orderBy: "name",
-  },
-  {
     key: "media_types", label: "Tipos de mídia",
     fields: [
       { name: "name", label: "Nome", required: true },
