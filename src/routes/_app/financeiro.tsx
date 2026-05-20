@@ -112,8 +112,7 @@ function Resumo() {
 
   // Previsão do mês — recorrências esperadas + lançamentos do mês
   const recurringExpectedIncome = recurring.reduce((s: number, r: any) => s + Number(r.amount), 0);
-  const receitasPrevistas = Math.max(recurringExpectedIncome, incomes) + Math.max(0, incomes - recurringExpectedIncome);
-  // simplificação: previsão = max(esperado, já lançado) — ignora dupla contagem
+  // previsão = max(esperado, já lançado) — evita dupla contagem se já confirmado
   const receitasPrev = Math.max(recurringExpectedIncome, incomes);
   const despesasPrev = Math.max(expenses, 0) + fixedMonthly + (receitasPrev * taxPct) + depreciation;
   const saldoPrev = receitasPrev - despesasPrev;
