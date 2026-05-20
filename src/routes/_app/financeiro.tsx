@@ -73,6 +73,10 @@ function Resumo() {
     queryKey: ["financial_settings"],
     queryFn: async () => (await supabase.from("financial_settings").select("*").eq("id", true).maybeSingle()).data,
   });
+  const { data: recurring = [] } = useQuery({
+    queryKey: ["recurring_incomes"],
+    queryFn: async () => (await supabase.from("recurring_incomes").select("*").eq("active", true)).data ?? [],
+  });
 
   const monthStart = startOfMonth(new Date());
   const monthEnd = endOfMonth(new Date());
