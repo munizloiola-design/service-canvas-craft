@@ -68,6 +68,15 @@ const TABLES: { key: string; label: string; fields: Field[]; orderBy?: string }[
     orderBy: "name",
   },
   {
+    key: "collaborator_functions", label: "Subfunções (visibilidade)",
+    fields: [
+      { name: "name", label: "Nome da função", required: true },
+      { name: "key", label: "Chave (slug, ex: editor)", required: true },
+      { name: "sort_order", label: "Ordem", type: "number" },
+    ],
+    orderBy: "sort_order",
+  },
+  {
     key: "text_snippets", label: "Textos prontos",
     fields: [
       { name: "title", label: "Título", required: true },
