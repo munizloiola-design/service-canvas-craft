@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -9,12 +10,136 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Plus, Trash2, Save, ExternalLink } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Trash2, Save, ExternalLink, Pencil, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { inviteClientUser, listClientAccess, removeClientAccess } from "@/lib/client-access.functions";
 
 export const Route = createFileRoute("/_app/clientes-area")({ component: ClientesAreaPage });
 
+function ClientesAreaPage() {
+  const { isManager } = useAuth();
+  if (!isManager) {
+    return <div className="p-8"><p className="text-muted-foreground">Apenas administradores e gerentes podem acessar.</p></div>;
+  }
+  return (
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+      <header className="mb-6">
+        <h1 className="text-3xl font-semibold tracking-tight">Área do Cliente</h1>
+        <p className="text-muted-foreground mt-1">Gerencie clientes e seu cadastro estratégico.</p>
+      </header>
+      <Tabs defaultValue="clientes">
+        <TabsList>
+          <TabsTrigger value="clientes">Clientes</TabsTrigger>
+          <TabsTrigger value="briefing">Cadastro estratégico</TabsTrigger>
+          <TabsTrigger value="acesso">Acesso ao portal</TabsTrigger>
+        </TabsList>
+        <TabsContent value="clientes" className="mt-4"><ClientsCrud /></TabsContent>
+        <TabsContent value="briefing" className="mt-4"><BriefingPanel /></TabsContent>
+        <TabsContent value="acesso" className="mt-4"><ClientAccessPanel /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/* ---------------- Clientes CRUD ---------------- */
+type Client = { id: string; name: string; contact_name: string | null; email: string | null; phone: string | null; notes: string | null };
+
+function ClientsCrud() {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Client | null>(null);
+
+  const { data: rows = [] } = useQuery({
+    queryKey: ["clients"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clients").select("*").order("name");
+      if (error) throw error;
+      return (data ?? []) as Client[];
+    },
+  });
+
+  const save = useMutation({
+    mutationFn: async (payload: Omit<Client, "id">) => {
+      if (editing?.id) {
+        const { error } = await supabase.from("clients").update(payload).eq("id", editing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("clients").insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["clients"] }); toast.success("Salvo"); setOpen(false); setEditing(null); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("clients").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["clients"] }); toast.success("Removido"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card className="p-4">
+      <div className="flex justify-between items-center mb-4">
+        <span className="text-sm text-muted-foreground">{rows.length} cliente(s)</span>
+        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
+          <DialogTrigger asChild>
+            <Button size="sm" onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-1" /> Novo cliente</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{editing ? "Editar" : "Novo"} cliente</DialogTitle></DialogHeader>
+            <form
+              className="space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                save.mutate({
+                  name: String(fd.get("name") ?? ""),
+                  contact_name: (fd.get("contact_name") as string) || null,
+                  email: (fd.get("email") as string) || null,
+                  phone: (fd.get("phone") as string) || null,
+                  notes: (fd.get("notes") as string) || null,
+                });
+              }}
+            >
+              <div className="space-y-1"><Label>Nome / Empresa *</Label><Input name="name" required defaultValue={editing?.name ?? ""} /></div>
+              <div className="space-y-1"><Label>Contato</Label><Input name="contact_name" defaultValue={editing?.contact_name ?? ""} /></div>
+              <div className="space-y-1"><Label>E-mail</Label><Input name="email" type="email" defaultValue={editing?.email ?? ""} /></div>
+              <div className="space-y-1"><Label>Telefone</Label><Input name="phone" defaultValue={editing?.phone ?? ""} /></div>
+              <div className="space-y-1"><Label>Notas</Label><Textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} /></div>
+              <DialogFooter><Button type="submit" disabled={save.isPending}>{save.isPending ? "Salvando..." : "Salvar"}</Button></DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="border rounded-md divide-y">
+        {rows.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">Nenhum cliente</p>}
+        {rows.map((r) => (
+          <div key={r.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{r.name}</p>
+              {r.contact_name && <p className="text-xs text-muted-foreground truncate">{r.contact_name}{r.email ? ` · ${r.email}` : ""}</p>}
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive"
+              onClick={() => { if (confirm("Remover?")) remove.mutate(r.id); }}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+/* ---------------- Briefing estratégico ---------------- */
 type Material = { label: string; url: string };
 type Indicador = { nome: string; meta: string; atual: string };
 
@@ -25,6 +150,7 @@ type Briefing = {
   analise_redes: string;
   publico_alvo: string; persona: string; objecoes: string; arquetipo: string;
   referencias: string; concorrencia: string; canais: string;
+  swot_forcas: string; swot_fraquezas: string; swot_oportunidades: string; swot_ameacas: string;
   objetivos_mes: string;
   materiais: Material[];
   indicadores: Indicador[];
@@ -36,12 +162,12 @@ const empty = (client_id: string): Briefing => ({
   analise_redes: "",
   publico_alvo: "", persona: "", objecoes: "", arquetipo: "",
   referencias: "", concorrencia: "", canais: "",
+  swot_forcas: "", swot_fraquezas: "", swot_oportunidades: "", swot_ameacas: "",
   objetivos_mes: "",
   materiais: [], indicadores: [],
 });
 
-function ClientesAreaPage() {
-  const { isManager } = useAuth();
+function BriefingPanel() {
   const qc = useQueryClient();
   const [clientId, setClientId] = useState<string>("");
   const [data, setData] = useState<Briefing | null>(null);
@@ -86,20 +212,11 @@ function ClientesAreaPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (!isManager) {
-    return <div className="p-8"><p className="text-muted-foreground">Apenas administradores e gerentes podem acessar.</p></div>;
-  }
-
   const set = <K extends keyof Briefing>(k: K, v: Briefing[K]) => setData((d) => (d ? { ...d, [k]: v } : d));
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto">
-      <header className="mb-6">
-        <h1 className="text-3xl font-semibold tracking-tight">Área do Cliente</h1>
-        <p className="text-muted-foreground mt-1">Cadastre as informações estratégicas de cada cliente.</p>
-      </header>
-
-      <Card className="p-4 mb-4">
+    <div className="space-y-4">
+      <Card className="p-4">
         <Label className="mb-2 block">Cliente</Label>
         <Select value={clientId} onValueChange={setClientId}>
           <SelectTrigger><SelectValue placeholder="Selecione um cliente..." /></SelectTrigger>
@@ -110,7 +227,6 @@ function ClientesAreaPage() {
       </Card>
 
       {!clientId && <p className="text-sm text-muted-foreground text-center py-12">Selecione um cliente para começar.</p>}
-
       {clientId && isFetching && <p className="text-sm text-muted-foreground text-center py-12">Carregando...</p>}
 
       {clientId && data && !isFetching && (
@@ -166,6 +282,30 @@ function ClientesAreaPage() {
                 </AccordionContent>
               </AccordionItem>
 
+              <AccordionItem value="swot">
+                <AccordionTrigger>Análise SWOT</AccordionTrigger>
+                <AccordionContent className="pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1">
+                      <Label className="text-emerald-700 dark:text-emerald-400">Forças (Strengths)</Label>
+                      <Textarea rows={4} value={data.swot_forcas ?? ""} onChange={(e) => set("swot_forcas", e.target.value)} placeholder="Vantagens internas..." />
+                    </div>
+                    <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-3 space-y-1">
+                      <Label className="text-rose-700 dark:text-rose-400">Fraquezas (Weaknesses)</Label>
+                      <Textarea rows={4} value={data.swot_fraquezas ?? ""} onChange={(e) => set("swot_fraquezas", e.target.value)} placeholder="Pontos a melhorar..." />
+                    </div>
+                    <div className="rounded-md border border-sky-500/30 bg-sky-500/5 p-3 space-y-1">
+                      <Label className="text-sky-700 dark:text-sky-400">Oportunidades (Opportunities)</Label>
+                      <Textarea rows={4} value={data.swot_oportunidades ?? ""} onChange={(e) => set("swot_oportunidades", e.target.value)} placeholder="Fatores externos favoráveis..." />
+                    </div>
+                    <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
+                      <Label className="text-amber-700 dark:text-amber-400">Ameaças (Threats)</Label>
+                      <Textarea rows={4} value={data.swot_ameacas ?? ""} onChange={(e) => set("swot_ameacas", e.target.value)} placeholder="Riscos externos..." />
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
               <AccordionItem value="objetivos">
                 <AccordionTrigger>Objetivos do Mês</AccordionTrigger>
                 <AccordionContent className="pt-2">
@@ -214,5 +354,87 @@ function Field({ label, value, onChange, rows = 3 }: { label: string; value: str
       <Label>{label}</Label>
       <Textarea value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={rows} />
     </div>
+  );
+}
+
+/* ---------------- Acesso ao portal ---------------- */
+function ClientAccessPanel() {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [clientId, setClientId] = useState("");
+
+  const invite = useServerFn(inviteClientUser);
+  const remove = useServerFn(removeClientAccess);
+  const listFn = useServerFn(listClientAccess);
+
+  const { data: links = [], isLoading } = useQuery({ queryKey: ["client_access"], queryFn: () => listFn({}) });
+  const { data: clients = [] } = useQuery({
+    queryKey: ["clients-select"],
+    queryFn: async () => {
+      const { data } = await supabase.from("clients").select("id, name").order("name");
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
+
+  const inviteMut = useMutation({
+    mutationFn: () => invite({ data: { email, client_id: clientId } }),
+    onSuccess: (r) => {
+      toast.success(r.invited ? "Convite enviado por e-mail" : "Acesso vinculado");
+      qc.invalidateQueries({ queryKey: ["client_access"] });
+      setOpen(false); setEmail(""); setClientId("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const removeMut = useMutation({
+    mutationFn: (id: string) => remove({ data: { id } }),
+    onSuccess: () => { toast.success("Removido"); qc.invalidateQueries({ queryKey: ["client_access"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card className="p-4">
+      <div className="flex justify-between items-center mb-4">
+        <span className="text-sm text-muted-foreground">{links.length} vínculo(s)</span>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild><Button size="sm"><UserPlus className="h-4 w-4 mr-1" /> Conceder acesso</Button></DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Conceder acesso ao portal</DialogTitle></DialogHeader>
+            <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); inviteMut.mutate(); }}>
+              <div className="space-y-1">
+                <Label>E-mail do cliente *</Label>
+                <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <p className="text-xs text-muted-foreground">Se o usuário não existir, um convite será enviado por e-mail.</p>
+              </div>
+              <div className="space-y-1">
+                <Label>Cliente vinculado *</Label>
+                <Select value={clientId} onValueChange={setClientId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <DialogFooter><Button type="submit" disabled={inviteMut.isPending || !email || !clientId}>{inviteMut.isPending ? "Salvando..." : "Salvar"}</Button></DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="border rounded-md divide-y">
+        {isLoading && <p className="p-6 text-center text-sm text-muted-foreground">Carregando...</p>}
+        {!isLoading && links.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">Nenhum cliente com acesso ao portal.</p>}
+        {links.map((l) => (
+          <div key={l.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{l.email || "(sem e-mail)"}</p>
+              <p className="text-xs text-muted-foreground truncate">{l.client_name}</p>
+            </div>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive"
+              onClick={() => { if (confirm("Remover acesso?")) removeMut.mutate(l.id); }}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }

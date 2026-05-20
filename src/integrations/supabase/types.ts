@@ -107,6 +107,10 @@ export type Database = {
           persona: string | null
           publico_alvo: string | null
           referencias: string | null
+          swot_ameacas: string | null
+          swot_forcas: string | null
+          swot_fraquezas: string | null
+          swot_oportunidades: string | null
           updated_at: string
           valores: string | null
           visao: string | null
@@ -128,6 +132,10 @@ export type Database = {
           persona?: string | null
           publico_alvo?: string | null
           referencias?: string | null
+          swot_ameacas?: string | null
+          swot_forcas?: string | null
+          swot_fraquezas?: string | null
+          swot_oportunidades?: string | null
           updated_at?: string
           valores?: string | null
           visao?: string | null
@@ -149,6 +157,10 @@ export type Database = {
           persona?: string | null
           publico_alvo?: string | null
           referencias?: string | null
+          swot_ameacas?: string | null
+          swot_forcas?: string | null
+          swot_fraquezas?: string | null
+          swot_oportunidades?: string | null
           updated_at?: string
           valores?: string | null
           visao?: string | null
