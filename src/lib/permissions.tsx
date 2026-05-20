@@ -34,7 +34,8 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
 
   const can = (resource: Resource, action: Action) => {
     if (!user) return false;
-    if (roles.includes("admin_master" as AppRole)) return true;
+    // Administrador tem acesso total (substitui o antigo admin_master)
+    if (roles.includes("admin" as AppRole) || roles.includes("admin_master" as AppRole)) return true;
     return permissions.some((p) => roles.includes(p.role as AppRole) && p.resource === resource && p.action === action);
   };
 
