@@ -75,8 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const hasRole = (r: AppRole) => roles.includes(r);
-  const isMaster = hasRole("admin_master");
-  const isManager = isMaster || hasRole("admin") || hasRole("gerente");
+  // "admin_master" foi removido — Administrador agora tem poder total.
+  const isMaster = hasRole("admin") || hasRole("admin_master");
+  const isManager = isMaster || hasRole("gerente");
   const isClient = hasRole("cliente");
 
   return (
