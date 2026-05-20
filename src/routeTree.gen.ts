@@ -33,6 +33,7 @@ import { Route as AppFacebookRouteImport } from './routes/_app/facebook'
 import { Route as AppEquipamentosRouteImport } from './routes/_app/equipamentos'
 import { Route as AppDiguinhoRouteImport } from './routes/_app/diguinho'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppClientesAreaRouteImport } from './routes/_app/clientes-area'
 import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -161,6 +162,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppClientesAreaRoute = AppClientesAreaRouteImport.update({
+  id: '/clientes-area',
+  path: '/clientes-area',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCalendarioRoute = AppCalendarioRouteImport.update({
   id: '/calendario',
   path: '/calendario',
@@ -213,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/unsubscribe': typeof UnsubscribeRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
+  '/clientes-area': typeof AppClientesAreaRoute
   '/dashboard': typeof AppDashboardRoute
   '/diguinho': typeof AppDiguinhoRoute
   '/equipamentos': typeof AppEquipamentosRoute
@@ -245,6 +252,7 @@ export interface FileRoutesByTo {
   '/unsubscribe': typeof UnsubscribeRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
+  '/clientes-area': typeof AppClientesAreaRoute
   '/dashboard': typeof AppDashboardRoute
   '/diguinho': typeof AppDiguinhoRoute
   '/equipamentos': typeof AppEquipamentosRoute
@@ -280,6 +288,7 @@ export interface FileRoutesById {
   '/unsubscribe': typeof UnsubscribeRoute
   '/_app/cadastros': typeof AppCadastrosRoute
   '/_app/calendario': typeof AppCalendarioRoute
+  '/_app/clientes-area': typeof AppClientesAreaRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/diguinho': typeof AppDiguinhoRoute
   '/_app/equipamentos': typeof AppEquipamentosRoute
@@ -315,6 +324,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/cadastros'
     | '/calendario'
+    | '/clientes-area'
     | '/dashboard'
     | '/diguinho'
     | '/equipamentos'
@@ -347,6 +357,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/cadastros'
     | '/calendario'
+    | '/clientes-area'
     | '/dashboard'
     | '/diguinho'
     | '/equipamentos'
@@ -381,6 +392,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/_app/cadastros'
     | '/_app/calendario'
+    | '/_app/clientes-area'
     | '/_app/dashboard'
     | '/_app/diguinho'
     | '/_app/equipamentos'
@@ -594,6 +606,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/clientes-area': {
+      id: '/_app/clientes-area'
+      path: '/clientes-area'
+      fullPath: '/clientes-area'
+      preLoaderRoute: typeof AppClientesAreaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/calendario': {
       id: '/_app/calendario'
       path: '/calendario'
@@ -656,6 +675,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppCadastrosRoute: typeof AppCadastrosRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
+  AppClientesAreaRoute: typeof AppClientesAreaRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDiguinhoRoute: typeof AppDiguinhoRoute
   AppEquipamentosRoute: typeof AppEquipamentosRoute
@@ -673,6 +693,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppCadastrosRoute: AppCadastrosRoute,
   AppCalendarioRoute: AppCalendarioRoute,
+  AppClientesAreaRoute: AppClientesAreaRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDiguinhoRoute: AppDiguinhoRoute,
   AppEquipamentosRoute: AppEquipamentosRoute,
