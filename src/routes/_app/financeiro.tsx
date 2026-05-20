@@ -488,3 +488,149 @@ function Settings() {
     </Card>
   );
 }
+
+function Confirmacoes() {
+  const { roles } = useAuth();
+  const canEdit = roles.includes("admin") || roles.includes("gerente");
+  const qc = useQueryClient();
+  const monthStart = startOfMonth(new Date());
+  const monthEnd = endOfMonth(new Date());
+
+  const { data: recurring = [] } = useQuery({
+    queryKey: ["recurring_incomes"],
+    queryFn: async () => (await supabase.from("recurring_incomes").select("*, clients(name)").eq("active", true).order("description")).data ?? [],
+  });
+  const { data: fixed = [] } = useQuery({
+    queryKey: ["fixed_costs"],
+    queryFn: async () => (await supabase.from("fixed_costs").select("*").eq("active", true).order("name")).data ?? [],
+  });
+  const { data: entries = [] } = useQuery({
+    queryKey: ["financial_entries"],
+    queryFn: async () => (await supabase.from("financial_entries").select("*")).data ?? [],
+  });
+
+  const monthEntries = entries.filter((e: any) => {
+    const d = parseISO(e.entry_date);
+    return d >= monthStart && d <= monthEnd;
+  });
+
+  const isConfirmed = (desc: string, kind: "income" | "expense") =>
+    monthEntries.some((m: any) => m.kind === kind && (m.description ?? "").trim().toLowerCase() === (desc ?? "").trim().toLowerCase());
+
+  const findEntry = (desc: string, kind: "income" | "expense") =>
+    monthEntries.find((m: any) => m.kind === kind && (m.description ?? "").trim().toLowerCase() === (desc ?? "").trim().toLowerCase());
+
+  const confirmIncome = useMutation({
+    mutationFn: async (r: any) => {
+      const { data: u } = await supabase.auth.getUser();
+      const { error } = await supabase.from("financial_entries").insert({
+        kind: "income", entry_date: new Date().toISOString().slice(0, 10),
+        description: r.description, amount: r.amount, client_id: r.client_id ?? null,
+        category: "Recorrente", created_by: u.user?.id,
+      });
+      if (error) throw error;
+      const next = r.next_due ? addMonths(parseISO(r.next_due), 1) : addMonths(new Date(), 1);
+      await supabase.from("recurring_incomes").update({ next_due: next.toISOString().slice(0, 10) }).eq("id", r.id);
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_entries"] }); qc.invalidateQueries({ queryKey: ["recurring_incomes"] }); toast.success("Recebimento confirmado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const confirmExpense = useMutation({
+    mutationFn: async (c: any) => {
+      const { data: u } = await supabase.auth.getUser();
+      const day = c.due_day ?? new Date().getDate();
+      const date = new Date();
+      date.setDate(Math.min(day, endOfMonth(new Date()).getDate()));
+      const { error } = await supabase.from("financial_entries").insert({
+        kind: "expense", entry_date: date.toISOString().slice(0, 10),
+        description: c.name, amount: c.amount, category: c.category ?? "Custo fixo",
+        created_by: u.user?.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_entries"] }); toast.success("Pagamento confirmado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const unconfirm = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("financial_entries").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_entries"] }); toast.success("Desfeito"); },
+  });
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <Card className="p-4">
+        <h3 className="font-medium mb-1">Receitas recorrentes a receber</h3>
+        <p className="text-xs text-muted-foreground mb-4">Marque as receitas que já entraram este mês.</p>
+        <div className="space-y-2">
+          {recurring.map((r: any) => {
+            const confirmed = isConfirmed(r.description, "income");
+            const entry = findEntry(r.description, "income");
+            return (
+              <div key={r.id} className="flex items-center gap-3 p-3 rounded-md border">
+                <Checkbox
+                  checked={confirmed}
+                  disabled={!canEdit}
+                  onCheckedChange={(v) => {
+                    if (v && !confirmed) confirmIncome.mutate(r);
+                    else if (!v && confirmed && entry) unconfirm.mutate(entry.id);
+                  }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{r.description}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {r.clients?.name ?? "—"} {r.next_due ? `· vence ${format(parseISO(r.next_due), "dd/MM")}` : ""}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium text-green-600">{fmtBRL(Number(r.amount))}</p>
+                  {confirmed && <Badge variant="secondary" className="mt-1"><CheckCircle2 className="h-3 w-3 mr-1" />Recebido</Badge>}
+                </div>
+              </div>
+            );
+          })}
+          {recurring.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Nenhuma receita recorrente cadastrada</p>}
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="font-medium mb-1">Custos fixos a pagar</h3>
+        <p className="text-xs text-muted-foreground mb-4">Marque os custos fixos pagos este mês.</p>
+        <div className="space-y-2">
+          {fixed.map((c: any) => {
+            const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
+            const confirmed = isConfirmed(c.name, "expense");
+            const entry = findEntry(c.name, "expense");
+            return (
+              <div key={c.id} className="flex items-center gap-3 p-3 rounded-md border">
+                <Checkbox
+                  checked={confirmed}
+                  disabled={!canEdit}
+                  onCheckedChange={(v) => {
+                    if (v && !confirmed) confirmExpense.mutate(c);
+                    else if (!v && confirmed && entry) unconfirm.mutate(entry.id);
+                  }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{c.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {c.category ?? "—"} {c.due_day ? `· vence dia ${c.due_day}` : ""} {c.recurrence === "annual" ? "· anual" : ""}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium text-red-600">{fmtBRL(monthly)}</p>
+                  {confirmed && <Badge variant="secondary" className="mt-1"><CheckCircle2 className="h-3 w-3 mr-1" />Pago</Badge>}
+                </div>
+              </div>
+            );
+          })}
+          {fixed.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Nenhum custo fixo cadastrado</p>}
+        </div>
+      </Card>
+    </div>
+  );
+}
