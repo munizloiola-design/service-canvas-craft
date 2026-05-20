@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useBranding } from "@/lib/branding-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Briefcase, CalendarDays, ClipboardCheck, CheckCircle2, LogOut } from "lucide-react";
+import { Briefcase, CalendarDays, ClipboardCheck, CheckCircle2, LogOut, Target } from "lucide-react";
 
 export const Route = createFileRoute("/portal")({ component: PortalLayout });
 
@@ -12,6 +12,7 @@ const nav = [
   { to: "/portal/calendario", label: "Calendário", icon: CalendarDays },
   { to: "/portal/pendentes", label: "Pendentes", icon: ClipboardCheck },
   { to: "/portal/aprovados", label: "Aprovados", icon: CheckCircle2 },
+  { to: "/portal/estrategia", label: "Área Estratégica", icon: Target },
 ];
 
 function PortalLayout() {
