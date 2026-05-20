@@ -91,7 +91,7 @@ function Resumo() {
   const taxes = incomes * (Number(settings?.tax_pct ?? 0) / 100);
   const depreciation = equipments.reduce((s: number, e: any) => s + (Number(e.acquisition_value) * Number(e.depreciation_pct_year) / 100) / 12, 0);
 
-  const fixedMonthlyOf = (c: any) => c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
+  
 
   // 12-month chart — Saídas inclui despesas avulsas + custos fixos rateados + impostos + depreciação
   const taxPct = Number(settings?.tax_pct ?? 0) / 100;
