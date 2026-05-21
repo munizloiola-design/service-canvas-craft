@@ -331,6 +331,15 @@ function EntryForm({ projects, clients, onSubmit }: { projects: any[]; clients: 
           <div><Label>Categoria</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></div>
           <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={f.amount} onChange={(e) => setF({ ...f, amount: Number(e.target.value) })} /></div>
         </div>
+        {f.kind === "income" && (
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox
+              checked={(f.category ?? "").toLowerCase() === "comissão"}
+              onCheckedChange={(v) => setF({ ...f, category: v ? "Comissão" : "" })}
+            />
+            Esta receita é uma comissão
+          </label>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Projeto</Label>
