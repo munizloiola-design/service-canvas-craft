@@ -33,12 +33,13 @@ function FinanceiroPage() {
         <p className="text-sm text-muted-foreground">Resumo, custos, receitas e lançamentos.</p>
       </div>
       <Tabs defaultValue="resumo">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="confirmar">Confirmações do mês</TabsTrigger>
           <TabsTrigger value="entradas">Lançamentos</TabsTrigger>
           <TabsTrigger value="fixos">Custos fixos</TabsTrigger>
           <TabsTrigger value="recorrentes">Receitas recorrentes</TabsTrigger>
+          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           <TabsTrigger value="config">Configurações</TabsTrigger>
         </TabsList>
         <TabsContent value="resumo" className="mt-6"><Resumo /></TabsContent>
@@ -46,6 +47,7 @@ function FinanceiroPage() {
         <TabsContent value="entradas" className="mt-6"><Entries /></TabsContent>
         <TabsContent value="fixos" className="mt-6"><FixedCosts /></TabsContent>
         <TabsContent value="recorrentes" className="mt-6"><RecurringIncomes /></TabsContent>
+        <TabsContent value="relatorios" className="mt-6"><Relatorios /></TabsContent>
         <TabsContent value="config" className="mt-6"><Settings /></TabsContent>
       </Tabs>
     </div>
