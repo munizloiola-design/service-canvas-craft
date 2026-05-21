@@ -285,7 +285,12 @@ function Entries() {
             <TableRow key={i.id}>
               <TableCell>{format(parseISO(i.entry_date), "dd/MM/yyyy")}</TableCell>
               <TableCell><Badge variant={i.kind === "income" ? "default" : "secondary"}>{i.kind === "income" ? "Entrada" : "Saída"}</Badge></TableCell>
-              <TableCell className="font-medium">{i.description}</TableCell>
+              <TableCell className="font-medium">
+                {i.description}
+                {(i.category ?? "").toLowerCase() === "comissão" || (i.category ?? "").toLowerCase() === "comissao" ? (
+                  <Badge variant="outline" className="ml-2">Comissão</Badge>
+                ) : null}
+              </TableCell>
               <TableCell className="text-muted-foreground">{i.category ?? "—"}</TableCell>
               <TableCell className="text-muted-foreground text-sm">{i.projects?.title ?? i.clients?.name ?? "—"}</TableCell>
               <TableCell className={`text-right font-medium ${i.kind === "income" ? "text-green-600" : "text-red-600"}`}>{fmtBRL(Number(i.amount))}</TableCell>
