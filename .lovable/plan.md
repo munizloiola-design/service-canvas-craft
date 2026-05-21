@@ -1,37 +1,68 @@
-## Diagnóstico do gráfico
+## Objetivo
 
-O gráfico "Últimos 12 meses" lê **apenas** `financial_entries` (kind=income/expense). Hoje no banco existem:
-- 1 entrada (`income` R$ 90)
-- 3 custos fixos ativos (R$ 800) — em `fixed_costs`, **não** em `financial_entries`
+Refinar a aba Financeiro para que custos fixos e receitas recorrentes funcionem como **previsões** até serem confirmados, permitir edição dos cadastros recorrentes, marcar receitas como **comissão**, e adicionar **emissão de relatório por período**.
 
-Resultado: a barra "Saídas" fica zerada porque o que você cadastrou foram **custos fixos** (recorrentes), não lançamentos avulsos de saída. O gráfico ignora `fixed_costs`, impostos e depreciação — só os cards de KPI somam tudo.
+Arquivo único afetado: `src/routes/_app/financeiro.tsx`. Sem mudanças de schema.
 
-## Plano
+---
 
-### 1. Corrigir o gráfico "Últimos 12 meses"
-Incluir nas barras de **Saídas** de cada mês: lançamentos `expense` + parcela mensal dos custos fixos ativos (mensal = amount; anual = amount/12) + impostos do mês (income × tax_pct) + depreciação mensal dos equipamentos.
+### 1. Custos fixos e receitas recorrentes só contam após "OK"
 
-Adicionar uma terceira série **"Resultado"** (linha) usando `ComposedChart` para acompanhar o líquido mês a mês.
+KPIs e gráfico já leem só `financial_entries`, então o "Realizado" já está correto. Ajuste de UI:
 
-### 2. Nova seção "Previsão do mês"
-Card no topo do financeiro com:
-- **Receitas previstas**: soma de `recurring_incomes` ativas + entradas já lançadas no mês
-- **Despesas previstas**: `fixed_costs` ativos (rateados) + saídas já lançadas + impostos estimados + depreciação
-- **Saldo previsto** vs **Saldo realizado** (apenas o que já virou `financial_entries`)
-- Barra de progresso "X de Y receitas recorrentes recebidas neste mês"
+- **Cards do topo** (Previsão do mês): manter "Receitas/Despesas/Saldo previstos" mostrando o que **viria** dos recorrentes + fixos, e adicionar ao lado **"Realizado"** (só `financial_entries`).
+- **Gráfico "Últimos 12 meses"**: continua somando só lançamentos reais. Adicionar legenda explicando que custos fixos/recorrentes só entram após confirmação.
+- Aba **"Confirmações do mês"** continua sendo onde se marca "Recebido" / "Pago" (lógica já existe).
 
-### 3. Aba/seção "Confirmar recebimentos do mês"
-Lista todas as `recurring_incomes` ativas com checkbox "Recebido". Marcar cria automaticamente um `financial_entries` (kind=income, description=descrição da recorrente, client_id, amount, entry_date=hoje) e atualiza `next_due` da recorrente para o próximo período.
+### 2. Edição de custos fixos e receitas recorrentes
 
-Mesma lógica espelhada para `fixed_costs`: lista "Pagamentos do mês" com checkbox "Pago" que gera o `financial_entries` (kind=expense).
+Hoje só dá pra criar e excluir. Adicionar:
 
-Cada item mostra: descrição, valor, vencimento (`due_day` ou `next_due`), status (Pendente/Confirmado no mês corrente — detectado por matching de descrição + período).
+- Botão **Editar** (ícone lápis) em cada linha.
+- Reutilizar o mesmo dialog em modo "edição" (preenche campos e faz `update` em vez de `insert`).
+
+### 3. Previsão de despesa/receita com base em recorrentes
+
+Refinar o card "Previsão do mês" com quebra clara:
+
+```text
+Receitas previstas: R$ X
+  └ Realizado: R$ Y
+  └ A receber: R$ Z
+
+Despesas previstas: R$ A
+  └ Realizado: R$ B
+  └ A pagar:   R$ C
+```
+
+Adicionar barra "X de Y pagamentos confirmados" (análoga à de recebimentos).
+
+### 4. Marcar receita como comissão em Lançamentos
+
+No formulário de "Novo lançamento" (quando `kind = income`):
+
+- **Checkbox "É comissão"** → grava `category = "comissao"`.
+- Na tabela, exibir badge **"Comissão"** ao lado da descrição.
+
+### 5. Emissão de relatório por período (nova aba)
+
+Nova aba **"Relatórios"** com:
+
+- Dois inputs de data: **De** / **Até** (default: mês atual).
+- Botão **"Gerar relatório"** que filtra `financial_entries` no período.
+- Resumo: total de receitas, total de despesas, saldo, receitas de comissão, top 5 categorias.
+- Tabela com todos os lançamentos do período.
+- Dois botões de exportação:
+  - **Exportar CSV** (download direto, sem deps).
+  - **Imprimir / PDF** (usa `window.print()` com CSS print-only na área do relatório).
+
+---
 
 ### Detalhes técnicos
-- Arquivo único afetado: `src/routes/_app/financeiro.tsx`
-- Sem mudanças de schema (todas as tabelas já existem: `recurring_incomes`, `fixed_costs`, `financial_entries`)
-- Mutations via `useMutation` + `queryClient.invalidateQueries`
-- Marcação "já confirmado neste mês" detectada por: existir `financial_entries` no mês corrente com `description` igual ao da recorrente/custo fixo
-- Uso de `Checkbox`, `Progress`, `Tabs` (todos já no projeto via shadcn)
 
-Quer que eu siga com essa implementação?
+- Sem migration — todas as colunas já existem (`financial_entries.category`, `fixed_costs.*`, `recurring_incomes.*`).
+- Edição: `useMutation` + `invalidateQueries`. Dialog controlado por `editingItem` opcional.
+- Comissão: usa `Checkbox` shadcn já no projeto.
+- Relatório: query com `.gte('entry_date', from).lte('entry_date', to)`. CSV gerado em memória + `Blob` + link. Impressão via classe `print:block` / `print:hidden`.
+
+Posso seguir com a implementação?
