@@ -112,18 +112,27 @@ function Resumo() {
     };
   });
 
-  // Previsão do mês — recorrências esperadas + lançamentos do mês
-  const recurringExpectedIncome = recurring.reduce((s: number, r: any) => s + Number(r.amount), 0);
-  // previsão = max(esperado, já lançado) — evita dupla contagem se já confirmado
-  const receitasPrev = Math.max(recurringExpectedIncome, incomes);
-  const despesasPrev = Math.max(expenses, 0) + fixedMonthly + (receitasPrev * taxPct) + depreciation;
+  // Previsão do mês — separa Realizado / Pendente
+  // Receitas pendentes = recorrentes ainda não confirmadas no mês
+  const recurringPending = recurring.filter((r: any) =>
+    !monthEntries.some((m) => m.kind === "income" && (m.description ?? "").trim().toLowerCase() === (r.description ?? "").trim().toLowerCase())
+  );
+  const aReceber = recurringPending.reduce((s: number, r: any) => s + Number(r.amount), 0);
+  const receitasPrev = incomes + aReceber;
+
+  // Despesas pendentes = custos fixos ainda não confirmados no mês
+  const fixedPending = fixed.filter((c: any) =>
+    !monthEntries.some((m) => m.kind === "expense" && (m.description ?? "").trim().toLowerCase() === (c.name ?? "").trim().toLowerCase())
+  );
+  const aPagar = fixedPending.reduce((s: number, c: any) => s + (c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount)), 0);
+  const despesasPrev = expenses + aPagar + (receitasPrev * taxPct) + depreciation;
   const saldoPrev = receitasPrev - despesasPrev;
   const saldoReal = incomes - expenses;
 
   const recurringCount = recurring.length;
-  const recurringConfirmed = recurring.filter((r: any) =>
-    monthEntries.some((m) => m.kind === "income" && (m.description ?? "").trim().toLowerCase() === (r.description ?? "").trim().toLowerCase())
-  ).length;
+  const recurringConfirmed = recurringCount - recurringPending.length;
+  const fixedCount = fixed.length;
+  const fixedConfirmed = fixedCount - fixedPending.length;
 
   const liquido = incomes - expenses - fixedMonthly - taxes - depreciation;
 
@@ -143,21 +152,43 @@ function Resumo() {
           <h3 className="font-medium">Previsão do mês</h3>
           <span className="text-xs text-muted-foreground">{format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })}</span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Stat label="Receitas previstas" value={fmtBRL(receitasPrev)} icon={<TrendingUp className="h-4 w-4 text-green-600" />} />
-          <Stat label="Despesas previstas" value={fmtBRL(despesasPrev)} icon={<TrendingDown className="h-4 w-4 text-red-600" />} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-md border p-3 space-y-1">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Receitas</p>
+            <p className="text-xl font-semibold text-green-600">{fmtBRL(receitasPrev)} <span className="text-xs text-muted-foreground font-normal">previstas</span></p>
+            <div className="text-sm text-muted-foreground flex justify-between"><span>Realizado</span><span className="font-medium text-foreground">{fmtBRL(incomes)}</span></div>
+            <div className="text-sm text-muted-foreground flex justify-between"><span>A receber</span><span className="font-medium text-foreground">{fmtBRL(aReceber)}</span></div>
+          </div>
+          <div className="rounded-md border p-3 space-y-1">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Despesas</p>
+            <p className="text-xl font-semibold text-red-600">{fmtBRL(despesasPrev)} <span className="text-xs text-muted-foreground font-normal">previstas</span></p>
+            <div className="text-sm text-muted-foreground flex justify-between"><span>Realizado</span><span className="font-medium text-foreground">{fmtBRL(expenses)}</span></div>
+            <div className="text-sm text-muted-foreground flex justify-between"><span>A pagar</span><span className="font-medium text-foreground">{fmtBRL(aPagar)}</span></div>
+          </div>
           <Stat label="Saldo previsto" value={fmtBRL(saldoPrev)} highlight={saldoPrev >= 0 ? "pos" : "neg"} />
           <Stat label="Saldo realizado" value={fmtBRL(saldoReal)} highlight={saldoReal >= 0 ? "pos" : "neg"} />
         </div>
-        {recurringCount > 0 && (
-          <div className="mt-4">
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Receitas recorrentes recebidas</span>
-              <span className="font-medium">{recurringConfirmed} de {recurringCount}</span>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {recurringCount > 0 && (
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-muted-foreground">Receitas recorrentes recebidas</span>
+                <span className="font-medium">{recurringConfirmed} de {recurringCount}</span>
+              </div>
+              <Progress value={(recurringConfirmed / recurringCount) * 100} />
             </div>
-            <Progress value={(recurringConfirmed / recurringCount) * 100} />
-          </div>
-        )}
+          )}
+          {fixedCount > 0 && (
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-muted-foreground">Custos fixos pagos</span>
+                <span className="font-medium">{fixedConfirmed} de {fixedCount}</span>
+              </div>
+              <Progress value={(fixedConfirmed / fixedCount) * 100} />
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mt-3">Custos fixos e receitas recorrentes só somam ao realizado depois de confirmados na aba "Confirmações do mês".</p>
       </Card>
 
       <Card className="p-4">
