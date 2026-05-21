@@ -735,3 +735,140 @@ function Confirmacoes() {
     </div>
   );
 }
+
+function Relatorios() {
+  const today = new Date();
+  const [from, setFrom] = useState(startOfMonth(today).toISOString().slice(0, 10));
+  const [to, setTo] = useState(endOfMonth(today).toISOString().slice(0, 10));
+
+  const { data: entries = [], isFetching, refetch } = useQuery({
+    queryKey: ["report_entries", from, to],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financial_entries")
+        .select("*, projects(title), clients(name)")
+        .gte("entry_date", from)
+        .lte("entry_date", to)
+        .order("entry_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const totals = useMemo(() => {
+    const incomes = entries.filter((e) => e.kind === "income").reduce((s, e) => s + Number(e.amount), 0);
+    const expenses = entries.filter((e) => e.kind === "expense").reduce((s, e) => s + Number(e.amount), 0);
+    const comissoes = entries
+      .filter((e) => e.kind === "income" && (e.category ?? "").toLowerCase().includes("comiss"))
+      .reduce((s, e) => s + Number(e.amount), 0);
+    const byCat: Record<string, number> = {};
+    entries.forEach((e) => {
+      const k = (e.category ?? "Sem categoria").trim() || "Sem categoria";
+      byCat[k] = (byCat[k] ?? 0) + Number(e.amount);
+    });
+    const topCat = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    return { incomes, expenses, saldo: incomes - expenses, comissoes, topCat };
+  }, [entries]);
+
+  const exportCSV = () => {
+    const headers = ["Data", "Tipo", "Descrição", "Categoria", "Projeto/Cliente", "Valor"];
+    const rows = entries.map((e: any) => [
+      format(parseISO(e.entry_date), "dd/MM/yyyy"),
+      e.kind === "income" ? "Entrada" : "Saída",
+      (e.description ?? "").replace(/"/g, '""'),
+      (e.category ?? "").replace(/"/g, '""'),
+      (e.projects?.title ?? e.clients?.name ?? "").replace(/"/g, '""'),
+      Number(e.amount).toFixed(2).replace(".", ","),
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(";")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `relatorio_financeiro_${from}_a_${to}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="p-4 print:hidden">
+        <h3 className="font-medium mb-3">Emitir relatório</h3>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <Label>De</Label>
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </div>
+          <div>
+            <Label>Até</Label>
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          </div>
+          <Button onClick={() => refetch()} disabled={isFetching}>Gerar relatório</Button>
+          <Button variant="outline" onClick={exportCSV} disabled={!entries.length}><FileDown className="h-4 w-4 mr-2" />CSV</Button>
+          <Button variant="outline" onClick={() => window.print()} disabled={!entries.length}><Printer className="h-4 w-4 mr-2" />Imprimir / PDF</Button>
+        </div>
+      </Card>
+
+      <div id="relatorio-print" className="space-y-6">
+        <Card className="p-4">
+          <div className="flex items-baseline justify-between mb-4">
+            <h3 className="font-medium">Relatório financeiro</h3>
+            <span className="text-sm text-muted-foreground">
+              {format(parseISO(from), "dd/MM/yyyy")} a {format(parseISO(to), "dd/MM/yyyy")}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Stat label="Receitas" value={fmtBRL(totals.incomes)} icon={<TrendingUp className="h-4 w-4 text-green-600" />} />
+            <Stat label="Despesas" value={fmtBRL(totals.expenses)} icon={<TrendingDown className="h-4 w-4 text-red-600" />} />
+            <Stat label="Saldo" value={fmtBRL(totals.saldo)} highlight={totals.saldo >= 0 ? "pos" : "neg"} />
+            <Stat label="Comissões" value={fmtBRL(totals.comissoes)} />
+          </div>
+          {totals.topCat.length > 0 && (
+            <div className="mt-6">
+              <p className="text-sm font-medium mb-2">Top categorias</p>
+              <div className="space-y-1">
+                {totals.topCat.map(([cat, val]) => (
+                  <div key={cat} className="flex justify-between text-sm border-b py-1">
+                    <span>{cat}</span>
+                    <span className="font-medium">{fmtBRL(val)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-4">
+          <h4 className="font-medium mb-3">Lançamentos ({entries.length})</h4>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Projeto / Cliente</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.map((i: any) => (
+                <TableRow key={i.id}>
+                  <TableCell>{format(parseISO(i.entry_date), "dd/MM/yyyy")}</TableCell>
+                  <TableCell>{i.kind === "income" ? "Entrada" : "Saída"}</TableCell>
+                  <TableCell className="font-medium">{i.description}</TableCell>
+                  <TableCell className="text-muted-foreground">{i.category ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">{i.projects?.title ?? i.clients?.name ?? "—"}</TableCell>
+                  <TableCell className={`text-right font-medium ${i.kind === "income" ? "text-green-600" : "text-red-600"}`}>{fmtBRL(Number(i.amount))}</TableCell>
+                </TableRow>
+              ))}
+              {entries.length === 0 && (
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum lançamento no período</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      </div>
+    </div>
+  );
+}
