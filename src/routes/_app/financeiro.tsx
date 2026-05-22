@@ -757,6 +757,7 @@ function Confirmacoes() {
           {fixed.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Nenhum custo fixo cadastrado</p>}
         </div>
       </Card>
+      </div>
     </div>
   );
 }
