@@ -89,30 +89,13 @@ function Resumo() {
   });
   const incomes = monthEntries.filter((e) => e.kind === "income").reduce((s, e) => s + Number(e.amount), 0);
   const expenses = monthEntries.filter((e) => e.kind === "expense").reduce((s, e) => s + Number(e.amount), 0);
-  const fixedMonthly = fixed.reduce((s: number, c: any) => s + (c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount)), 0);
+  const fixedMonthlyPrevisto = fixed.reduce((s: number, c: any) => s + (c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount)), 0);
   const taxes = incomes * (Number(settings?.tax_pct ?? 0) / 100);
   const depreciation = equipments.reduce((s: number, e: any) => s + (Number(e.acquisition_value) * Number(e.depreciation_pct_year) / 100) / 12, 0);
 
-  
-
-  // 12-month chart — Saídas inclui despesas avulsas + custos fixos rateados + impostos + depreciação
-  const taxPct = Number(settings?.tax_pct ?? 0) / 100;
-  const chart = Array.from({ length: 12 }, (_, idx) => {
-    const ref = subMonths(new Date(), 11 - idx);
-    const s = startOfMonth(ref), e = endOfMonth(ref);
-    const set = entries.filter((x) => { const d = parseISO(x.entry_date); return d >= s && d <= e; });
-    const ent = set.filter((x) => x.kind === "income").reduce((a, b) => a + Number(b.amount), 0);
-    const expAvulsas = set.filter((x) => x.kind === "expense").reduce((a, b) => a + Number(b.amount), 0);
-    const sai = expAvulsas + fixedMonthly + (ent * taxPct) + depreciation;
-    return {
-      mes: format(ref, "MMM/yy", { locale: ptBR }),
-      Entradas: ent,
-      Saidas: sai,
-      Resultado: ent - sai,
-    };
-  });
-
   // Previsão do mês — separa Realizado / Pendente
+  const taxPct = Number(settings?.tax_pct ?? 0) / 100;
+
   // Receitas pendentes = recorrentes ainda não confirmadas no mês
   const recurringPending = recurring.filter((r: any) =>
     !monthEntries.some((m) => m.kind === "income" && (m.description ?? "").trim().toLowerCase() === (r.description ?? "").trim().toLowerCase())
@@ -125,16 +108,35 @@ function Resumo() {
     !monthEntries.some((m) => m.kind === "expense" && (m.description ?? "").trim().toLowerCase() === (c.name ?? "").trim().toLowerCase())
   );
   const aPagar = fixedPending.reduce((s: number, c: any) => s + (c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount)), 0);
+  // Custos fixos confirmados (realizados) no mês = total previsto - pendentes
+  const fixedConfirmedAmount = Math.max(0, fixedMonthlyPrevisto - aPagar);
   const despesasPrev = expenses + aPagar + (receitasPrev * taxPct) + depreciation;
   const saldoPrev = receitasPrev - despesasPrev;
   const saldoReal = incomes - expenses;
+
+  // 12-month chart — apenas valores realizados (custos fixos/recorrentes confirmados já estão em entries)
+  const chart = Array.from({ length: 12 }, (_, idx) => {
+    const ref = subMonths(new Date(), 11 - idx);
+    const s = startOfMonth(ref), e = endOfMonth(ref);
+    const set = entries.filter((x) => { const d = parseISO(x.entry_date); return d >= s && d <= e; });
+    const ent = set.filter((x) => x.kind === "income").reduce((a, b) => a + Number(b.amount), 0);
+    const expAvulsas = set.filter((x) => x.kind === "expense").reduce((a, b) => a + Number(b.amount), 0);
+    const sai = expAvulsas + (ent * taxPct) + depreciation;
+    return {
+      mes: format(ref, "MMM/yy", { locale: ptBR }),
+      Entradas: ent,
+      Saidas: sai,
+      Resultado: ent - sai,
+    };
+  });
 
   const recurringCount = recurring.length;
   const recurringConfirmed = recurringCount - recurringPending.length;
   const fixedCount = fixed.length;
   const fixedConfirmed = fixedCount - fixedPending.length;
 
-  const liquido = incomes - expenses - fixedMonthly - taxes - depreciation;
+  // Resultado líquido considera somente o que já foi realizado/confirmado
+  const liquido = incomes - expenses - taxes - depreciation;
 
   return (
     <div className="space-y-6">
