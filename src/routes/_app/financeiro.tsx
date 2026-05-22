@@ -143,7 +143,7 @@ function Resumo() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Stat label="Entradas (mês)" value={fmtBRL(incomes)} icon={<TrendingUp className="h-4 w-4 text-green-600" />} />
         <Stat label="Saídas (mês)" value={fmtBRL(expenses)} icon={<TrendingDown className="h-4 w-4 text-red-600" />} />
-        <Stat label="Custos fixos (mês)" value={fmtBRL(fixedMonthly)} icon={<Receipt className="h-4 w-4" />} />
+        <Stat label="Custos fixos pagos (mês)" value={fmtBRL(fixedConfirmedAmount)} icon={<Receipt className="h-4 w-4" />} />
         <Stat label={`Impostos (${settings?.tax_pct ?? 0}%)`} value={fmtBRL(taxes)} icon={<Receipt className="h-4 w-4" />} />
         <Stat label="Depreciação (mês)" value={fmtBRL(depreciation)} icon={<Wrench className="h-4 w-4" />} />
         <Stat label="Resultado líquido" value={fmtBRL(liquido)} highlight={liquido >= 0 ? "pos" : "neg"} />
