@@ -594,8 +594,10 @@ function Confirmacoes() {
   const { roles } = useAuth();
   const canEdit = roles.includes("admin") || roles.includes("gerente");
   const qc = useQueryClient();
-  const monthStart = startOfMonth(new Date());
-  const monthEnd = endOfMonth(new Date());
+  const [monthRef, setMonthRef] = useState(format(new Date(), "yyyy-MM"));
+  const refDate = parseISO(`${monthRef}-01`);
+  const monthStart = startOfMonth(refDate);
+  const monthEnd = endOfMonth(refDate);
 
   const { data: recurring = [] } = useQuery({
     queryKey: ["recurring_incomes"],
@@ -621,16 +623,23 @@ function Confirmacoes() {
   const findEntry = (desc: string, kind: "income" | "expense") =>
     monthEntries.find((m: any) => m.kind === kind && (m.description ?? "").trim().toLowerCase() === (desc ?? "").trim().toLowerCase());
 
+  const dateInMonth = (day?: number | null) => {
+    const d = new Date(refDate);
+    const target = day ?? d.getDate();
+    d.setDate(Math.min(target, endOfMonth(refDate).getDate()));
+    return d.toISOString().slice(0, 10);
+  };
+
   const confirmIncome = useMutation({
     mutationFn: async (r: any) => {
       const { data: u } = await supabase.auth.getUser();
       const { error } = await supabase.from("financial_entries").insert({
-        kind: "income", entry_date: new Date().toISOString().slice(0, 10),
+        kind: "income", entry_date: dateInMonth(),
         description: r.description, amount: r.amount, client_id: r.client_id ?? null,
         category: "Recorrente", created_by: u.user?.id,
       });
       if (error) throw error;
-      const next = r.next_due ? addMonths(parseISO(r.next_due), 1) : addMonths(new Date(), 1);
+      const next = r.next_due ? addMonths(parseISO(r.next_due), 1) : addMonths(refDate, 1);
       await supabase.from("recurring_incomes").update({ next_due: next.toISOString().slice(0, 10) }).eq("id", r.id);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_entries"] }); qc.invalidateQueries({ queryKey: ["recurring_incomes"] }); toast.success("Recebimento confirmado"); },
@@ -640,11 +649,8 @@ function Confirmacoes() {
   const confirmExpense = useMutation({
     mutationFn: async (c: any) => {
       const { data: u } = await supabase.auth.getUser();
-      const day = c.due_day ?? new Date().getDate();
-      const date = new Date();
-      date.setDate(Math.min(day, endOfMonth(new Date()).getDate()));
       const { error } = await supabase.from("financial_entries").insert({
-        kind: "expense", entry_date: date.toISOString().slice(0, 10),
+        kind: "expense", entry_date: dateInMonth(c.due_day),
         description: c.name, amount: c.amount, category: c.category ?? "Custo fixo",
         created_by: u.user?.id,
       });
@@ -663,7 +669,26 @@ function Confirmacoes() {
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="space-y-4">
+      <Card className="p-4 flex flex-col sm:flex-row sm:items-end gap-3">
+        <div className="flex-1">
+          <Label htmlFor="conf-month">Mês de referência</Label>
+          <p className="text-xs text-muted-foreground mt-1">
+            As confirmações abaixo são lançadas no mês selecionado. Custos fixos e receitas recorrentes só entram no realizado depois de confirmados aqui.
+          </p>
+        </div>
+        <Input
+          id="conf-month"
+          type="month"
+          value={monthRef}
+          onChange={(e) => setMonthRef(e.target.value || format(new Date(), "yyyy-MM"))}
+          className="w-full sm:w-48"
+        />
+      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="lg:col-span-2 -mb-4 text-xs text-muted-foreground">
+          Período: {format(monthStart, "dd/MM/yyyy")} – {format(monthEnd, "dd/MM/yyyy")}
+        </div>
       <Card className="p-4">
         <h3 className="font-medium mb-1">Receitas recorrentes a receber</h3>
         <p className="text-xs text-muted-foreground mb-4">Marque as receitas que já entraram este mês.</p>
@@ -732,6 +757,7 @@ function Confirmacoes() {
           {fixed.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Nenhum custo fixo cadastrado</p>}
         </div>
       </Card>
+      </div>
     </div>
   );
 }
