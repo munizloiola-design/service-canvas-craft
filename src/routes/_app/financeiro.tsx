@@ -661,6 +661,7 @@ function Confirmacoes() {
         kind: "expense", entry_date: dateInMonth(c.due_day),
         description: c.name, amount: c.amount, category: c.category ?? "Custo fixo",
         created_by: u.user?.id,
+        source_type: "fixed_cost", source_id: c.id,
       });
       if (error) throw error;
     },
