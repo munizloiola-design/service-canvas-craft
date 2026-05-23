@@ -134,8 +134,10 @@ function Resumo() {
   const fixedCount = fixed.length;
   const fixedConfirmed = fixedCount - fixedPending.length;
 
-  // Resultado líquido considera somente o que já foi realizado/confirmado
-  const liquido = incomes - expenses - taxes - depreciation;
+  // Resultado líquido considera somente o que já foi realizado/confirmado na aba "Confirmações do mês"
+  // (incomes/expenses vêm de financial_entries — receitas recorrentes e custos fixos só entram após confirmação)
+  // Impostos são calculados sobre as receitas confirmadas. Depreciação é teórica e NÃO entra aqui.
+  const liquido = incomes - expenses - taxes;
 
   return (
     <div className="space-y-6">
