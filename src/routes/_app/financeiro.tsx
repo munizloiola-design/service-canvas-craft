@@ -644,6 +644,7 @@ function Confirmacoes() {
         kind: "income", entry_date: dateInMonth(),
         description: r.description, amount: r.amount, client_id: r.client_id ?? null,
         category: "Recorrente", created_by: u.user?.id,
+        source_type: "recurring_income", source_id: r.id,
       });
       if (error) throw error;
       const next = r.next_due ? addMonths(parseISO(r.next_due), 1) : addMonths(refDate, 1);
