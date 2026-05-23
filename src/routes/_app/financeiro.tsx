@@ -621,11 +621,14 @@ function Confirmacoes() {
     return d >= monthStart && d <= monthEnd;
   });
 
-  const isConfirmed = (desc: string, kind: "income" | "expense") =>
-    monthEntries.some((m: any) => m.kind === kind && (m.description ?? "").trim().toLowerCase() === (desc ?? "").trim().toLowerCase());
-
-  const findEntry = (desc: string, kind: "income" | "expense") =>
-    monthEntries.find((m: any) => m.kind === kind && (m.description ?? "").trim().toLowerCase() === (desc ?? "").trim().toLowerCase());
+  // Correspondência primária por source_type+source_id; fallback por descrição
+  // só para lançamentos legados (sem vínculo estruturado).
+  const findFor = (
+    source: { id: string; description: string },
+    kind: "income" | "expense",
+  ) => findEntryForSource({ id: source.id, kind, description: source.description }, monthEntries as any);
+  const isConfirmed = (source: { id: string; description: string }, kind: "income" | "expense") =>
+    !!findFor(source, kind);
 
   const dateInMonth = (day?: number | null) => {
     const d = new Date(refDate);
