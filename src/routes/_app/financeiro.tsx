@@ -97,16 +97,15 @@ function Resumo() {
   // Previsão do mês — separa Realizado / Pendente
   const taxPct = Number(settings?.tax_pct ?? 0) / 100;
 
-  // Receitas pendentes = recorrentes ainda não confirmadas no mês
+  // Pendências usando vínculo estruturado (source_id) com fallback por descrição
   const recurringPending = recurring.filter((r: any) =>
-    !monthEntries.some((m) => m.kind === "income" && (m.description ?? "").trim().toLowerCase() === (r.description ?? "").trim().toLowerCase())
+    !findEntryForSource({ id: r.id, kind: "income", description: r.description }, monthEntries as any),
   );
   const aReceber = recurringPending.reduce((s: number, r: any) => s + Number(r.amount), 0);
   const receitasPrev = incomes + aReceber;
 
-  // Despesas pendentes = custos fixos ainda não confirmados no mês
   const fixedPending = fixed.filter((c: any) =>
-    !monthEntries.some((m) => m.kind === "expense" && (m.description ?? "").trim().toLowerCase() === (c.name ?? "").trim().toLowerCase())
+    !findEntryForSource({ id: c.id, kind: "expense", description: c.name }, monthEntries as any),
   );
   const aPagar = fixedPending.reduce((s: number, c: any) => s + (c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount)), 0);
   // Custos fixos confirmados (realizados) no mês = total previsto - pendentes
