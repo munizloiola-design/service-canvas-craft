@@ -738,8 +738,8 @@ function Confirmacoes() {
         <div className="space-y-2">
           {fixed.map((c: any) => {
             const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
-            const confirmed = isConfirmed(c.name, "expense");
-            const entry = findEntry(c.name, "expense");
+            const entry = findFor({ id: c.id, description: c.name }, "expense");
+            const confirmed = !!entry;
             return (
               <div key={c.id} className="flex items-center gap-3 p-3 rounded-md border">
                 <Checkbox
