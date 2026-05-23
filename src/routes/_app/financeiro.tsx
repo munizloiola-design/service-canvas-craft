@@ -703,8 +703,8 @@ function Confirmacoes() {
         <p className="text-xs text-muted-foreground mb-4">Marque as receitas que já entraram este mês.</p>
         <div className="space-y-2">
           {recurring.map((r: any) => {
-            const confirmed = isConfirmed(r.description, "income");
-            const entry = findEntry(r.description, "income");
+            const entry = findFor({ id: r.id, description: r.description }, "income");
+            const confirmed = !!entry;
             return (
               <div key={r.id} className="flex items-center gap-3 p-3 rounded-md border">
                 <Checkbox
