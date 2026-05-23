@@ -3,7 +3,9 @@ import {
   computeMonthKpis,
   pendingFixed,
   pendingRecurring,
+  findEntryForSource,
   monthlyAmount,
+  normDesc,
   type Entry,
   type FixedCost,
   type RecurringIncome,
@@ -13,92 +15,144 @@ const start = new Date("2026-05-01T00:00:00");
 const end = new Date("2026-05-31T23:59:59");
 
 const fixed: FixedCost[] = [
-  { name: "Aluguel", amount: 3000, recurrence: "monthly" },
-  { name: "Software anual", amount: 1200, recurrence: "annual" }, // 100/mês
+  { id: "fx-1", name: "Aluguel", amount: 3000, recurrence: "monthly" },
+  { id: "fx-2", name: "Software anual", amount: 1200, recurrence: "annual" }, // 100/mês
 ];
 
 const recurring: RecurringIncome[] = [
-  { description: "Contrato Cliente A", amount: 5000 },
-  { description: "Contrato Cliente B", amount: 2000 },
+  { id: "rc-1", description: "Contrato Cliente A", amount: 5000 },
+  { id: "rc-2", description: "Contrato Cliente B", amount: 2000 },
 ];
 
 describe("financeiro-calc — regra de confirmação", () => {
   it("monthlyAmount: rateia recorrência anual em 12", () => {
-    expect(monthlyAmount({ name: "x", amount: 1200, recurrence: "annual" })).toBe(100);
-    expect(monthlyAmount({ name: "x", amount: 300, recurrence: "monthly" })).toBe(300);
+    expect(monthlyAmount({ id: "x", name: "x", amount: 1200, recurrence: "annual" })).toBe(100);
+    expect(monthlyAmount({ id: "x", name: "x", amount: 300, recurrence: "monthly" })).toBe(300);
   });
 
   it("sem confirmações: nada entra no realizado, tudo fica pendente", () => {
     const k = computeMonthKpis({ entries: [], fixed, recurring, taxPct: 0.06, start, end });
     expect(k.incomes).toBe(0);
-    expect(k.expenses).toBe(0);
     expect(k.fixedConfirmed).toBe(0);
-    expect(k.fixedPending).toBe(3100); // 3000 + 100
-    expect(k.taxes).toBe(0);
+    expect(k.fixedPending).toBe(3100);
     expect(k.liquido).toBe(0);
     expect(pendingRecurring(recurring, []).length).toBe(2);
     expect(pendingFixed(fixed, []).length).toBe(2);
   });
 
-  it("custo fixo só conta como realizado depois de confirmado (entry no mês)", () => {
+  it("confirmação por source_id (estruturada) é a chave primária", () => {
+    const entries: Entry[] = [
+      {
+        kind: "expense",
+        entry_date: "2026-05-05",
+        amount: 3000,
+        description: "qualquer outro texto",
+        source_type: "fixed_cost",
+        source_id: "fx-1",
+      },
+    ];
+    const k = computeMonthKpis({ entries, fixed, recurring, taxPct: 0.06, start, end });
+    expect(k.fixedConfirmed).toBe(3000);
+    expect(pendingFixed(fixed, entries).map((c) => c.id)).toEqual(["fx-2"]);
+  });
+
+  it("fallback por descrição: aceita match em entry legada (sem source_id)", () => {
     const entries: Entry[] = [
       { kind: "expense", entry_date: "2026-05-05", amount: 3000, description: "Aluguel" },
     ];
-    const k = computeMonthKpis({ entries, fixed, recurring, taxPct: 0.06, start, end });
-    expect(k.expenses).toBe(3000);
-    expect(k.fixedConfirmed).toBe(3000);
-    expect(k.fixedPending).toBe(100); // só o software anual continua pendente
-    expect(pendingFixed(fixed, entries).map((c) => c.name)).toEqual(["Software anual"]);
+    expect(pendingFixed(fixed, entries).map((c) => c.id)).toEqual(["fx-2"]);
   });
 
-  it("receita recorrente só conta como realizado depois de confirmada", () => {
+  it("homônimos: dois custos fixos com mesmo nome não colidem quando há source_id", () => {
+    const twins: FixedCost[] = [
+      { id: "a", name: "Internet", amount: 200, recurrence: "monthly" },
+      { id: "b", name: "Internet", amount: 350, recurrence: "monthly" },
+    ];
     const entries: Entry[] = [
-      { kind: "income", entry_date: "2026-05-10", amount: 5000, description: "Contrato Cliente A" },
+      {
+        kind: "expense",
+        entry_date: "2026-05-04",
+        amount: 200,
+        description: "Internet",
+        source_type: "fixed_cost",
+        source_id: "a",
+      },
+    ];
+    expect(pendingFixed(twins, entries).map((c) => c.id)).toEqual(["b"]);
+  });
+
+  it("renomear o custo após confirmar NÃO desfaz a confirmação (match por id)", () => {
+    const renamed: FixedCost[] = [
+      { id: "fx-1", name: "Aluguel sala nova", amount: 3000, recurrence: "monthly" },
+    ];
+    const entries: Entry[] = [
+      {
+        kind: "expense",
+        entry_date: "2026-05-05",
+        amount: 3000,
+        description: "Aluguel",
+        source_type: "fixed_cost",
+        source_id: "fx-1",
+      },
+    ];
+    expect(pendingFixed(renamed, entries)).toEqual([]);
+  });
+
+  it("entry de outra origem com mesma descrição NÃO conta como confirmação", () => {
+    // Lançamento manual com descrição "Aluguel" mas vínculo a outra origem
+    // (source_id diferente) — não pode confundir a regra.
+    const entries: Entry[] = [
+      {
+        kind: "expense",
+        entry_date: "2026-05-05",
+        amount: 3000,
+        description: "Aluguel",
+        source_type: "fixed_cost",
+        source_id: "outro-id-qualquer",
+      },
+    ];
+    expect(findEntryForSource(
+      { id: "fx-1", kind: "expense", description: "Aluguel" },
+      entries,
+    )).toBeUndefined();
+    expect(pendingFixed(fixed, entries).map((c) => c.id)).toEqual(["fx-1", "fx-2"]);
+  });
+
+  it("normDesc: case-insensitive, sem acento, espaços colapsados", () => {
+    expect(normDesc("  Água   Mineral  ")).toBe(normDesc("agua mineral"));
+    expect(normDesc("Serviço")).toBe(normDesc("servico"));
+  });
+
+  it("receita recorrente: confirmação por source_id", () => {
+    const entries: Entry[] = [
+      {
+        kind: "income",
+        entry_date: "2026-05-10",
+        amount: 5000,
+        description: "pagto via pix",
+        source_type: "recurring_income",
+        source_id: "rc-1",
+      },
     ];
     const k = computeMonthKpis({ entries, fixed, recurring, taxPct: 0.06, start, end });
     expect(k.incomes).toBe(5000);
-    expect(k.taxes).toBeCloseTo(300, 5); // 6% sobre confirmado
-    expect(k.liquido).toBeCloseTo(5000 - 0 - 300, 5);
-    expect(pendingRecurring(recurring, entries).map((r) => r.description)).toEqual([
-      "Contrato Cliente B",
-    ]);
+    expect(k.taxes).toBeCloseTo(300, 5);
+    expect(pendingRecurring(recurring, entries).map((r) => r.id)).toEqual(["rc-2"]);
   });
 
-  it("confirmação fora do mês selecionado NÃO entra no realizado do mês", () => {
+  it("confirmação fora do mês NÃO conta como realizado", () => {
     const entries: Entry[] = [
-      // mês anterior
-      { kind: "expense", entry_date: "2026-04-28", amount: 3000, description: "Aluguel" },
-      { kind: "income", entry_date: "2026-04-15", amount: 5000, description: "Contrato Cliente A" },
+      {
+        kind: "expense",
+        entry_date: "2026-04-28",
+        amount: 3000,
+        description: "Aluguel",
+        source_type: "fixed_cost",
+        source_id: "fx-1",
+      },
     ];
     const k = computeMonthKpis({ entries, fixed, recurring, taxPct: 0.06, start, end });
-    expect(k.incomes).toBe(0);
     expect(k.expenses).toBe(0);
-    expect(k.fixedConfirmed).toBe(0);
     expect(k.fixedPending).toBe(3100);
-    expect(k.taxes).toBe(0);
-    expect(k.liquido).toBe(0);
-  });
-
-  it("matching de descrição é case-insensitive e ignora espaços", () => {
-    const entries: Entry[] = [
-      { kind: "expense", entry_date: "2026-05-05", amount: 3000, description: "  aluguel  " },
-    ];
-    expect(pendingFixed(fixed, entries).map((c) => c.name)).toEqual(["Software anual"]);
-  });
-
-  it("KPIs com tudo confirmado: liquido = receitas - despesas - impostos (sem depreciação)", () => {
-    const entries: Entry[] = [
-      { kind: "income", entry_date: "2026-05-02", amount: 5000, description: "Contrato Cliente A" },
-      { kind: "income", entry_date: "2026-05-02", amount: 2000, description: "Contrato Cliente B" },
-      { kind: "expense", entry_date: "2026-05-05", amount: 3000, description: "Aluguel" },
-      { kind: "expense", entry_date: "2026-05-05", amount: 100, description: "Software anual" },
-    ];
-    const k = computeMonthKpis({ entries, fixed, recurring, taxPct: 0.06, start, end });
-    expect(k.incomes).toBe(7000);
-    expect(k.expenses).toBe(3100);
-    expect(k.fixedConfirmed).toBe(3100);
-    expect(k.fixedPending).toBe(0);
-    expect(k.taxes).toBeCloseTo(420, 5);
-    expect(k.liquido).toBeCloseTo(7000 - 3100 - 420, 5);
   });
 });

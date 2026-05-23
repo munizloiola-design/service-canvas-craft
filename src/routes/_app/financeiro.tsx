@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 import { startOfMonth, endOfMonth, subMonths, format, parseISO, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { findEntryForSource } from "@/lib/financeiro-calc";
 
 export const Route = createFileRoute("/_app/financeiro")({ component: FinanceiroPage });
 
@@ -96,16 +97,15 @@ function Resumo() {
   // Previsão do mês — separa Realizado / Pendente
   const taxPct = Number(settings?.tax_pct ?? 0) / 100;
 
-  // Receitas pendentes = recorrentes ainda não confirmadas no mês
+  // Pendências usando vínculo estruturado (source_id) com fallback por descrição
   const recurringPending = recurring.filter((r: any) =>
-    !monthEntries.some((m) => m.kind === "income" && (m.description ?? "").trim().toLowerCase() === (r.description ?? "").trim().toLowerCase())
+    !findEntryForSource({ id: r.id, kind: "income", description: r.description }, monthEntries as any),
   );
   const aReceber = recurringPending.reduce((s: number, r: any) => s + Number(r.amount), 0);
   const receitasPrev = incomes + aReceber;
 
-  // Despesas pendentes = custos fixos ainda não confirmados no mês
   const fixedPending = fixed.filter((c: any) =>
-    !monthEntries.some((m) => m.kind === "expense" && (m.description ?? "").trim().toLowerCase() === (c.name ?? "").trim().toLowerCase())
+    !findEntryForSource({ id: c.id, kind: "expense", description: c.name }, monthEntries as any),
   );
   const aPagar = fixedPending.reduce((s: number, c: any) => s + (c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount)), 0);
   // Custos fixos confirmados (realizados) no mês = total previsto - pendentes
@@ -620,11 +620,14 @@ function Confirmacoes() {
     return d >= monthStart && d <= monthEnd;
   });
 
-  const isConfirmed = (desc: string, kind: "income" | "expense") =>
-    monthEntries.some((m: any) => m.kind === kind && (m.description ?? "").trim().toLowerCase() === (desc ?? "").trim().toLowerCase());
-
-  const findEntry = (desc: string, kind: "income" | "expense") =>
-    monthEntries.find((m: any) => m.kind === kind && (m.description ?? "").trim().toLowerCase() === (desc ?? "").trim().toLowerCase());
+  // Correspondência primária por source_type+source_id; fallback por descrição
+  // só para lançamentos legados (sem vínculo estruturado).
+  const findFor = (
+    source: { id: string; description: string },
+    kind: "income" | "expense",
+  ) => findEntryForSource({ id: source.id, kind, description: source.description }, monthEntries as any);
+  const isConfirmed = (source: { id: string; description: string }, kind: "income" | "expense") =>
+    !!findFor(source, kind);
 
   const dateInMonth = (day?: number | null) => {
     const d = new Date(refDate);
@@ -640,6 +643,7 @@ function Confirmacoes() {
         kind: "income", entry_date: dateInMonth(),
         description: r.description, amount: r.amount, client_id: r.client_id ?? null,
         category: "Recorrente", created_by: u.user?.id,
+        source_type: "recurring_income", source_id: r.id,
       });
       if (error) throw error;
       const next = r.next_due ? addMonths(parseISO(r.next_due), 1) : addMonths(refDate, 1);
@@ -656,6 +660,7 @@ function Confirmacoes() {
         kind: "expense", entry_date: dateInMonth(c.due_day),
         description: c.name, amount: c.amount, category: c.category ?? "Custo fixo",
         created_by: u.user?.id,
+        source_type: "fixed_cost", source_id: c.id,
       });
       if (error) throw error;
     },
@@ -697,8 +702,8 @@ function Confirmacoes() {
         <p className="text-xs text-muted-foreground mb-4">Marque as receitas que já entraram este mês.</p>
         <div className="space-y-2">
           {recurring.map((r: any) => {
-            const confirmed = isConfirmed(r.description, "income");
-            const entry = findEntry(r.description, "income");
+            const entry = findFor({ id: r.id, description: r.description }, "income");
+            const confirmed = !!entry;
             return (
               <div key={r.id} className="flex items-center gap-3 p-3 rounded-md border">
                 <Checkbox
@@ -706,7 +711,7 @@ function Confirmacoes() {
                   disabled={!canEdit}
                   onCheckedChange={(v) => {
                     if (v && !confirmed) confirmIncome.mutate(r);
-                    else if (!v && confirmed && entry) unconfirm.mutate(entry.id);
+                    else if (!v && confirmed && entry?.id) unconfirm.mutate(entry.id);
                   }}
                 />
                 <div className="flex-1 min-w-0">
@@ -732,8 +737,8 @@ function Confirmacoes() {
         <div className="space-y-2">
           {fixed.map((c: any) => {
             const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
-            const confirmed = isConfirmed(c.name, "expense");
-            const entry = findEntry(c.name, "expense");
+            const entry = findFor({ id: c.id, description: c.name }, "expense");
+            const confirmed = !!entry;
             return (
               <div key={c.id} className="flex items-center gap-3 p-3 rounded-md border">
                 <Checkbox
@@ -741,7 +746,7 @@ function Confirmacoes() {
                   disabled={!canEdit}
                   onCheckedChange={(v) => {
                     if (v && !confirmed) confirmExpense.mutate(c);
-                    else if (!v && confirmed && entry) unconfirm.mutate(entry.id);
+                    else if (!v && confirmed && entry?.id) unconfirm.mutate(entry.id);
                   }}
                 />
                 <div className="flex-1 min-w-0">

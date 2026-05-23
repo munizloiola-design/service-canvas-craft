@@ -503,6 +503,8 @@ export type Database = {
           kind: string
           project_id: string | null
           receipt_path: string | null
+          source_id: string | null
+          source_type: string | null
           updated_at: string
         }
         Insert: {
@@ -517,6 +519,8 @@ export type Database = {
           kind: string
           project_id?: string | null
           receipt_path?: string | null
+          source_id?: string | null
+          source_type?: string | null
           updated_at?: string
         }
         Update: {
@@ -531,6 +535,8 @@ export type Database = {
           kind?: string
           project_id?: string | null
           receipt_path?: string | null
+          source_id?: string | null
+          source_type?: string | null
           updated_at?: string
         }
         Relationships: [
