@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 import { startOfMonth, endOfMonth, subMonths, format, parseISO, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { findEntryForSource } from "@/lib/financeiro-calc";
 
 export const Route = createFileRoute("/_app/financeiro")({ component: FinanceiroPage });
 
