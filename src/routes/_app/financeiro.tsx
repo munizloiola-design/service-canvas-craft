@@ -747,7 +747,7 @@ function Confirmacoes() {
                   disabled={!canEdit}
                   onCheckedChange={(v) => {
                     if (v && !confirmed) confirmExpense.mutate(c);
-                    else if (!v && confirmed && entry) unconfirm.mutate(entry.id);
+                    else if (!v && confirmed && entry?.id) unconfirm.mutate(entry.id);
                   }}
                 />
                 <div className="flex-1 min-w-0">
