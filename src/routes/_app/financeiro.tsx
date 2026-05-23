@@ -114,14 +114,13 @@ function Resumo() {
   const saldoPrev = receitasPrev - despesasPrev;
   const saldoReal = incomes - expenses;
 
-  // 12-month chart — apenas valores realizados (custos fixos/recorrentes confirmados já estão em entries)
+  // 12-month chart — exclusivamente entradas reais confirmadas (financial_entries), sem previstos
   const chart = Array.from({ length: 12 }, (_, idx) => {
     const ref = subMonths(new Date(), 11 - idx);
     const s = startOfMonth(ref), e = endOfMonth(ref);
     const set = entries.filter((x) => { const d = parseISO(x.entry_date); return d >= s && d <= e; });
     const ent = set.filter((x) => x.kind === "income").reduce((a, b) => a + Number(b.amount), 0);
-    const expAvulsas = set.filter((x) => x.kind === "expense").reduce((a, b) => a + Number(b.amount), 0);
-    const sai = expAvulsas + (ent * taxPct) + depreciation;
+    const sai = set.filter((x) => x.kind === "expense").reduce((a, b) => a + Number(b.amount), 0);
     return {
       mes: format(ref, "MMM/yy", { locale: ptBR }),
       Entradas: ent,
