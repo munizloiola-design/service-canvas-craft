@@ -776,6 +776,11 @@ function Confirmacoes() {
                 <div className="text-right">
                   <p className="font-medium text-green-600">{fmtBRL(Number(r.amount))}</p>
                   {confirmed && <Badge variant="secondary" className="mt-1"><CheckCircle2 className="h-3 w-3 mr-1" />Recebido</Badge>}
+                  {confirmed && entry && (
+                    <p className="text-[10px] text-muted-foreground font-mono mt-1" title="Vínculo de auditoria">
+                      {entry.source_type ?? "—"} · {entry.source_id ? entry.source_id.slice(0, 8) + "…" : "—"}
+                    </p>
+                  )}
                 </div>
               </div>
             );
@@ -811,6 +816,11 @@ function Confirmacoes() {
                 <div className="text-right">
                   <p className="font-medium text-red-600">{fmtBRL(monthly)}</p>
                   {confirmed && <Badge variant="secondary" className="mt-1"><CheckCircle2 className="h-3 w-3 mr-1" />Pago</Badge>}
+                  {confirmed && entry && (
+                    <p className="text-[10px] text-muted-foreground font-mono mt-1" title="Vínculo de auditoria">
+                      {entry.source_type ?? "—"} · {entry.source_id ? entry.source_id.slice(0, 8) + "…" : "—"}
+                    </p>
+                  )}
                 </div>
               </div>
             );
