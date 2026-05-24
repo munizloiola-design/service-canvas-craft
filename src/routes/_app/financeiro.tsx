@@ -676,6 +676,22 @@ function Confirmacoes() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_entries"] }); toast.success("Desfeito"); },
   });
 
+  // Totais pendentes/confirmados para o painel de resumo
+  const recurringConfirmedTotal = recurring.reduce((s: number, r: any) => {
+    return isConfirmed({ id: r.id, description: r.description }, "income") ? s + Number(r.amount) : s;
+  }, 0);
+  const recurringPendingTotal = recurring.reduce((s: number, r: any) => {
+    return !isConfirmed({ id: r.id, description: r.description }, "income") ? s + Number(r.amount) : s;
+  }, 0);
+  const fixedConfirmedTotal = fixed.reduce((s: number, c: any) => {
+    const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
+    return isConfirmed({ id: c.id, description: c.name }, "expense") ? s + monthly : s;
+  }, 0);
+  const fixedPendingTotal = fixed.reduce((s: number, c: any) => {
+    const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
+    return !isConfirmed({ id: c.id, description: c.name }, "expense") ? s + monthly : s;
+  }, 0);
+
   return (
     <div className="space-y-4">
       <Card className="p-4 flex flex-col sm:flex-row sm:items-end gap-3">
@@ -693,6 +709,43 @@ function Confirmacoes() {
           className="w-full sm:w-48"
         />
       </Card>
+
+      {/* Painel de totais confirmados / pendentes */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-4 border-l-4 border-l-green-500">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Receitas confirmadas</p>
+            <TrendingUp className="h-4 w-4 text-green-600" />
+          </div>
+          <p className="text-xl font-semibold mt-1 text-green-600">{fmtBRL(recurringConfirmedTotal)}</p>
+          <p className="text-xs text-muted-foreground mt-1">{recurring.filter((r: any) => isConfirmed({ id: r.id, description: r.description }, "income")).length} de {recurring.length} receitas</p>
+        </Card>
+        <Card className="p-4 border-l-4 border-l-amber-500">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Receitas pendentes</p>
+            <TrendingUp className="h-4 w-4 text-amber-600" />
+          </div>
+          <p className="text-xl font-semibold mt-1 text-amber-600">{fmtBRL(recurringPendingTotal)}</p>
+          <p className="text-xs text-muted-foreground mt-1">{recurring.filter((r: any) => !isConfirmed({ id: r.id, description: r.description }, "income")).length} de {recurring.length} receitas</p>
+        </Card>
+        <Card className="p-4 border-l-4 border-l-red-500">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Custos confirmados</p>
+            <TrendingDown className="h-4 w-4 text-red-600" />
+          </div>
+          <p className="text-xl font-semibold mt-1 text-red-600">{fmtBRL(fixedConfirmedTotal)}</p>
+          <p className="text-xs text-muted-foreground mt-1">{fixed.filter((c: any) => isConfirmed({ id: c.id, description: c.name }, "expense")).length} de {fixed.length} custos</p>
+        </Card>
+        <Card className="p-4 border-l-4 border-l-amber-500">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Custos pendentes</p>
+            <TrendingDown className="h-4 w-4 text-amber-600" />
+          </div>
+          <p className="text-xl font-semibold mt-1 text-amber-600">{fmtBRL(fixedPendingTotal)}</p>
+          <p className="text-xs text-muted-foreground mt-1">{fixed.filter((c: any) => !isConfirmed({ id: c.id, description: c.name }, "expense")).length} de {fixed.length} custos</p>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="lg:col-span-2 -mb-4 text-xs text-muted-foreground">
           Período: {format(monthStart, "dd/MM/yyyy")} – {format(monthEnd, "dd/MM/yyyy")}
