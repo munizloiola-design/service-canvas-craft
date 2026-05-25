@@ -763,89 +763,147 @@ function Confirmacoes() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="lg:col-span-2 -mb-4 text-xs text-muted-foreground">
-          Período: {format(monthStart, "dd/MM/yyyy")} – {format(monthEnd, "dd/MM/yyyy")}
-        </div>
-      <Card className="p-4">
-        <h3 className="font-medium mb-1">Receitas recorrentes a receber</h3>
-        <p className="text-xs text-muted-foreground mb-4">Marque as receitas que já entraram este mês.</p>
-        <div className="space-y-2">
-          {recurring.map((r: any) => {
-            const entry = findFor({ id: r.id, description: r.description }, "income");
-            const confirmed = !!entry;
-            return (
-              <div key={r.id} className="flex items-center gap-3 p-3 rounded-md border">
-                <Checkbox
-                  checked={confirmed}
-                  disabled={!canEdit}
-                  onCheckedChange={(v) => {
-                    if (v && !confirmed) confirmIncome.mutate(r);
-                    else if (!v && confirmed && entry?.id) unconfirm.mutate(entry.id);
-                  }}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{r.description}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {r.clients?.name ?? "—"} {r.next_due ? `· vence ${format(parseISO(r.next_due), "dd/MM")}` : ""}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium text-green-600">{fmtBRL(Number(r.amount))}</p>
-                  {confirmed && <Badge variant="secondary" className="mt-1"><CheckCircle2 className="h-3 w-3 mr-1" />Recebido</Badge>}
-                  {confirmed && entry && (
-                    <p className="text-[10px] text-muted-foreground font-mono mt-1" title="Vínculo de auditoria">
-                      {entry.source_type ?? "—"} · {entry.source_id ? entry.source_id.slice(0, 8) + "…" : "—"}
-                    </p>
-                  )}
-                </div>
+      {(() => {
+        const nextRef = addMonths(refDate, 1);
+        const nextStart = startOfMonth(nextRef);
+        const nextEnd = endOfMonth(nextRef);
+        const nextMonthEntries = entries.filter((e: any) => {
+          const d = parseISO(e.entry_date);
+          return d >= nextStart && d <= nextEnd;
+        });
+        const pendingRecurMonth = recurring.filter((r: any) => !findEntryForSource({ id: r.id, kind: "income", description: r.description }, monthEntries as any));
+        const pendingFixedMonth = fixed.filter((c: any) => !findEntryForSource({ id: c.id, kind: "expense", description: c.name }, monthEntries as any));
+        const pendingRecurNext = recurring.filter((r: any) => !findEntryForSource({ id: r.id, kind: "income", description: r.description }, nextMonthEntries as any));
+        const pendingFixedNext = fixed.filter((c: any) => !findEntryForSource({ id: c.id, kind: "expense", description: c.name }, nextMonthEntries as any));
+        const overdue = overdueItems({
+          recurring: recurring as any,
+          fixed: fixed as any,
+          entries: entries as any,
+          today: new Date(),
+          monthsBack: 12,
+        });
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            {/* Receber mês */}
+            <Card className="p-4 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-green-700">Receber (mês)</h3>
+                <Badge variant="secondary">{pendingRecurMonth.length}</Badge>
               </div>
-            );
-          })}
-          {recurring.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Nenhuma receita recorrente cadastrada</p>}
-        </div>
-      </Card>
+              <p className="text-xs text-muted-foreground mb-3">Recorrentes ainda não confirmadas em {format(refDate, "MMM/yyyy", { locale: ptBR })}.</p>
+              <div className="space-y-2 flex-1">
+                {pendingRecurMonth.map((r: any) => (
+                  <div key={r.id} className="p-2 rounded-md border space-y-1">
+                    <div className="flex justify-between gap-2">
+                      <p className="font-medium text-sm truncate">{r.description}</p>
+                      <p className="text-sm text-green-600 font-medium whitespace-nowrap">{fmtBRL(Number(r.amount))}</p>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground truncate">{r.clients?.name ?? "—"}</p>
+                    {canEdit && <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => confirmIncome.mutate({ r })}><CheckCircle2 className="h-3 w-3 mr-1" />Confirmar</Button>}
+                  </div>
+                ))}
+                {pendingRecurMonth.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Tudo recebido este mês ✓</p>}
+              </div>
+            </Card>
 
-      <Card className="p-4">
-        <h3 className="font-medium mb-1">Custos fixos a pagar</h3>
-        <p className="text-xs text-muted-foreground mb-4">Marque os custos fixos pagos este mês.</p>
-        <div className="space-y-2">
-          {fixed.map((c: any) => {
-            const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
-            const entry = findFor({ id: c.id, description: c.name }, "expense");
-            const confirmed = !!entry;
-            return (
-              <div key={c.id} className="flex items-center gap-3 p-3 rounded-md border">
-                <Checkbox
-                  checked={confirmed}
-                  disabled={!canEdit}
-                  onCheckedChange={(v) => {
-                    if (v && !confirmed) confirmExpense.mutate(c);
-                    else if (!v && confirmed && entry?.id) unconfirm.mutate(entry.id);
-                  }}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{c.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {c.category ?? "—"} {c.due_day ? `· vence dia ${c.due_day}` : ""} {c.recurrence === "annual" ? "· anual" : ""}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium text-red-600">{fmtBRL(monthly)}</p>
-                  {confirmed && <Badge variant="secondary" className="mt-1"><CheckCircle2 className="h-3 w-3 mr-1" />Pago</Badge>}
-                  {confirmed && entry && (
-                    <p className="text-[10px] text-muted-foreground font-mono mt-1" title="Vínculo de auditoria">
-                      {entry.source_type ?? "—"} · {entry.source_id ? entry.source_id.slice(0, 8) + "…" : "—"}
-                    </p>
-                  )}
-                </div>
+            {/* Pagar mês */}
+            <Card className="p-4 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-red-700">Pagar (mês)</h3>
+                <Badge variant="secondary">{pendingFixedMonth.length}</Badge>
               </div>
-            );
-          })}
-          {fixed.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Nenhum custo fixo cadastrado</p>}
-        </div>
-      </Card>
-      </div>
+              <p className="text-xs text-muted-foreground mb-3">Custos fixos ainda não confirmados em {format(refDate, "MMM/yyyy", { locale: ptBR })}.</p>
+              <div className="space-y-2 flex-1">
+                {pendingFixedMonth.map((c: any) => {
+                  const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
+                  return (
+                    <div key={c.id} className="p-2 rounded-md border space-y-1">
+                      <div className="flex justify-between gap-2">
+                        <p className="font-medium text-sm truncate">{c.name}</p>
+                        <p className="text-sm text-red-600 font-medium whitespace-nowrap">{fmtBRL(monthly)}</p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate">{c.category ?? "—"}{c.due_day ? ` · dia ${c.due_day}` : ""}</p>
+                      {canEdit && <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => confirmExpense.mutate({ c })}><CheckCircle2 className="h-3 w-3 mr-1" />Confirmar</Button>}
+                    </div>
+                  );
+                })}
+                {pendingFixedMonth.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Tudo pago este mês ✓</p>}
+              </div>
+            </Card>
+
+            {/* Próximos (mês seguinte) */}
+            <Card className="p-4 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium">Próximos</h3>
+                <Badge variant="secondary">{pendingRecurNext.length + pendingFixedNext.length}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">Previstos para {format(nextRef, "MMM/yyyy", { locale: ptBR })}.</p>
+              <div className="space-y-2 flex-1">
+                {pendingRecurNext.map((r: any) => (
+                  <div key={`n-r-${r.id}`} className="p-2 rounded-md border flex justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1"><Badge variant="outline" className="text-[9px] h-4 px-1">Receita</Badge></div>
+                      <p className="font-medium text-sm truncate mt-1">{r.description}</p>
+                    </div>
+                    <p className="text-sm text-green-600 font-medium whitespace-nowrap">{fmtBRL(Number(r.amount))}</p>
+                  </div>
+                ))}
+                {pendingFixedNext.map((c: any) => {
+                  const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
+                  return (
+                    <div key={`n-f-${c.id}`} className="p-2 rounded-md border flex justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1"><Badge variant="outline" className="text-[9px] h-4 px-1">Despesa</Badge></div>
+                        <p className="font-medium text-sm truncate mt-1">{c.name}</p>
+                      </div>
+                      <p className="text-sm text-red-600 font-medium whitespace-nowrap">{fmtBRL(monthly)}</p>
+                    </div>
+                  );
+                })}
+                {pendingRecurNext.length + pendingFixedNext.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Nada previsto</p>}
+              </div>
+            </Card>
+
+            {/* Atrasados */}
+            <Card className="p-4 flex flex-col border-l-4 border-l-amber-500">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-amber-700">Atrasados</h3>
+                <Badge variant="destructive">{overdue.length}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">Meses anteriores sem confirmação (últimos 12 meses).</p>
+              <div className="space-y-2 flex-1 max-h-[420px] overflow-y-auto">
+                {overdue.map((o: OverdueItem, idx: number) => {
+                  const source = o.kind === "income"
+                    ? recurring.find((r: any) => r.id === o.sourceId)
+                    : fixed.find((c: any) => c.id === o.sourceId);
+                  return (
+                    <div key={`o-${o.sourceId}-${idx}`} className="p-2 rounded-md border space-y-1 bg-amber-50/30 dark:bg-amber-950/10">
+                      <div className="flex justify-between gap-2">
+                        <p className="font-medium text-sm truncate">{o.description}</p>
+                        <p className={`text-sm font-medium whitespace-nowrap ${o.kind === "income" ? "text-green-600" : "text-red-600"}`}>{fmtBRL(o.amount)}</p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        <Badge variant="outline" className="text-[9px] h-4 px-1 mr-1">{o.kind === "income" ? "Receita" : "Despesa"}</Badge>
+                        {format(o.monthDate, "MMM/yyyy", { locale: ptBR })}
+                      </p>
+                      {canEdit && source && (
+                        <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => {
+                          if (o.kind === "income") confirmIncome.mutate({ r: source, monthDate: o.monthDate });
+                          else confirmExpense.mutate({ c: source, monthDate: o.monthDate });
+                        }}>
+                          <CheckCircle2 className="h-3 w-3 mr-1" />Confirmar atraso
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+                {overdue.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Nada em atraso ✓</p>}
+              </div>
+            </Card>
+          </div>
+        );
+      })()}
+
     </div>
   );
 }
