@@ -63,6 +63,20 @@ function TeamPage() {
   const { isMaster, isManager } = useAuth();
   const qc = useQueryClient();
   const [openMember, setOpenMember] = useState<string | null>(null);
+  const doDelete = useServerFn(deleteTeamMember);
+
+  const deleteMember = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await doDelete({ data: { userId } });
+      if (!res.success) throw new Error("Falha ao excluir");
+      return res;
+    },
+    onSuccess: () => {
+      toast.success("Membro excluído");
+      qc.invalidateQueries({ queryKey: ["team-overview"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const { data } = useQuery({
     queryKey: ["team-overview"],
