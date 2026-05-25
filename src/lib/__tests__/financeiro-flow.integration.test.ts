@@ -3,12 +3,14 @@ import {
   buildConfirmationEntry,
   buildMonthlyChart,
   computeMonthKpis,
+  overdueItems,
   pendingFixed,
   pendingRecurring,
   type Entry,
   type FixedCost,
   type RecurringIncome,
 } from "../financeiro-calc";
+
 
 /**
  * Testes de integração do fluxo "Confirmações do mês":
