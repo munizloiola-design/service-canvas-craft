@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Trash2, TrendingUp, TrendingDown, Receipt, Wrench, CheckCircle2, Pencil, FileDown, Printer } from "lucide-react";
+import { Plus, Trash2, TrendingUp, TrendingDown, Receipt, CheckCircle2, Pencil, FileDown, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 import { startOfMonth, endOfMonth, subMonths, format, parseISO, addMonths } from "date-fns";
@@ -40,8 +40,7 @@ function FinanceiroPage() {
           <TabsTrigger value="realizados-rec">Recebimentos realizados</TabsTrigger>
           <TabsTrigger value="realizados-pag">Pagamentos realizados</TabsTrigger>
           <TabsTrigger value="entradas">Lançamentos</TabsTrigger>
-          <TabsTrigger value="fixos">Custos fixos</TabsTrigger>
-          <TabsTrigger value="recorrentes">Receitas recorrentes</TabsTrigger>
+          <TabsTrigger value="cadastros">Cadastros</TabsTrigger>
           <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           <TabsTrigger value="config">Configurações</TabsTrigger>
         </TabsList>
@@ -50,8 +49,16 @@ function FinanceiroPage() {
         <TabsContent value="realizados-rec" className="mt-6"><RealizadosTable kind="income" /></TabsContent>
         <TabsContent value="realizados-pag" className="mt-6"><RealizadosTable kind="expense" /></TabsContent>
         <TabsContent value="entradas" className="mt-6"><Entries /></TabsContent>
-        <TabsContent value="fixos" className="mt-6"><FixedCosts /></TabsContent>
-        <TabsContent value="recorrentes" className="mt-6"><RecurringIncomes /></TabsContent>
+        <TabsContent value="cadastros" className="mt-6">
+          <Tabs defaultValue="fixos">
+            <TabsList>
+              <TabsTrigger value="fixos">Custos fixos</TabsTrigger>
+              <TabsTrigger value="recorrentes">Receitas recorrentes</TabsTrigger>
+            </TabsList>
+            <TabsContent value="fixos" className="mt-4"><FixedCosts /></TabsContent>
+            <TabsContent value="recorrentes" className="mt-4"><RecurringIncomes /></TabsContent>
+          </Tabs>
+        </TabsContent>
         <TabsContent value="relatorios" className="mt-6"><Relatorios /></TabsContent>
         <TabsContent value="config" className="mt-6"><Settings /></TabsContent>
 
@@ -117,7 +124,7 @@ function Resumo() {
   const fixedConfirmedAmount = Math.max(0, fixedMonthlyPrevisto - aPagar);
   const despesasPrev = expenses + aPagar + (receitasPrev * taxPct) + depreciation;
   const saldoPrev = receitasPrev - despesasPrev;
-  const saldoReal = incomes - expenses;
+  
 
   // 12-month chart — exclusivamente entradas reais confirmadas (financial_entries), sem previstos
   const chart = Array.from({ length: 12 }, (_, idx) => {
@@ -146,14 +153,16 @@ function Resumo() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Stat label="Entradas (mês)" value={fmtBRL(incomes)} icon={<TrendingUp className="h-4 w-4 text-green-600" />} />
         <Stat label="Saídas (mês)" value={fmtBRL(expenses)} icon={<TrendingDown className="h-4 w-4 text-red-600" />} />
-        <Stat label="Custos fixos pagos (mês)" value={fmtBRL(fixedConfirmedAmount)} icon={<Receipt className="h-4 w-4" />} />
         <Stat label={`Impostos (${settings?.tax_pct ?? 0}%)`} value={fmtBRL(taxes)} icon={<Receipt className="h-4 w-4" />} />
-        <Stat label="Depreciação (mês)" value={fmtBRL(depreciation)} icon={<Wrench className="h-4 w-4" />} />
-        <Stat label="Resultado líquido" value={fmtBRL(liquido)} highlight={liquido >= 0 ? "pos" : "neg"} />
+        <Stat label="Resultado realizado" value={fmtBRL(liquido)} highlight={liquido >= 0 ? "pos" : "neg"} />
+        <Stat label="Saldo previsto" value={fmtBRL(saldoPrev)} highlight={saldoPrev >= 0 ? "pos" : "neg"} />
       </div>
+      <p className="text-xs text-muted-foreground -mt-2">
+        Resultado realizado = Entradas − Saídas − Impostos. Saídas já incluem os custos fixos confirmados.
+      </p>
 
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
@@ -170,11 +179,11 @@ function Resumo() {
           <div className="rounded-md border p-3 space-y-1">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Despesas</p>
             <p className="text-xl font-semibold text-red-600">{fmtBRL(despesasPrev)} <span className="text-xs text-muted-foreground font-normal">previstas</span></p>
-            <div className="text-sm text-muted-foreground flex justify-between"><span>Realizado</span><span className="font-medium text-foreground">{fmtBRL(expenses)}</span></div>
-            <div className="text-sm text-muted-foreground flex justify-between"><span>A pagar</span><span className="font-medium text-foreground">{fmtBRL(aPagar)}</span></div>
+            <div className="text-sm text-muted-foreground flex justify-between"><span>Realizado (saídas)</span><span className="font-medium text-foreground">{fmtBRL(expenses)}</span></div>
+            <div className="text-sm text-muted-foreground flex justify-between"><span>Custos fixos pagos</span><span className="font-medium text-foreground">{fmtBRL(fixedConfirmedAmount)}</span></div>
+            <div className="text-sm text-muted-foreground flex justify-between"><span>A pagar (fixos)</span><span className="font-medium text-foreground">{fmtBRL(aPagar)}</span></div>
+            <div className="text-sm text-muted-foreground flex justify-between"><span>Depreciação (mês, teórica)</span><span className="font-medium text-foreground">{fmtBRL(depreciation)}</span></div>
           </div>
-          <Stat label="Saldo previsto" value={fmtBRL(saldoPrev)} highlight={saldoPrev >= 0 ? "pos" : "neg"} />
-          <Stat label="Saldo realizado" value={fmtBRL(saldoReal)} highlight={saldoReal >= 0 ? "pos" : "neg"} />
         </div>
         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           {recurringCount > 0 && (
@@ -639,8 +648,19 @@ function Confirmacoes() {
 
   const confirmIncome = useMutation({
     mutationFn: async ({ r, monthDate }: { r: any; monthDate?: Date }) => {
-      const { data: u } = await supabase.auth.getUser();
       const md = monthDate ?? refDate;
+      // Idempotência: bloqueia confirmação duplicada no mesmo mês
+      const mStart = startOfMonth(md);
+      const mEnd = endOfMonth(md);
+      const mEntries = entries.filter((e: any) => {
+        const d = parseISO(e.entry_date);
+        return d >= mStart && d <= mEnd;
+      });
+      const dup = findEntryForSource({ id: r.id, kind: "income", description: r.description }, mEntries as any);
+      if (dup) {
+        throw new Error("Já confirmado neste mês");
+      }
+      const { data: u } = await supabase.auth.getUser();
       const dateStr = (() => {
         const d = new Date(md);
         d.setDate(Math.min(d.getDate() || 1, endOfMonth(md).getDate()));
@@ -652,32 +672,55 @@ function Confirmacoes() {
         category: "Recorrente", created_by: u.user?.id,
         source_type: "recurring_income", source_id: r.id,
       });
-      if (error) throw error;
+      if (error) {
+        if ((error as any).code === "23505") throw new Error("Já confirmado neste mês");
+        throw error;
+      }
       const next = r.next_due ? addMonths(parseISO(r.next_due), 1) : addMonths(md, 1);
       await supabase.from("recurring_incomes").update({ next_due: next.toISOString().slice(0, 10) }).eq("id", r.id);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_entries"] }); qc.invalidateQueries({ queryKey: ["recurring_incomes"] }); toast.success("Recebimento confirmado"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => {
+      if (e.message === "Já confirmado neste mês") toast.info(e.message);
+      else toast.error(e.message);
+    },
   });
 
   const confirmExpense = useMutation({
     mutationFn: async ({ c, monthDate }: { c: any; monthDate?: Date }) => {
-      const { data: u } = await supabase.auth.getUser();
       const md = monthDate ?? refDate;
+      const mStart = startOfMonth(md);
+      const mEnd = endOfMonth(md);
+      const mEntries = entries.filter((e: any) => {
+        const d = parseISO(e.entry_date);
+        return d >= mStart && d <= mEnd;
+      });
+      const dup = findEntryForSource({ id: c.id, kind: "expense", description: c.name }, mEntries as any);
+      if (dup) {
+        throw new Error("Já confirmado neste mês");
+      }
+      const { data: u } = await supabase.auth.getUser();
       const day = c.due_day ?? 1;
       const d = new Date(md);
       d.setDate(Math.min(day, endOfMonth(md).getDate()));
       const dateStr = d.toISOString().slice(0, 10);
+      const amount = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
       const { error } = await supabase.from("financial_entries").insert({
         kind: "expense", entry_date: dateStr,
-        description: c.name, amount: c.amount, category: c.category ?? "Custo fixo",
+        description: c.name, amount, category: c.category ?? "Custo fixo",
         created_by: u.user?.id,
         source_type: "fixed_cost", source_id: c.id,
       });
-      if (error) throw error;
+      if (error) {
+        if ((error as any).code === "23505") throw new Error("Já confirmado neste mês");
+        throw error;
+      }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_entries"] }); toast.success("Pagamento confirmado"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => {
+      if (e.message === "Já confirmado neste mês") toast.info(e.message);
+      else toast.error(e.message);
+    },
   });
 
   const unconfirm = useMutation({
@@ -689,16 +732,17 @@ function Confirmacoes() {
   });
 
 
-  // Totais pendentes/confirmados para o painel de resumo
+  // Totais confirmados/pendentes — usam o valor da entry de fato (paridade com Resumo).
   const recurringConfirmedTotal = recurring.reduce((s: number, r: any) => {
-    return isConfirmed({ id: r.id, description: r.description }, "income") ? s + Number(r.amount) : s;
+    const e = findFor({ id: r.id, description: r.description }, "income");
+    return e ? s + Number(e.amount) : s;
   }, 0);
   const recurringPendingTotal = recurring.reduce((s: number, r: any) => {
     return !isConfirmed({ id: r.id, description: r.description }, "income") ? s + Number(r.amount) : s;
   }, 0);
   const fixedConfirmedTotal = fixed.reduce((s: number, c: any) => {
-    const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
-    return isConfirmed({ id: c.id, description: c.name }, "expense") ? s + monthly : s;
+    const e = findFor({ id: c.id, description: c.name }, "expense");
+    return e ? s + Number(e.amount) : s;
   }, 0);
   const fixedPendingTotal = fixed.reduce((s: number, c: any) => {
     const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
@@ -772,12 +816,19 @@ function Confirmacoes() {
         const pendingRecurNext = recurring.filter((r: any) => !findEntryForSource({ id: r.id, kind: "income", description: r.description }, nextMonthEntries as any));
         const pendingFixedNext = fixed.filter((c: any) => !findEntryForSource({ id: c.id, kind: "expense", description: c.name }, nextMonthEntries as any));
         const overdue = overdueItems({
-          recurring: recurring as any,
-          fixed: fixed as any,
+          recurring: recurring.map((r: any) => ({ ...r, createdAt: r.created_at })) as any,
+          fixed: fixed.map((c: any) => ({ ...c, createdAt: c.created_at })) as any,
           entries: entries as any,
           today: new Date(),
           monthsBack: 12,
         });
+        // Itens já confirmados no mês (para desfazer inline)
+        const confirmedIncomes = recurring
+          .map((r: any) => ({ r, e: findFor({ id: r.id, description: r.description }, "income") }))
+          .filter((x: any) => x.e);
+        const confirmedExpenses = fixed
+          .map((c: any) => ({ c, e: findFor({ id: c.id, description: c.name }, "expense") }))
+          .filter((x: any) => x.e);
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {/* Receber mês */}
@@ -896,6 +947,47 @@ function Confirmacoes() {
                 {overdue.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Nada em atraso ✓</p>}
               </div>
             </Card>
+
+            {/* Já confirmados no mês — permite desfazer */}
+            {(confirmedIncomes.length > 0 || confirmedExpenses.length > 0) && (
+              <Card className="p-4 md:col-span-2 xl:col-span-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium">Já confirmados em {format(refDate, "MMM/yyyy", { locale: ptBR })}</h3>
+                  <Badge variant="secondary">{confirmedIncomes.length + confirmedExpenses.length}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">Clique em "Desfazer" para remover a confirmação (apaga o lançamento do mês).</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                  {confirmedIncomes.map(({ r, e }: any) => (
+                    <div key={`ci-${r.id}`} className="p-2 rounded-md border bg-green-50/30 dark:bg-green-950/10 space-y-1">
+                      <div className="flex justify-between gap-2">
+                        <p className="text-sm font-medium truncate">{r.description}</p>
+                        <p className="text-sm text-green-600 font-medium whitespace-nowrap">{fmtBRL(Number(e.amount))}</p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">Receita · {format(parseISO(e.entry_date), "dd/MM/yyyy")}</p>
+                      {canEdit && (
+                        <Button size="sm" variant="ghost" className="w-full h-7 text-xs" onClick={() => { if (confirm("Desfazer esta confirmação?")) unconfirm.mutate(e.id); }}>
+                          <Trash2 className="h-3 w-3 mr-1" />Desfazer
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  {confirmedExpenses.map(({ c, e }: any) => (
+                    <div key={`ce-${c.id}`} className="p-2 rounded-md border bg-red-50/30 dark:bg-red-950/10 space-y-1">
+                      <div className="flex justify-between gap-2">
+                        <p className="text-sm font-medium truncate">{c.name}</p>
+                        <p className="text-sm text-red-600 font-medium whitespace-nowrap">{fmtBRL(Number(e.amount))}</p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">Despesa · {format(parseISO(e.entry_date), "dd/MM/yyyy")}</p>
+                      {canEdit && (
+                        <Button size="sm" variant="ghost" className="w-full h-7 text-xs" onClick={() => { if (confirm("Desfazer esta confirmação?")) unconfirm.mutate(e.id); }}>
+                          <Trash2 className="h-3 w-3 mr-1" />Desfazer
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
           </div>
         );
       })()}

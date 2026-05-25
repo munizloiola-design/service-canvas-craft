@@ -1448,6 +1448,7 @@ export type Database = {
         Args: { _project_id: string; _uid: string }
         Returns: boolean
       }
+      month_floor: { Args: { _d: string }; Returns: string }
       move_to_dlq: {
         Args: {
           dlq_name: string

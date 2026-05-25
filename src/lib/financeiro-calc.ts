@@ -28,6 +28,7 @@ export interface FixedCost {
   amount: number | string;
   recurrence?: "monthly" | "annual" | string;
   active?: boolean;
+  createdAt?: string | null;
 }
 
 export interface RecurringIncome {
@@ -35,6 +36,7 @@ export interface RecurringIncome {
   description: string;
   amount: number | string;
   active?: boolean;
+  createdAt?: string | null;
 }
 
 const stripAccents = (s: string) =>
@@ -247,6 +249,7 @@ export const overdueItems = (params: {
 
     for (const r of params.recurring) {
       if (r.active === false) continue;
+      if (r.createdAt && new Date(r.createdAt) > end) continue;
       const found = findEntryForSource(
         { id: r.id, kind: "income", description: r.description },
         monthEntries,
@@ -263,6 +266,7 @@ export const overdueItems = (params: {
     }
     for (const c of params.fixed) {
       if (c.active === false) continue;
+      if (c.createdAt && new Date(c.createdAt) > end) continue;
       const found = findEntryForSource(
         { id: c.id, kind: "expense", description: c.name },
         monthEntries,
