@@ -634,12 +634,8 @@ function Confirmacoes() {
   const isConfirmed = (source: { id: string; description: string }, kind: "income" | "expense") =>
     !!findFor(source, kind);
 
-  const dateInMonth = (day?: number | null) => {
-    const d = new Date(refDate);
-    const target = day ?? d.getDate();
-    d.setDate(Math.min(target, endOfMonth(refDate).getDate()));
-    return d.toISOString().slice(0, 10);
-  };
+
+
 
   const confirmIncome = useMutation({
     mutationFn: async ({ r, monthDate }: { r: any; monthDate?: Date }) => {
