@@ -1042,6 +1042,7 @@ function Relatorios() {
 }
 
 function RealizadosTable({ kind }: { kind: "income" | "expense" }) {
+  const qc = useQueryClient();
   const { data: rows = [] } = useQuery({
     queryKey: ["realizados", kind],
     queryFn: async () => {
@@ -1053,6 +1054,20 @@ function RealizadosTable({ kind }: { kind: "income" | "expense" }) {
       if (error) throw error;
       return (data ?? []) as any[];
     },
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("financial_entries").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["realizados", kind] });
+      qc.invalidateQueries({ queryKey: ["financial_entries"] });
+      qc.invalidateQueries({ queryKey: ["pending"] });
+      toast.success("Removido");
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const [fDate, setFDate] = useState("");
@@ -1102,6 +1117,7 @@ function RealizadosTable({ kind }: { kind: "income" | "expense" }) {
               <TableHead className="w-[140px]">Origem</TableHead>
               <TableHead>Projeto / Cliente</TableHead>
               <TableHead className="text-right w-[140px]">Valor</TableHead>
+              <TableHead className="w-[60px]"></TableHead>
             </TableRow>
             <TableRow>
               <TableHead><Input placeholder="Buscar…" value={fDate} onChange={(e) => setFDate(e.target.value)} className="h-7 text-xs" /></TableHead>
@@ -1110,6 +1126,7 @@ function RealizadosTable({ kind }: { kind: "income" | "expense" }) {
               <TableHead><Input placeholder="Buscar…" value={fOrigem} onChange={(e) => setFOrigem(e.target.value)} className="h-7 text-xs" /></TableHead>
               <TableHead></TableHead>
               <TableHead><Input placeholder="Buscar…" value={fValor} onChange={(e) => setFValor(e.target.value)} className="h-7 text-xs" /></TableHead>
+              <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1123,10 +1140,20 @@ function RealizadosTable({ kind }: { kind: "income" | "expense" }) {
                 </TableCell>
                 <TableCell className="text-muted-foreground">{r.projects?.title ?? r.clients?.name ?? "—"}</TableCell>
                 <TableCell className={`text-right font-medium ${color}`}>{fmtBRL(Number(r.amount))}</TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => { if (confirm("Remover este lançamento?")) del.mutate(r.id); }}
+                    title="Excluir"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
             {filtered.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                 {rows.length === 0 ? "Nenhum lançamento realizado" : "Nenhum resultado para os filtros"}
               </TableCell></TableRow>
             )}
