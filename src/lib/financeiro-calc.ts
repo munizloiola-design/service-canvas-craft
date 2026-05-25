@@ -213,3 +213,72 @@ export const buildConfirmationEntry = (
     source_id: source.id,
   };
 };
+
+export interface OverdueItem {
+  kind: Kind;
+  sourceId: string;
+  description: string;
+  amount: number;
+  monthDate: Date; // first day of the overdue month
+}
+
+/**
+ * Lists every active recurring income / fixed cost that has NO confirmation
+ * entry in a past month (within `monthsBack` months prior to `today`). Used by
+ * the "Atrasados" column.
+ */
+export const overdueItems = (params: {
+  recurring: RecurringIncome[];
+  fixed: FixedCost[];
+  entries: Entry[];
+  today?: Date;
+  monthsBack?: number;
+}): OverdueItem[] => {
+  const today = params.today ?? new Date();
+  const monthsBack = params.monthsBack ?? 12;
+  const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const out: OverdueItem[] = [];
+
+  for (let i = 1; i <= monthsBack; i++) {
+    const monthDate = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - i, 1);
+    const start = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1, 0, 0, 0, 0);
+    const end = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59, 999);
+    const monthEntries = entriesInMonth(params.entries, start, end);
+
+    for (const r of params.recurring) {
+      if (r.active === false) continue;
+      const found = findEntryForSource(
+        { id: r.id, kind: "income", description: r.description },
+        monthEntries,
+      );
+      if (!found) {
+        out.push({
+          kind: "income",
+          sourceId: r.id,
+          description: r.description,
+          amount: Number(r.amount) || 0,
+          monthDate,
+        });
+      }
+    }
+    for (const c of params.fixed) {
+      if (c.active === false) continue;
+      const found = findEntryForSource(
+        { id: c.id, kind: "expense", description: c.name },
+        monthEntries,
+      );
+      if (!found) {
+        out.push({
+          kind: "expense",
+          sourceId: c.id,
+          description: c.name,
+          amount: monthlyAmount(c),
+          monthDate,
+        });
+      }
+    }
+  }
+  out.sort((a, b) => a.monthDate.getTime() - b.monthDate.getTime());
+  return out;
+};
+
