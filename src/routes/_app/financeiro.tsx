@@ -1042,6 +1042,7 @@ function Relatorios() {
 }
 
 function RealizadosTable({ kind }: { kind: "income" | "expense" }) {
+  const qc = useQueryClient();
   const { data: rows = [] } = useQuery({
     queryKey: ["realizados", kind],
     queryFn: async () => {
@@ -1053,6 +1054,20 @@ function RealizadosTable({ kind }: { kind: "income" | "expense" }) {
       if (error) throw error;
       return (data ?? []) as any[];
     },
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("financial_entries").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["realizados", kind] });
+      qc.invalidateQueries({ queryKey: ["financial_entries"] });
+      qc.invalidateQueries({ queryKey: ["pending"] });
+      toast.success("Removido");
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const [fDate, setFDate] = useState("");
