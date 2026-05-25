@@ -947,6 +947,47 @@ function Confirmacoes() {
                 {overdue.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Nada em atraso ✓</p>}
               </div>
             </Card>
+
+            {/* Já confirmados no mês — permite desfazer */}
+            {(confirmedIncomes.length > 0 || confirmedExpenses.length > 0) && (
+              <Card className="p-4 md:col-span-2 xl:col-span-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium">Já confirmados em {format(refDate, "MMM/yyyy", { locale: ptBR })}</h3>
+                  <Badge variant="secondary">{confirmedIncomes.length + confirmedExpenses.length}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">Clique em "Desfazer" para remover a confirmação (apaga o lançamento do mês).</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                  {confirmedIncomes.map(({ r, e }: any) => (
+                    <div key={`ci-${r.id}`} className="p-2 rounded-md border bg-green-50/30 dark:bg-green-950/10 space-y-1">
+                      <div className="flex justify-between gap-2">
+                        <p className="text-sm font-medium truncate">{r.description}</p>
+                        <p className="text-sm text-green-600 font-medium whitespace-nowrap">{fmtBRL(Number(e.amount))}</p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">Receita · {format(parseISO(e.entry_date), "dd/MM/yyyy")}</p>
+                      {canEdit && (
+                        <Button size="sm" variant="ghost" className="w-full h-7 text-xs" onClick={() => { if (confirm("Desfazer esta confirmação?")) unconfirm.mutate(e.id); }}>
+                          <Trash2 className="h-3 w-3 mr-1" />Desfazer
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  {confirmedExpenses.map(({ c, e }: any) => (
+                    <div key={`ce-${c.id}`} className="p-2 rounded-md border bg-red-50/30 dark:bg-red-950/10 space-y-1">
+                      <div className="flex justify-between gap-2">
+                        <p className="text-sm font-medium truncate">{c.name}</p>
+                        <p className="text-sm text-red-600 font-medium whitespace-nowrap">{fmtBRL(Number(e.amount))}</p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">Despesa · {format(parseISO(e.entry_date), "dd/MM/yyyy")}</p>
+                      {canEdit && (
+                        <Button size="sm" variant="ghost" className="w-full h-7 text-xs" onClick={() => { if (confirm("Desfazer esta confirmação?")) unconfirm.mutate(e.id); }}>
+                          <Trash2 className="h-3 w-3 mr-1" />Desfazer
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
           </div>
         );
       })()}
