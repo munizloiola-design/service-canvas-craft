@@ -816,12 +816,19 @@ function Confirmacoes() {
         const pendingRecurNext = recurring.filter((r: any) => !findEntryForSource({ id: r.id, kind: "income", description: r.description }, nextMonthEntries as any));
         const pendingFixedNext = fixed.filter((c: any) => !findEntryForSource({ id: c.id, kind: "expense", description: c.name }, nextMonthEntries as any));
         const overdue = overdueItems({
-          recurring: recurring as any,
-          fixed: fixed as any,
+          recurring: recurring.map((r: any) => ({ ...r, createdAt: r.created_at })) as any,
+          fixed: fixed.map((c: any) => ({ ...c, createdAt: c.created_at })) as any,
           entries: entries as any,
           today: new Date(),
           monthsBack: 12,
         });
+        // Itens já confirmados no mês (para desfazer inline)
+        const confirmedIncomes = recurring
+          .map((r: any) => ({ r, e: findFor({ id: r.id, description: r.description }, "income") }))
+          .filter((x: any) => x.e);
+        const confirmedExpenses = fixed
+          .map((c: any) => ({ c, e: findFor({ id: c.id, description: c.name }, "expense") }))
+          .filter((x: any) => x.e);
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {/* Receber mês */}
