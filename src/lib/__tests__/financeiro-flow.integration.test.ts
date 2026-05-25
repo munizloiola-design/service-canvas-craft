@@ -204,6 +204,8 @@ describe("Coluna Atrasados (overdueItems)", () => {
     // ri-off não aparece; mês atual (mai/26) e futuros não contam
     expect(out.every((o) => o.sourceId !== "ri-off")).toBe(true);
     expect(out.every((o) => o.monthDate < new Date(2026, 4, 1))).toBe(true);
+  });
+
   it("respeita createdAt: item recém-cadastrado não aparece em atrasos passados", () => {
     const recurringNovo: RecurringIncome[] = [
       { id: "ri-novo", description: "Cliente novo", amount: 1000, active: true, createdAt: "2026-05-01" },
