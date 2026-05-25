@@ -1044,3 +1044,100 @@ function Relatorios() {
     </div>
   );
 }
+
+function RealizadosTable({ kind }: { kind: "income" | "expense" }) {
+  const { data: rows = [] } = useQuery({
+    queryKey: ["realizados", kind],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financial_entries")
+        .select("*, projects(title), clients(name)")
+        .eq("kind", kind)
+        .order("entry_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const [fDate, setFDate] = useState("");
+  const [fDesc, setFDesc] = useState("");
+  const [fOrigem, setFOrigem] = useState("");
+  const [fValor, setFValor] = useState("");
+  const [fCat, setFCat] = useState("");
+
+  const labelOrigem = (st?: string | null) => {
+    if (st === "recurring_income") return "Recorrente";
+    if (st === "fixed_cost") return "Custo fixo";
+    if (st === "manual") return "Manual";
+    return st ?? "Manual";
+  };
+
+  const filtered = useMemo(() => {
+    return rows.filter((r: any) => {
+      const dateStr = r.entry_date ? format(parseISO(r.entry_date), "dd/MM/yyyy") : "";
+      if (fDate && !dateStr.includes(fDate) && !(r.entry_date ?? "").includes(fDate)) return false;
+      if (fDesc && !(r.description ?? "").toLowerCase().includes(fDesc.toLowerCase())) return false;
+      if (fCat && !(r.category ?? "").toLowerCase().includes(fCat.toLowerCase())) return false;
+      if (fOrigem && !labelOrigem(r.source_type).toLowerCase().includes(fOrigem.toLowerCase())) return false;
+      if (fValor && !String(r.amount).includes(fValor.replace(",", "."))) return false;
+      return true;
+    });
+  }, [rows, fDate, fDesc, fCat, fOrigem, fValor]);
+
+  const total = filtered.reduce((s, r: any) => s + Number(r.amount || 0), 0);
+  const color = kind === "income" ? "text-green-600" : "text-red-600";
+  const title = kind === "income" ? "Recebimentos realizados" : "Pagamentos realizados";
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-baseline justify-between mb-4">
+        <h3 className="font-medium">{title}</h3>
+        <p className="text-sm text-muted-foreground">
+          {filtered.length} de {rows.length} · Total filtrado: <span className={`font-semibold ${color}`}>{fmtBRL(total)}</span>
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[140px]">Data</TableHead>
+              <TableHead>Descrição</TableHead>
+              <TableHead className="w-[160px]">Categoria</TableHead>
+              <TableHead className="w-[140px]">Origem</TableHead>
+              <TableHead>Projeto / Cliente</TableHead>
+              <TableHead className="text-right w-[140px]">Valor</TableHead>
+            </TableRow>
+            <TableRow>
+              <TableHead><Input placeholder="Buscar…" value={fDate} onChange={(e) => setFDate(e.target.value)} className="h-7 text-xs" /></TableHead>
+              <TableHead><Input placeholder="Buscar…" value={fDesc} onChange={(e) => setFDesc(e.target.value)} className="h-7 text-xs" /></TableHead>
+              <TableHead><Input placeholder="Buscar…" value={fCat} onChange={(e) => setFCat(e.target.value)} className="h-7 text-xs" /></TableHead>
+              <TableHead><Input placeholder="Buscar…" value={fOrigem} onChange={(e) => setFOrigem(e.target.value)} className="h-7 text-xs" /></TableHead>
+              <TableHead></TableHead>
+              <TableHead><Input placeholder="Buscar…" value={fValor} onChange={(e) => setFValor(e.target.value)} className="h-7 text-xs" /></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((r: any) => (
+              <TableRow key={r.id}>
+                <TableCell>{r.entry_date ? format(parseISO(r.entry_date), "dd/MM/yyyy") : "—"}</TableCell>
+                <TableCell className="font-medium">{r.description}</TableCell>
+                <TableCell>{r.category ?? "—"}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="text-[10px]">{labelOrigem(r.source_type)}</Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{r.projects?.title ?? r.clients?.name ?? "—"}</TableCell>
+                <TableCell className={`text-right font-medium ${color}`}>{fmtBRL(Number(r.amount))}</TableCell>
+              </TableRow>
+            ))}
+            {filtered.length === 0 && (
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                {rows.length === 0 ? "Nenhum lançamento realizado" : "Nenhum resultado para os filtros"}
+              </TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </Card>
+  );
+}
+
