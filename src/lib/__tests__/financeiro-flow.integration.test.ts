@@ -204,7 +204,41 @@ describe("Coluna Atrasados (overdueItems)", () => {
     // ri-off não aparece; mês atual (mai/26) e futuros não contam
     expect(out.every((o) => o.sourceId !== "ri-off")).toBe(true);
     expect(out.every((o) => o.monthDate < new Date(2026, 4, 1))).toBe(true);
+  it("respeita createdAt: item recém-cadastrado não aparece em atrasos passados", () => {
+    const recurringNovo: RecurringIncome[] = [
+      { id: "ri-novo", description: "Cliente novo", amount: 1000, active: true, createdAt: "2026-05-01" },
+    ];
+    const fixedNovo: FixedCost[] = [
+      { id: "fc-novo", name: "Software novo", amount: 100, recurrence: "monthly", active: true, createdAt: "2026-05-01" },
+    ];
+    const out = overdueItems({
+      recurring: recurringNovo,
+      fixed: fixedNovo,
+      entries: [],
+      today: TODAY,
+      monthsBack: 6,
+    });
+    // Nada deve aparecer — só foi criado no mês corrente
+    expect(out).toHaveLength(0);
   });
+
+  it("createdAt no meio do período: lista só meses ≥ createdAt", () => {
+    const recurringMix: RecurringIncome[] = [
+      { id: "ri-mar", description: "Cliente desde mar", amount: 500, active: true, createdAt: "2026-03-15" },
+    ];
+    const out = overdueItems({
+      recurring: recurringMix,
+      fixed: [],
+      entries: [],
+      today: TODAY,
+      monthsBack: 6,
+    });
+    // Hoje = 15/mai/2026. monthsBack=6 → nov/25..abr/26. createdAt mar/26.
+    // Atrasos válidos: mar/26 e abr/26 (mai/26 é mês corrente, não conta).
+    expect(out).toHaveLength(2);
+    expect(out.every((o) => o.monthDate >= new Date(2026, 2, 1))).toBe(true);
+  });
+});
 
   it("confirmar um atraso remove-o da lista (via buildConfirmationEntry)", () => {
     const before = overdueItems({ recurring, fixed: [], entries: [], today: TODAY, monthsBack: 1 });
