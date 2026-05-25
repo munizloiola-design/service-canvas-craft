@@ -1,68 +1,50 @@
 ## Objetivo
 
-Refinar a aba Financeiro para que custos fixos e receitas recorrentes funcionem como **previsões** até serem confirmados, permitir edição dos cadastros recorrentes, marcar receitas como **comissão**, e adicionar **emissão de relatório por período**.
-
-Arquivo único afetado: `src/routes/_app/financeiro.tsx`. Sem mudanças de schema.
+Reorganizar a aba **"Confirmações do mês"** em 4 colunas (Receber mês / Pagar mês / Próximos / Atrasados) e criar duas novas abas — **"Recebimentos realizados"** e **"Pagamentos realizados"** — com busca por coluna. Mudança apenas de UI em `src/routes/_app/financeiro.tsx`. Sem migration.
 
 ---
 
-### 1. Custos fixos e receitas recorrentes só contam após "OK"
+## 1. Aba "Confirmações do mês" — 4 colunas
 
-KPIs e gráfico já leem só `financial_entries`, então o "Realizado" já está correto. Ajuste de UI:
-
-- **Cards do topo** (Previsão do mês): manter "Receitas/Despesas/Saldo previstos" mostrando o que **viria** dos recorrentes + fixos, e adicionar ao lado **"Realizado"** (só `financial_entries`).
-- **Gráfico "Últimos 12 meses"**: continua somando só lançamentos reais. Adicionar legenda explicando que custos fixos/recorrentes só entram após confirmação.
-- Aba **"Confirmações do mês"** continua sendo onde se marca "Recebido" / "Pago" (lógica já existe).
-
-### 2. Edição de custos fixos e receitas recorrentes
-
-Hoje só dá pra criar e excluir. Adicionar:
-
-- Botão **Editar** (ícone lápis) em cada linha.
-- Reutilizar o mesmo dialog em modo "edição" (preenche campos e faz `update` em vez de `insert`).
-
-### 3. Previsão de despesa/receita com base em recorrentes
-
-Refinar o card "Previsão do mês" com quebra clara:
+Layout em grid responsivo (`grid-cols-1 lg:grid-cols-2 xl:grid-cols-4`).
 
 ```text
-Receitas previstas: R$ X
-  └ Realizado: R$ Y
-  └ A receber: R$ Z
-
-Despesas previstas: R$ A
-  └ Realizado: R$ B
-  └ A pagar:   R$ C
+┌────────────────┬────────────────┬────────────────┬────────────────┐
+│ Receber (mês)  │ Pagar (mês)    │ Próximos       │ Atrasados      │
+│ recorrentes    │ custos fixos   │ (mês seguinte) │ (meses passa-  │
+│ pendentes do   │ pendentes do   │ recorr. + fix. │  dos sem       │
+│ mês selecio.   │ mês selecio.   │ previstos      │  confirmação)  │
+└────────────────┴────────────────┴────────────────┴────────────────┘
 ```
 
-Adicionar barra "X de Y pagamentos confirmados" (análoga à de recebimentos).
+**Lógica por coluna:**
+- **Receber mês**: `pendingRecurring(recurring, monthEntries)` para o mês selecionado. Botão "Confirmar" cria entry como hoje.
+- **Pagar mês**: `pendingFixed(fixed, monthEntries)` para o mês selecionado. Botão "Confirmar".
+- **Próximos** (mês seguinte ao selecionado): roda `pendingRecurring`/`pendingFixed` com `monthEntries` do mês +1 e mostra os dois tipos com badge (Receita/Despesa). Sem botão Confirmar (só leitura — confirma no mês certo).
+- **Atrasados**: itera meses anteriores a partir de um teto (12 meses para trás) e lista qualquer recorrente/custo fixo ativo que não tem entry confirmada naquele mês. Cada linha mostra mês de referência + valor. Botão "Confirmar atraso" gera entry com `entry_date` no primeiro dia do mês em atraso (mantendo `source_type`/`source_id`).
 
-### 4. Marcar receita como comissão em Lançamentos
+Quando um item é confirmado, automaticamente "some" da coluna do mês e o do mês seguinte continua aparecendo em "Próximos" — comportamento natural pois a query reativa.
 
-No formulário de "Novo lançamento" (quando `kind = income`):
+## 2. Novas abas "Recebimentos realizados" e "Pagamentos realizados"
 
-- **Checkbox "É comissão"** → grava `category = "comissao"`.
-- Na tabela, exibir badge **"Comissão"** ao lado da descrição.
+Duas novas `TabsTrigger`:
+- `realizados-rec` → tabela de `financial_entries` com `kind='income'`.
+- `realizados-pag` → tabela de `financial_entries` com `kind='expense'`.
 
-### 5. Emissão de relatório por período (nova aba)
+Cada tabela tem **busca por coluna** (input no header) para: Data, Descrição, Origem (source_type legível), Valor. Filtro client-side com `useMemo`. Ordenação por data desc por padrão.
 
-Nova aba **"Relatórios"** com:
+Reaproveita componente único `<RealizadosTable kind="income"|"expense" />`.
 
-- Dois inputs de data: **De** / **Até** (default: mês atual).
-- Botão **"Gerar relatório"** que filtra `financial_entries` no período.
-- Resumo: total de receitas, total de despesas, saldo, receitas de comissão, top 5 categorias.
-- Tabela com todos os lançamentos do período.
-- Dois botões de exportação:
-  - **Exportar CSV** (download direto, sem deps).
-  - **Imprimir / PDF** (usa `window.print()` com CSS print-only na área do relatório).
+## 3. Detalhes técnicos
 
----
+- Helper novo em `src/lib/financeiro-calc.ts`: `overdueItems({ recurring, fixed, entries, today, monthsBack=12 })` que retorna `Array<{ kind, source, monthDate, amount, description }>` — usado pela coluna Atrasados e testável.
+- Reusar `buildConfirmationEntry` para criar entry de atraso (passando a data do mês atrasado).
+- Adicionar 2-3 testes em `financeiro-flow.integration.test.ts` cobrindo: detecção de atrasado, confirmar atraso remove da lista, próximo mês aparece na coluna "Próximos".
+- A aba "Confirmações do mês" mantém o seletor de mês existente; as 4 colunas reagem a ele.
 
-### Detalhes técnicos
-
-- Sem migration — todas as colunas já existem (`financial_entries.category`, `fixed_costs.*`, `recurring_incomes.*`).
-- Edição: `useMutation` + `invalidateQueries`. Dialog controlado por `editingItem` opcional.
-- Comissão: usa `Checkbox` shadcn já no projeto.
-- Relatório: query com `.gte('entry_date', from).lte('entry_date', to)`. CSV gerado em memória + `Blob` + link. Impressão via classe `print:block` / `print:hidden`.
+## Arquivos afetados
+- `src/routes/_app/financeiro.tsx` (refatorar `Confirmacoes`, adicionar `RealizadosTable` e 2 novas tabs)
+- `src/lib/financeiro-calc.ts` (novo helper `overdueItems`)
+- `src/lib/__tests__/financeiro-flow.integration.test.ts` (novos casos)
 
 Posso seguir com a implementação?
