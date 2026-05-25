@@ -1,50 +1,56 @@
-## Objetivo
+## Diagnóstico
 
-Reorganizar a aba **"Confirmações do mês"** em 4 colunas (Receber mês / Pagar mês / Próximos / Atrasados) e criar duas novas abas — **"Recebimentos realizados"** e **"Pagamentos realizados"** — com busca por coluna. Mudança apenas de UI em `src/routes/_app/financeiro.tsx`. Sem migration.
+Auditei `src/routes/_app/financeiro.tsx` (Resumo, Confirmações, Realizados) e `src/lib/financeiro-calc.ts`. Encontrei 5 causas reais de "está contabilizando errado":
 
----
+1. **Confirmação não é idempotente.** Clicar duas vezes em "Confirmar" (ou em "Confirmar atraso") cria duas linhas em `financial_entries` com o mesmo `(source_type, source_id, mês)`. Os KPIs ("Entradas/Saídas do mês"), o painel "Receitas/Custos confirmados" e o gráfico de 12 meses passam a somar 2x. Não há índice único nem checagem antes do insert.
+2. **Coluna "Atrasados" lista meses anteriores à criação da origem.** `overdueItems` percorre os últimos 12 meses para todo item ativo. Um custo fixo cadastrado hoje aparece como atrasado em 12 meses — gerando uma lista enorme e falsa.
+3. **Resumo mistura definições.** "Saldo realizado" = `incomes − expenses` (sem imposto), mas "Resultado líquido" = `incomes − expenses − taxes`. O KPI "Custos fixos pagos (mês)" parece somar à parte mas já está dentro de "Saídas (mês)" — visualmente sugere que é deduzido duas vezes.
+4. **Totais de "Confirmações" usam o `amount` da origem, não da entry.** Se o valor de uma receita recorrente/custo fixo for alterado depois da confirmação, o painel de Confirmações mostra um total diferente do realizado em Resumo.
+5. **Não dá pra desfazer a confirmação na própria coluna.** Hoje só nas abas "Realizados". Quando o usuário confirma errado, precisa trocar de aba para corrigir.
 
-## 1. Aba "Confirmações do mês" — 4 colunas
+## Mudanças
 
-Layout em grid responsivo (`grid-cols-1 lg:grid-cols-2 xl:grid-cols-4`).
+### 1. Banco — proteção contra duplicata (migration)
 
-```text
-┌────────────────┬────────────────┬────────────────┬────────────────┐
-│ Receber (mês)  │ Pagar (mês)    │ Próximos       │ Atrasados      │
-│ recorrentes    │ custos fixos   │ (mês seguinte) │ (meses passa-  │
-│ pendentes do   │ pendentes do   │ recorr. + fix. │  dos sem       │
-│ mês selecio.   │ mês selecio.   │ previstos      │  confirmação)  │
-└────────────────┴────────────────┴────────────────┴────────────────┘
-```
+- Criar índice único parcial em `financial_entries`:
+  `UNIQUE (source_type, source_id, date_trunc('month', entry_date)) WHERE source_id IS NOT NULL`.
+- Antes de criar o índice, deduplicar linhas existentes: manter a mais antiga por `(source_type, source_id, mês)`, apagar as demais.
 
-**Lógica por coluna:**
-- **Receber mês**: `pendingRecurring(recurring, monthEntries)` para o mês selecionado. Botão "Confirmar" cria entry como hoje.
-- **Pagar mês**: `pendingFixed(fixed, monthEntries)` para o mês selecionado. Botão "Confirmar".
-- **Próximos** (mês seguinte ao selecionado): roda `pendingRecurring`/`pendingFixed` com `monthEntries` do mês +1 e mostra os dois tipos com badge (Receita/Despesa). Sem botão Confirmar (só leitura — confirma no mês certo).
-- **Atrasados**: itera meses anteriores a partir de um teto (12 meses para trás) e lista qualquer recorrente/custo fixo ativo que não tem entry confirmada naquele mês. Cada linha mostra mês de referência + valor. Botão "Confirmar atraso" gera entry com `entry_date` no primeiro dia do mês em atraso (mantendo `source_type`/`source_id`).
+### 2. `src/lib/financeiro-calc.ts`
 
-Quando um item é confirmado, automaticamente "some" da coluna do mês e o do mês seguinte continua aparecendo em "Próximos" — comportamento natural pois a query reativa.
+- Estender `RecurringIncome` e `FixedCost` com `createdAt?: string` opcional.
+- Em `overdueItems`, pular meses anteriores ao `createdAt` da origem (quando presente). Mantém retrocompatibilidade.
+- Adicionar testes em `src/lib/__tests__/financeiro-flow.integration.test.ts`:
+  - confirmação repetida não duplica (helper idempotente);
+  - item criado mês corrente não aparece em atrasos passados.
 
-## 2. Novas abas "Recebimentos realizados" e "Pagamentos realizados"
+### 3. `src/routes/_app/financeiro.tsx` — Confirmações
 
-Duas novas `TabsTrigger`:
-- `realizados-rec` → tabela de `financial_entries` com `kind='income'`.
-- `realizados-pag` → tabela de `financial_entries` com `kind='expense'`.
+- `confirmIncome` / `confirmExpense`: antes do `insert`, checar `findEntryForSource` no `monthEntries`; se já existe, mostrar `toast.info("Já confirmado neste mês")` e retornar. Tratar erro `23505` (violação de unique) com a mesma mensagem amigável.
+- Botão "Desfazer" inline nas colunas "Receber (mês)" e "Pagar (mês)" para itens já confirmados (mostra valor confirmado, data, e ação de remover a entry).
+- Totais "Receitas/Custos confirmados" passam a somar o **valor da entry encontrada** (`findEntryForSource(...).amount`) em vez do `r.amount`/`monthly`. Garante paridade com o Resumo.
+- Passar `createdAt` da origem para `overdueItems` (campo `created_at` já vem do select).
 
-Cada tabela tem **busca por coluna** (input no header) para: Data, Descrição, Origem (source_type legível), Valor. Filtro client-side com `useMemo`. Ordenação por data desc por padrão.
+### 4. `src/routes/_app/financeiro.tsx` — Resumo (consistência)
 
-Reaproveita componente único `<RealizadosTable kind="income"|"expense" />`.
+- Remover o KPI "Custos fixos pagos (mês)" da grade principal (já está em "Saídas"); mover esse breakdown para o card "Previsão do mês" onde já existe a divisão Realizado/A pagar.
+- Renomear "Saldo realizado" → "Resultado realizado" e calcular como `incomes − expenses − taxes` (igual ao "Resultado líquido"). Eliminar o card duplicado "Resultado líquido" da grade superior — fica só "Resultado realizado" e "Saldo previsto".
+- Mover "Depreciação (mês)" para dentro do card "Previsão do mês" como linha informativa (não é KPI realizado).
+- Acrescentar texto curto sob cada card explicando a definição (tooltip-like, `text-xs text-muted-foreground`).
 
-## 3. Detalhes técnicos
+### 5. UI — pequena reorganização
 
-- Helper novo em `src/lib/financeiro-calc.ts`: `overdueItems({ recurring, fixed, entries, today, monthsBack=12 })` que retorna `Array<{ kind, source, monthDate, amount, description }>` — usado pela coluna Atrasados e testável.
-- Reusar `buildConfirmationEntry` para criar entry de atraso (passando a data do mês atrasado).
-- Adicionar 2-3 testes em `financeiro-flow.integration.test.ts` cobrindo: detecção de atrasado, confirmar atraso remove da lista, próximo mês aparece na coluna "Próximos".
-- A aba "Confirmações do mês" mantém o seletor de mês existente; as 4 colunas reagem a ele.
+- Agrupar abas "Custos fixos" e "Receitas recorrentes" sob uma única aba **"Cadastros"** com sub-tabs internas. Reduz de 9 para 8 triggers e deixa claro que são cadastros (origem das confirmações), não realizados.
+- Manter as demais abas como estão.
 
 ## Arquivos afetados
-- `src/routes/_app/financeiro.tsx` (refatorar `Confirmacoes`, adicionar `RealizadosTable` e 2 novas tabs)
-- `src/lib/financeiro-calc.ts` (novo helper `overdueItems`)
-- `src/lib/__tests__/financeiro-flow.integration.test.ts` (novos casos)
 
-Posso seguir com a implementação?
+- `supabase/migrations/<timestamp>_financial_entries_unique_per_month.sql` (novo)
+- `src/lib/financeiro-calc.ts` (`createdAt` + filtro em `overdueItems`)
+- `src/lib/__tests__/financeiro-flow.integration.test.ts` (2 testes novos)
+- `src/routes/_app/financeiro.tsx` (Resumo, Confirmações, agrupamento de abas)
+- `.lovable/plan.md` (atualizar)
+
+## Fora do escopo
+
+Não vou alterar a lógica de imposto (continua `incomes × tax_pct`), nem mexer em `Lançamentos`, `Relatórios` ou `Configurações`.
