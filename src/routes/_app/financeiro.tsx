@@ -37,6 +37,8 @@ function FinanceiroPage() {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="confirmar">Confirmações do mês</TabsTrigger>
+          <TabsTrigger value="realizados-rec">Recebimentos realizados</TabsTrigger>
+          <TabsTrigger value="realizados-pag">Pagamentos realizados</TabsTrigger>
           <TabsTrigger value="entradas">Lançamentos</TabsTrigger>
           <TabsTrigger value="fixos">Custos fixos</TabsTrigger>
           <TabsTrigger value="recorrentes">Receitas recorrentes</TabsTrigger>
@@ -45,11 +47,14 @@ function FinanceiroPage() {
         </TabsList>
         <TabsContent value="resumo" className="mt-6"><Resumo /></TabsContent>
         <TabsContent value="confirmar" className="mt-6"><Confirmacoes /></TabsContent>
+        <TabsContent value="realizados-rec" className="mt-6"><RealizadosTable kind="income" /></TabsContent>
+        <TabsContent value="realizados-pag" className="mt-6"><RealizadosTable kind="expense" /></TabsContent>
         <TabsContent value="entradas" className="mt-6"><Entries /></TabsContent>
         <TabsContent value="fixos" className="mt-6"><FixedCosts /></TabsContent>
         <TabsContent value="recorrentes" className="mt-6"><RecurringIncomes /></TabsContent>
         <TabsContent value="relatorios" className="mt-6"><Relatorios /></TabsContent>
         <TabsContent value="config" className="mt-6"><Settings /></TabsContent>
+
       </Tabs>
     </div>
   );
