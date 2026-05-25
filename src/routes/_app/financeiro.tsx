@@ -40,8 +40,7 @@ function FinanceiroPage() {
           <TabsTrigger value="realizados-rec">Recebimentos realizados</TabsTrigger>
           <TabsTrigger value="realizados-pag">Pagamentos realizados</TabsTrigger>
           <TabsTrigger value="entradas">Lançamentos</TabsTrigger>
-          <TabsTrigger value="fixos">Custos fixos</TabsTrigger>
-          <TabsTrigger value="recorrentes">Receitas recorrentes</TabsTrigger>
+          <TabsTrigger value="cadastros">Cadastros</TabsTrigger>
           <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           <TabsTrigger value="config">Configurações</TabsTrigger>
         </TabsList>
@@ -50,8 +49,16 @@ function FinanceiroPage() {
         <TabsContent value="realizados-rec" className="mt-6"><RealizadosTable kind="income" /></TabsContent>
         <TabsContent value="realizados-pag" className="mt-6"><RealizadosTable kind="expense" /></TabsContent>
         <TabsContent value="entradas" className="mt-6"><Entries /></TabsContent>
-        <TabsContent value="fixos" className="mt-6"><FixedCosts /></TabsContent>
-        <TabsContent value="recorrentes" className="mt-6"><RecurringIncomes /></TabsContent>
+        <TabsContent value="cadastros" className="mt-6">
+          <Tabs defaultValue="fixos">
+            <TabsList>
+              <TabsTrigger value="fixos">Custos fixos</TabsTrigger>
+              <TabsTrigger value="recorrentes">Receitas recorrentes</TabsTrigger>
+            </TabsList>
+            <TabsContent value="fixos" className="mt-4"><FixedCosts /></TabsContent>
+            <TabsContent value="recorrentes" className="mt-4"><RecurringIncomes /></TabsContent>
+          </Tabs>
+        </TabsContent>
         <TabsContent value="relatorios" className="mt-6"><Relatorios /></TabsContent>
         <TabsContent value="config" className="mt-6"><Settings /></TabsContent>
 
