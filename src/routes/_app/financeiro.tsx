@@ -648,8 +648,19 @@ function Confirmacoes() {
 
   const confirmIncome = useMutation({
     mutationFn: async ({ r, monthDate }: { r: any; monthDate?: Date }) => {
-      const { data: u } = await supabase.auth.getUser();
       const md = monthDate ?? refDate;
+      // Idempotência: bloqueia confirmação duplicada no mesmo mês
+      const mStart = startOfMonth(md);
+      const mEnd = endOfMonth(md);
+      const mEntries = entries.filter((e: any) => {
+        const d = parseISO(e.entry_date);
+        return d >= mStart && d <= mEnd;
+      });
+      const dup = findEntryForSource({ id: r.id, kind: "income", description: r.description }, mEntries as any);
+      if (dup) {
+        throw new Error("Já confirmado neste mês");
+      }
+      const { data: u } = await supabase.auth.getUser();
       const dateStr = (() => {
         const d = new Date(md);
         d.setDate(Math.min(d.getDate() || 1, endOfMonth(md).getDate()));
@@ -661,32 +672,55 @@ function Confirmacoes() {
         category: "Recorrente", created_by: u.user?.id,
         source_type: "recurring_income", source_id: r.id,
       });
-      if (error) throw error;
+      if (error) {
+        if ((error as any).code === "23505") throw new Error("Já confirmado neste mês");
+        throw error;
+      }
       const next = r.next_due ? addMonths(parseISO(r.next_due), 1) : addMonths(md, 1);
       await supabase.from("recurring_incomes").update({ next_due: next.toISOString().slice(0, 10) }).eq("id", r.id);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_entries"] }); qc.invalidateQueries({ queryKey: ["recurring_incomes"] }); toast.success("Recebimento confirmado"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => {
+      if (e.message === "Já confirmado neste mês") toast.info(e.message);
+      else toast.error(e.message);
+    },
   });
 
   const confirmExpense = useMutation({
     mutationFn: async ({ c, monthDate }: { c: any; monthDate?: Date }) => {
-      const { data: u } = await supabase.auth.getUser();
       const md = monthDate ?? refDate;
+      const mStart = startOfMonth(md);
+      const mEnd = endOfMonth(md);
+      const mEntries = entries.filter((e: any) => {
+        const d = parseISO(e.entry_date);
+        return d >= mStart && d <= mEnd;
+      });
+      const dup = findEntryForSource({ id: c.id, kind: "expense", description: c.name }, mEntries as any);
+      if (dup) {
+        throw new Error("Já confirmado neste mês");
+      }
+      const { data: u } = await supabase.auth.getUser();
       const day = c.due_day ?? 1;
       const d = new Date(md);
       d.setDate(Math.min(day, endOfMonth(md).getDate()));
       const dateStr = d.toISOString().slice(0, 10);
+      const amount = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
       const { error } = await supabase.from("financial_entries").insert({
         kind: "expense", entry_date: dateStr,
-        description: c.name, amount: c.amount, category: c.category ?? "Custo fixo",
+        description: c.name, amount, category: c.category ?? "Custo fixo",
         created_by: u.user?.id,
         source_type: "fixed_cost", source_id: c.id,
       });
-      if (error) throw error;
+      if (error) {
+        if ((error as any).code === "23505") throw new Error("Já confirmado neste mês");
+        throw error;
+      }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_entries"] }); toast.success("Pagamento confirmado"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => {
+      if (e.message === "Já confirmado neste mês") toast.info(e.message);
+      else toast.error(e.message);
+    },
   });
 
   const unconfirm = useMutation({
@@ -698,16 +732,17 @@ function Confirmacoes() {
   });
 
 
-  // Totais pendentes/confirmados para o painel de resumo
+  // Totais confirmados/pendentes — usam o valor da entry de fato (paridade com Resumo).
   const recurringConfirmedTotal = recurring.reduce((s: number, r: any) => {
-    return isConfirmed({ id: r.id, description: r.description }, "income") ? s + Number(r.amount) : s;
+    const e = findFor({ id: r.id, description: r.description }, "income");
+    return e ? s + Number(e.amount) : s;
   }, 0);
   const recurringPendingTotal = recurring.reduce((s: number, r: any) => {
     return !isConfirmed({ id: r.id, description: r.description }, "income") ? s + Number(r.amount) : s;
   }, 0);
   const fixedConfirmedTotal = fixed.reduce((s: number, c: any) => {
-    const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
-    return isConfirmed({ id: c.id, description: c.name }, "expense") ? s + monthly : s;
+    const e = findFor({ id: c.id, description: c.name }, "expense");
+    return e ? s + Number(e.amount) : s;
   }, 0);
   const fixedPendingTotal = fixed.reduce((s: number, c: any) => {
     const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
