@@ -28,6 +28,7 @@ export interface FixedCost {
   amount: number | string;
   recurrence?: "monthly" | "annual" | string;
   active?: boolean;
+  createdAt?: string | null;
 }
 
 export interface RecurringIncome {
@@ -35,6 +36,7 @@ export interface RecurringIncome {
   description: string;
   amount: number | string;
   active?: boolean;
+  createdAt?: string | null;
 }
 
 const stripAccents = (s: string) =>
