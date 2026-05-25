@@ -642,16 +642,22 @@ function Confirmacoes() {
   };
 
   const confirmIncome = useMutation({
-    mutationFn: async (r: any) => {
+    mutationFn: async ({ r, monthDate }: { r: any; monthDate?: Date }) => {
       const { data: u } = await supabase.auth.getUser();
+      const md = monthDate ?? refDate;
+      const dateStr = (() => {
+        const d = new Date(md);
+        d.setDate(Math.min(d.getDate() || 1, endOfMonth(md).getDate()));
+        return d.toISOString().slice(0, 10);
+      })();
       const { error } = await supabase.from("financial_entries").insert({
-        kind: "income", entry_date: dateInMonth(),
+        kind: "income", entry_date: dateStr,
         description: r.description, amount: r.amount, client_id: r.client_id ?? null,
         category: "Recorrente", created_by: u.user?.id,
         source_type: "recurring_income", source_id: r.id,
       });
       if (error) throw error;
-      const next = r.next_due ? addMonths(parseISO(r.next_due), 1) : addMonths(refDate, 1);
+      const next = r.next_due ? addMonths(parseISO(r.next_due), 1) : addMonths(md, 1);
       await supabase.from("recurring_incomes").update({ next_due: next.toISOString().slice(0, 10) }).eq("id", r.id);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_entries"] }); qc.invalidateQueries({ queryKey: ["recurring_incomes"] }); toast.success("Recebimento confirmado"); },
@@ -659,10 +665,15 @@ function Confirmacoes() {
   });
 
   const confirmExpense = useMutation({
-    mutationFn: async (c: any) => {
+    mutationFn: async ({ c, monthDate }: { c: any; monthDate?: Date }) => {
       const { data: u } = await supabase.auth.getUser();
+      const md = monthDate ?? refDate;
+      const day = c.due_day ?? 1;
+      const d = new Date(md);
+      d.setDate(Math.min(day, endOfMonth(md).getDate()));
+      const dateStr = d.toISOString().slice(0, 10);
       const { error } = await supabase.from("financial_entries").insert({
-        kind: "expense", entry_date: dateInMonth(c.due_day),
+        kind: "expense", entry_date: dateStr,
         description: c.name, amount: c.amount, category: c.category ?? "Custo fixo",
         created_by: u.user?.id,
         source_type: "fixed_cost", source_id: c.id,
@@ -680,6 +691,7 @@ function Confirmacoes() {
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_entries"] }); toast.success("Desfeito"); },
   });
+
 
   // Totais pendentes/confirmados para o painel de resumo
   const recurringConfirmedTotal = recurring.reduce((s: number, r: any) => {
