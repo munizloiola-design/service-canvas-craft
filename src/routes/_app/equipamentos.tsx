@@ -98,7 +98,7 @@ function EquipamentosPage() {
         {canEdit && (
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Novo equipamento</Button></DialogTrigger>
-            <EquipForm editing={editing} onSubmit={(f) => save.mutate(f)} />
+            <EquipForm key={editing?.id ?? "new"} editing={editing} onSubmit={(f) => save.mutate(f)} />
           </Dialog>
         )}
       </div>
