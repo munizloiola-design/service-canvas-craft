@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/lib/auth-context";
+import { deleteTeamMember } from "@/lib/team.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertCircle, Activity, Clock, Hourglass, ShieldAlert, Pencil, Upload, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_app/team")({ component: TeamPage });
 
@@ -60,6 +63,20 @@ function TeamPage() {
   const { isMaster, isManager } = useAuth();
   const qc = useQueryClient();
   const [openMember, setOpenMember] = useState<string | null>(null);
+  const doDelete = useServerFn(deleteTeamMember);
+
+  const deleteMember = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await doDelete({ data: { userId } });
+      if (!res.success) throw new Error("Falha ao excluir");
+      return res;
+    },
+    onSuccess: () => {
+      toast.success("Membro excluído");
+      qc.invalidateQueries({ queryKey: ["team-overview"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const { data } = useQuery({
     queryKey: ["team-overview"],
@@ -162,9 +179,24 @@ function TeamPage() {
                   </div>
                 </div>
                 {isMaster && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setOpenMember(m.id)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setOpenMember(m.id)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => {
+                        if (confirm(`Excluir ${m.full_name || "este membro"} permanentemente?`)) {
+                          deleteMember.mutate(m.id);
+                        }
+                      }}
+                      disabled={deleteMember.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 )}
               </div>
 
