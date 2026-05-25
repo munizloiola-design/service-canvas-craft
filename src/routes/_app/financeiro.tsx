@@ -153,14 +153,16 @@ function Resumo() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Stat label="Entradas (mês)" value={fmtBRL(incomes)} icon={<TrendingUp className="h-4 w-4 text-green-600" />} />
         <Stat label="Saídas (mês)" value={fmtBRL(expenses)} icon={<TrendingDown className="h-4 w-4 text-red-600" />} />
-        <Stat label="Custos fixos pagos (mês)" value={fmtBRL(fixedConfirmedAmount)} icon={<Receipt className="h-4 w-4" />} />
         <Stat label={`Impostos (${settings?.tax_pct ?? 0}%)`} value={fmtBRL(taxes)} icon={<Receipt className="h-4 w-4" />} />
-        <Stat label="Depreciação (mês)" value={fmtBRL(depreciation)} icon={<Wrench className="h-4 w-4" />} />
-        <Stat label="Resultado líquido" value={fmtBRL(liquido)} highlight={liquido >= 0 ? "pos" : "neg"} />
+        <Stat label="Resultado realizado" value={fmtBRL(liquido)} highlight={liquido >= 0 ? "pos" : "neg"} />
+        <Stat label="Saldo previsto" value={fmtBRL(saldoPrev)} highlight={saldoPrev >= 0 ? "pos" : "neg"} />
       </div>
+      <p className="text-xs text-muted-foreground -mt-2">
+        Resultado realizado = Entradas − Saídas − Impostos. Saídas já incluem os custos fixos confirmados.
+      </p>
 
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
@@ -177,11 +179,11 @@ function Resumo() {
           <div className="rounded-md border p-3 space-y-1">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Despesas</p>
             <p className="text-xl font-semibold text-red-600">{fmtBRL(despesasPrev)} <span className="text-xs text-muted-foreground font-normal">previstas</span></p>
-            <div className="text-sm text-muted-foreground flex justify-between"><span>Realizado</span><span className="font-medium text-foreground">{fmtBRL(expenses)}</span></div>
-            <div className="text-sm text-muted-foreground flex justify-between"><span>A pagar</span><span className="font-medium text-foreground">{fmtBRL(aPagar)}</span></div>
+            <div className="text-sm text-muted-foreground flex justify-between"><span>Realizado (saídas)</span><span className="font-medium text-foreground">{fmtBRL(expenses)}</span></div>
+            <div className="text-sm text-muted-foreground flex justify-between"><span>Custos fixos pagos</span><span className="font-medium text-foreground">{fmtBRL(fixedConfirmedAmount)}</span></div>
+            <div className="text-sm text-muted-foreground flex justify-between"><span>A pagar (fixos)</span><span className="font-medium text-foreground">{fmtBRL(aPagar)}</span></div>
+            <div className="text-sm text-muted-foreground flex justify-between"><span>Depreciação (mês, teórica)</span><span className="font-medium text-foreground">{fmtBRL(depreciation)}</span></div>
           </div>
-          <Stat label="Saldo previsto" value={fmtBRL(saldoPrev)} highlight={saldoPrev >= 0 ? "pos" : "neg"} />
-          <Stat label="Saldo realizado" value={fmtBRL(saldoReal)} highlight={saldoReal >= 0 ? "pos" : "neg"} />
         </div>
         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           {recurringCount > 0 && (
