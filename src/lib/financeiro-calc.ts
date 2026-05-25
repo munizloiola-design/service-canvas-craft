@@ -154,3 +154,62 @@ export const computeMonthKpis = (params: {
 
   return { incomes, expenses, fixedPrevisto, fixedPending, fixedConfirmed, taxes, liquido };
 };
+
+export interface ChartPoint {
+  year: number;
+  month: number; // 1-12
+  Entradas: number;
+  Saidas: number;
+  Resultado: number;
+}
+
+/**
+ * Builds the 12-month "Entradas vs Saídas vs Resultado" series used by the
+ * Financeiro chart. Considers exclusively confirmed entries (financial_entries) —
+ * recurring incomes and fixed costs only appear here AFTER confirmation.
+ */
+export const buildMonthlyChart = (
+  entries: Entry[],
+  reference: Date = new Date(),
+): ChartPoint[] => {
+  return Array.from({ length: 12 }, (_, idx) => {
+    const ref = new Date(reference.getFullYear(), reference.getMonth() - (11 - idx), 1);
+    const start = new Date(ref.getFullYear(), ref.getMonth(), 1, 0, 0, 0, 0);
+    const end = new Date(ref.getFullYear(), ref.getMonth() + 1, 0, 23, 59, 59, 999);
+    const set = entriesInMonth(entries, start, end);
+    const Entradas = sumIncomes(set);
+    const Saidas = sumExpenses(set);
+    return {
+      year: ref.getFullYear(),
+      month: ref.getMonth() + 1,
+      Entradas,
+      Saidas,
+      Resultado: Entradas - Saidas,
+    };
+  });
+};
+
+/**
+ * Simulates the "Confirmar" action from the Confirmações tab: produces a new
+ * financial_entries row with the structured source_type/source_id link that
+ * the UI persists.
+ */
+export const buildConfirmationEntry = (
+  source:
+    | { kind: "income"; id: string; description: string; amount: number | string }
+    | { kind: "expense"; id: string; description: string; amount: number | string },
+  monthDate: Date,
+): Entry => {
+  const sourceType: SourceType =
+    source.kind === "income" ? "recurring_income" : "fixed_cost";
+  const iso = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, "0")}-${String(monthDate.getDate()).padStart(2, "0")}`;
+  return {
+    id: `entry-${source.kind}-${source.id}-${iso}`,
+    kind: source.kind,
+    entry_date: iso,
+    amount: Number(source.amount) || 0,
+    description: source.description,
+    source_type: sourceType,
+    source_id: source.id,
+  };
+};
