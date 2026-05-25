@@ -3,12 +3,14 @@ import {
   buildConfirmationEntry,
   buildMonthlyChart,
   computeMonthKpis,
+  overdueItems,
   pendingFixed,
   pendingRecurring,
   type Entry,
   type FixedCost,
   type RecurringIncome,
 } from "../financeiro-calc";
+
 
 /**
  * Testes de integração do fluxo "Confirmações do mês":
@@ -168,3 +170,52 @@ describe("Fluxo completo de confirmação (UI ↔ KPIs ↔ gráfico)", () => {
     expect(chart[11].Entradas).toBe(0); // maio
   });
 });
+
+describe("Coluna Atrasados (overdueItems)", () => {
+  const TODAY = new Date(2026, 4, 15); // 15/mai/2026
+
+  it("lista recorrentes e fixos sem confirmação nos meses anteriores", () => {
+    // Confirma só abr/26 para ri-1 e fc-1 — todo o resto fica em atraso
+    const entries: Entry[] = [
+      buildConfirmationEntry({ kind: "income", ...recurring[0] }, new Date(2026, 3, 10)),
+      buildConfirmationEntry({ kind: "expense", id: fixed[0].id, description: fixed[0].name, amount: fixed[0].amount }, new Date(2026, 3, 5)),
+    ];
+    const out = overdueItems({ recurring, fixed, entries, today: TODAY, monthsBack: 2 });
+    // 2 meses atrás (mar/26 e abr/26): em abr/26 ri-1 e fc-1 confirmados;
+    // ri-2, fc-2, fc-3 atrasados nos 2 meses; ri-1 e fc-1 atrasados só em mar/26.
+    // Total: ri-2 (2x) + fc-2 (2x) + fc-3 (2x) + ri-1 (1x) + fc-1 (1x) = 8
+    expect(out).toHaveLength(8);
+    // Ordenado: mais antigo primeiro (mar/26)
+    expect(out[0].monthDate.getMonth()).toBe(2); // março
+  });
+
+  it("não considera item inativo nem mês atual/futuro", () => {
+    const recurringWithInactive: RecurringIncome[] = [
+      ...recurring,
+      { id: "ri-off", description: "Antigo", amount: 999, active: false },
+    ];
+    const out = overdueItems({
+      recurring: recurringWithInactive,
+      fixed: [],
+      entries: [],
+      today: TODAY,
+      monthsBack: 3,
+    });
+    // ri-off não aparece; mês atual (mai/26) e futuros não contam
+    expect(out.every((o) => o.sourceId !== "ri-off")).toBe(true);
+    expect(out.every((o) => o.monthDate < new Date(2026, 4, 1))).toBe(true);
+  });
+
+  it("confirmar um atraso remove-o da lista (via buildConfirmationEntry)", () => {
+    const before = overdueItems({ recurring, fixed: [], entries: [], today: TODAY, monthsBack: 1 });
+    expect(before.length).toBeGreaterThan(0);
+    const targetMonth = before[0].monthDate;
+    const entries: Entry[] = [
+      buildConfirmationEntry({ kind: "income", ...recurring[0] }, targetMonth),
+      buildConfirmationEntry({ kind: "income", ...recurring[1] }, targetMonth),
+    ];
+    const after = overdueItems({ recurring, fixed: [], entries, today: TODAY, monthsBack: 1 });
+    expect(after).toHaveLength(0);
+  });
+});
+

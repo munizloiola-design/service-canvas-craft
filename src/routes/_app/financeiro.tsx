@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 import { startOfMonth, endOfMonth, subMonths, format, parseISO, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { findEntryForSource } from "@/lib/financeiro-calc";
+import { findEntryForSource, overdueItems, type OverdueItem } from "@/lib/financeiro-calc";
 
 export const Route = createFileRoute("/_app/financeiro")({ component: FinanceiroPage });
 
@@ -37,6 +37,8 @@ function FinanceiroPage() {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="confirmar">Confirmações do mês</TabsTrigger>
+          <TabsTrigger value="realizados-rec">Recebimentos realizados</TabsTrigger>
+          <TabsTrigger value="realizados-pag">Pagamentos realizados</TabsTrigger>
           <TabsTrigger value="entradas">Lançamentos</TabsTrigger>
           <TabsTrigger value="fixos">Custos fixos</TabsTrigger>
           <TabsTrigger value="recorrentes">Receitas recorrentes</TabsTrigger>
@@ -45,11 +47,14 @@ function FinanceiroPage() {
         </TabsList>
         <TabsContent value="resumo" className="mt-6"><Resumo /></TabsContent>
         <TabsContent value="confirmar" className="mt-6"><Confirmacoes /></TabsContent>
+        <TabsContent value="realizados-rec" className="mt-6"><RealizadosTable kind="income" /></TabsContent>
+        <TabsContent value="realizados-pag" className="mt-6"><RealizadosTable kind="expense" /></TabsContent>
         <TabsContent value="entradas" className="mt-6"><Entries /></TabsContent>
         <TabsContent value="fixos" className="mt-6"><FixedCosts /></TabsContent>
         <TabsContent value="recorrentes" className="mt-6"><RecurringIncomes /></TabsContent>
         <TabsContent value="relatorios" className="mt-6"><Relatorios /></TabsContent>
         <TabsContent value="config" className="mt-6"><Settings /></TabsContent>
+
       </Tabs>
     </div>
   );
@@ -629,24 +634,26 @@ function Confirmacoes() {
   const isConfirmed = (source: { id: string; description: string }, kind: "income" | "expense") =>
     !!findFor(source, kind);
 
-  const dateInMonth = (day?: number | null) => {
-    const d = new Date(refDate);
-    const target = day ?? d.getDate();
-    d.setDate(Math.min(target, endOfMonth(refDate).getDate()));
-    return d.toISOString().slice(0, 10);
-  };
+
+
 
   const confirmIncome = useMutation({
-    mutationFn: async (r: any) => {
+    mutationFn: async ({ r, monthDate }: { r: any; monthDate?: Date }) => {
       const { data: u } = await supabase.auth.getUser();
+      const md = monthDate ?? refDate;
+      const dateStr = (() => {
+        const d = new Date(md);
+        d.setDate(Math.min(d.getDate() || 1, endOfMonth(md).getDate()));
+        return d.toISOString().slice(0, 10);
+      })();
       const { error } = await supabase.from("financial_entries").insert({
-        kind: "income", entry_date: dateInMonth(),
+        kind: "income", entry_date: dateStr,
         description: r.description, amount: r.amount, client_id: r.client_id ?? null,
         category: "Recorrente", created_by: u.user?.id,
         source_type: "recurring_income", source_id: r.id,
       });
       if (error) throw error;
-      const next = r.next_due ? addMonths(parseISO(r.next_due), 1) : addMonths(refDate, 1);
+      const next = r.next_due ? addMonths(parseISO(r.next_due), 1) : addMonths(md, 1);
       await supabase.from("recurring_incomes").update({ next_due: next.toISOString().slice(0, 10) }).eq("id", r.id);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_entries"] }); qc.invalidateQueries({ queryKey: ["recurring_incomes"] }); toast.success("Recebimento confirmado"); },
@@ -654,10 +661,15 @@ function Confirmacoes() {
   });
 
   const confirmExpense = useMutation({
-    mutationFn: async (c: any) => {
+    mutationFn: async ({ c, monthDate }: { c: any; monthDate?: Date }) => {
       const { data: u } = await supabase.auth.getUser();
+      const md = monthDate ?? refDate;
+      const day = c.due_day ?? 1;
+      const d = new Date(md);
+      d.setDate(Math.min(day, endOfMonth(md).getDate()));
+      const dateStr = d.toISOString().slice(0, 10);
       const { error } = await supabase.from("financial_entries").insert({
-        kind: "expense", entry_date: dateInMonth(c.due_day),
+        kind: "expense", entry_date: dateStr,
         description: c.name, amount: c.amount, category: c.category ?? "Custo fixo",
         created_by: u.user?.id,
         source_type: "fixed_cost", source_id: c.id,
@@ -675,6 +687,7 @@ function Confirmacoes() {
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_entries"] }); toast.success("Desfeito"); },
   });
+
 
   // Totais pendentes/confirmados para o painel de resumo
   const recurringConfirmedTotal = recurring.reduce((s: number, r: any) => {
@@ -746,89 +759,147 @@ function Confirmacoes() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="lg:col-span-2 -mb-4 text-xs text-muted-foreground">
-          Período: {format(monthStart, "dd/MM/yyyy")} – {format(monthEnd, "dd/MM/yyyy")}
-        </div>
-      <Card className="p-4">
-        <h3 className="font-medium mb-1">Receitas recorrentes a receber</h3>
-        <p className="text-xs text-muted-foreground mb-4">Marque as receitas que já entraram este mês.</p>
-        <div className="space-y-2">
-          {recurring.map((r: any) => {
-            const entry = findFor({ id: r.id, description: r.description }, "income");
-            const confirmed = !!entry;
-            return (
-              <div key={r.id} className="flex items-center gap-3 p-3 rounded-md border">
-                <Checkbox
-                  checked={confirmed}
-                  disabled={!canEdit}
-                  onCheckedChange={(v) => {
-                    if (v && !confirmed) confirmIncome.mutate(r);
-                    else if (!v && confirmed && entry?.id) unconfirm.mutate(entry.id);
-                  }}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{r.description}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {r.clients?.name ?? "—"} {r.next_due ? `· vence ${format(parseISO(r.next_due), "dd/MM")}` : ""}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium text-green-600">{fmtBRL(Number(r.amount))}</p>
-                  {confirmed && <Badge variant="secondary" className="mt-1"><CheckCircle2 className="h-3 w-3 mr-1" />Recebido</Badge>}
-                  {confirmed && entry && (
-                    <p className="text-[10px] text-muted-foreground font-mono mt-1" title="Vínculo de auditoria">
-                      {entry.source_type ?? "—"} · {entry.source_id ? entry.source_id.slice(0, 8) + "…" : "—"}
-                    </p>
-                  )}
-                </div>
+      {(() => {
+        const nextRef = addMonths(refDate, 1);
+        const nextStart = startOfMonth(nextRef);
+        const nextEnd = endOfMonth(nextRef);
+        const nextMonthEntries = entries.filter((e: any) => {
+          const d = parseISO(e.entry_date);
+          return d >= nextStart && d <= nextEnd;
+        });
+        const pendingRecurMonth = recurring.filter((r: any) => !findEntryForSource({ id: r.id, kind: "income", description: r.description }, monthEntries as any));
+        const pendingFixedMonth = fixed.filter((c: any) => !findEntryForSource({ id: c.id, kind: "expense", description: c.name }, monthEntries as any));
+        const pendingRecurNext = recurring.filter((r: any) => !findEntryForSource({ id: r.id, kind: "income", description: r.description }, nextMonthEntries as any));
+        const pendingFixedNext = fixed.filter((c: any) => !findEntryForSource({ id: c.id, kind: "expense", description: c.name }, nextMonthEntries as any));
+        const overdue = overdueItems({
+          recurring: recurring as any,
+          fixed: fixed as any,
+          entries: entries as any,
+          today: new Date(),
+          monthsBack: 12,
+        });
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            {/* Receber mês */}
+            <Card className="p-4 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-green-700">Receber (mês)</h3>
+                <Badge variant="secondary">{pendingRecurMonth.length}</Badge>
               </div>
-            );
-          })}
-          {recurring.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Nenhuma receita recorrente cadastrada</p>}
-        </div>
-      </Card>
+              <p className="text-xs text-muted-foreground mb-3">Recorrentes ainda não confirmadas em {format(refDate, "MMM/yyyy", { locale: ptBR })}.</p>
+              <div className="space-y-2 flex-1">
+                {pendingRecurMonth.map((r: any) => (
+                  <div key={r.id} className="p-2 rounded-md border space-y-1">
+                    <div className="flex justify-between gap-2">
+                      <p className="font-medium text-sm truncate">{r.description}</p>
+                      <p className="text-sm text-green-600 font-medium whitespace-nowrap">{fmtBRL(Number(r.amount))}</p>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground truncate">{r.clients?.name ?? "—"}</p>
+                    {canEdit && <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => confirmIncome.mutate({ r })}><CheckCircle2 className="h-3 w-3 mr-1" />Confirmar</Button>}
+                  </div>
+                ))}
+                {pendingRecurMonth.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Tudo recebido este mês ✓</p>}
+              </div>
+            </Card>
 
-      <Card className="p-4">
-        <h3 className="font-medium mb-1">Custos fixos a pagar</h3>
-        <p className="text-xs text-muted-foreground mb-4">Marque os custos fixos pagos este mês.</p>
-        <div className="space-y-2">
-          {fixed.map((c: any) => {
-            const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
-            const entry = findFor({ id: c.id, description: c.name }, "expense");
-            const confirmed = !!entry;
-            return (
-              <div key={c.id} className="flex items-center gap-3 p-3 rounded-md border">
-                <Checkbox
-                  checked={confirmed}
-                  disabled={!canEdit}
-                  onCheckedChange={(v) => {
-                    if (v && !confirmed) confirmExpense.mutate(c);
-                    else if (!v && confirmed && entry?.id) unconfirm.mutate(entry.id);
-                  }}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{c.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {c.category ?? "—"} {c.due_day ? `· vence dia ${c.due_day}` : ""} {c.recurrence === "annual" ? "· anual" : ""}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium text-red-600">{fmtBRL(monthly)}</p>
-                  {confirmed && <Badge variant="secondary" className="mt-1"><CheckCircle2 className="h-3 w-3 mr-1" />Pago</Badge>}
-                  {confirmed && entry && (
-                    <p className="text-[10px] text-muted-foreground font-mono mt-1" title="Vínculo de auditoria">
-                      {entry.source_type ?? "—"} · {entry.source_id ? entry.source_id.slice(0, 8) + "…" : "—"}
-                    </p>
-                  )}
-                </div>
+            {/* Pagar mês */}
+            <Card className="p-4 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-red-700">Pagar (mês)</h3>
+                <Badge variant="secondary">{pendingFixedMonth.length}</Badge>
               </div>
-            );
-          })}
-          {fixed.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Nenhum custo fixo cadastrado</p>}
-        </div>
-      </Card>
-      </div>
+              <p className="text-xs text-muted-foreground mb-3">Custos fixos ainda não confirmados em {format(refDate, "MMM/yyyy", { locale: ptBR })}.</p>
+              <div className="space-y-2 flex-1">
+                {pendingFixedMonth.map((c: any) => {
+                  const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
+                  return (
+                    <div key={c.id} className="p-2 rounded-md border space-y-1">
+                      <div className="flex justify-between gap-2">
+                        <p className="font-medium text-sm truncate">{c.name}</p>
+                        <p className="text-sm text-red-600 font-medium whitespace-nowrap">{fmtBRL(monthly)}</p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate">{c.category ?? "—"}{c.due_day ? ` · dia ${c.due_day}` : ""}</p>
+                      {canEdit && <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => confirmExpense.mutate({ c })}><CheckCircle2 className="h-3 w-3 mr-1" />Confirmar</Button>}
+                    </div>
+                  );
+                })}
+                {pendingFixedMonth.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Tudo pago este mês ✓</p>}
+              </div>
+            </Card>
+
+            {/* Próximos (mês seguinte) */}
+            <Card className="p-4 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium">Próximos</h3>
+                <Badge variant="secondary">{pendingRecurNext.length + pendingFixedNext.length}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">Previstos para {format(nextRef, "MMM/yyyy", { locale: ptBR })}.</p>
+              <div className="space-y-2 flex-1">
+                {pendingRecurNext.map((r: any) => (
+                  <div key={`n-r-${r.id}`} className="p-2 rounded-md border flex justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1"><Badge variant="outline" className="text-[9px] h-4 px-1">Receita</Badge></div>
+                      <p className="font-medium text-sm truncate mt-1">{r.description}</p>
+                    </div>
+                    <p className="text-sm text-green-600 font-medium whitespace-nowrap">{fmtBRL(Number(r.amount))}</p>
+                  </div>
+                ))}
+                {pendingFixedNext.map((c: any) => {
+                  const monthly = c.recurrence === "annual" ? Number(c.amount) / 12 : Number(c.amount);
+                  return (
+                    <div key={`n-f-${c.id}`} className="p-2 rounded-md border flex justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1"><Badge variant="outline" className="text-[9px] h-4 px-1">Despesa</Badge></div>
+                        <p className="font-medium text-sm truncate mt-1">{c.name}</p>
+                      </div>
+                      <p className="text-sm text-red-600 font-medium whitespace-nowrap">{fmtBRL(monthly)}</p>
+                    </div>
+                  );
+                })}
+                {pendingRecurNext.length + pendingFixedNext.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Nada previsto</p>}
+              </div>
+            </Card>
+
+            {/* Atrasados */}
+            <Card className="p-4 flex flex-col border-l-4 border-l-amber-500">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-amber-700">Atrasados</h3>
+                <Badge variant="destructive">{overdue.length}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">Meses anteriores sem confirmação (últimos 12 meses).</p>
+              <div className="space-y-2 flex-1 max-h-[420px] overflow-y-auto">
+                {overdue.map((o: OverdueItem, idx: number) => {
+                  const source = o.kind === "income"
+                    ? recurring.find((r: any) => r.id === o.sourceId)
+                    : fixed.find((c: any) => c.id === o.sourceId);
+                  return (
+                    <div key={`o-${o.sourceId}-${idx}`} className="p-2 rounded-md border space-y-1 bg-amber-50/30 dark:bg-amber-950/10">
+                      <div className="flex justify-between gap-2">
+                        <p className="font-medium text-sm truncate">{o.description}</p>
+                        <p className={`text-sm font-medium whitespace-nowrap ${o.kind === "income" ? "text-green-600" : "text-red-600"}`}>{fmtBRL(o.amount)}</p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        <Badge variant="outline" className="text-[9px] h-4 px-1 mr-1">{o.kind === "income" ? "Receita" : "Despesa"}</Badge>
+                        {format(o.monthDate, "MMM/yyyy", { locale: ptBR })}
+                      </p>
+                      {canEdit && source && (
+                        <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => {
+                          if (o.kind === "income") confirmIncome.mutate({ r: source, monthDate: o.monthDate });
+                          else confirmExpense.mutate({ c: source, monthDate: o.monthDate });
+                        }}>
+                          <CheckCircle2 className="h-3 w-3 mr-1" />Confirmar atraso
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+                {overdue.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Nada em atraso ✓</p>}
+              </div>
+            </Card>
+          </div>
+        );
+      })()}
+
     </div>
   );
 }
@@ -969,3 +1040,100 @@ function Relatorios() {
     </div>
   );
 }
+
+function RealizadosTable({ kind }: { kind: "income" | "expense" }) {
+  const { data: rows = [] } = useQuery({
+    queryKey: ["realizados", kind],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financial_entries")
+        .select("*, projects(title), clients(name)")
+        .eq("kind", kind)
+        .order("entry_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const [fDate, setFDate] = useState("");
+  const [fDesc, setFDesc] = useState("");
+  const [fOrigem, setFOrigem] = useState("");
+  const [fValor, setFValor] = useState("");
+  const [fCat, setFCat] = useState("");
+
+  const labelOrigem = (st?: string | null) => {
+    if (st === "recurring_income") return "Recorrente";
+    if (st === "fixed_cost") return "Custo fixo";
+    if (st === "manual") return "Manual";
+    return st ?? "Manual";
+  };
+
+  const filtered = useMemo(() => {
+    return rows.filter((r: any) => {
+      const dateStr = r.entry_date ? format(parseISO(r.entry_date), "dd/MM/yyyy") : "";
+      if (fDate && !dateStr.includes(fDate) && !(r.entry_date ?? "").includes(fDate)) return false;
+      if (fDesc && !(r.description ?? "").toLowerCase().includes(fDesc.toLowerCase())) return false;
+      if (fCat && !(r.category ?? "").toLowerCase().includes(fCat.toLowerCase())) return false;
+      if (fOrigem && !labelOrigem(r.source_type).toLowerCase().includes(fOrigem.toLowerCase())) return false;
+      if (fValor && !String(r.amount).includes(fValor.replace(",", "."))) return false;
+      return true;
+    });
+  }, [rows, fDate, fDesc, fCat, fOrigem, fValor]);
+
+  const total = filtered.reduce((s, r: any) => s + Number(r.amount || 0), 0);
+  const color = kind === "income" ? "text-green-600" : "text-red-600";
+  const title = kind === "income" ? "Recebimentos realizados" : "Pagamentos realizados";
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-baseline justify-between mb-4">
+        <h3 className="font-medium">{title}</h3>
+        <p className="text-sm text-muted-foreground">
+          {filtered.length} de {rows.length} · Total filtrado: <span className={`font-semibold ${color}`}>{fmtBRL(total)}</span>
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[140px]">Data</TableHead>
+              <TableHead>Descrição</TableHead>
+              <TableHead className="w-[160px]">Categoria</TableHead>
+              <TableHead className="w-[140px]">Origem</TableHead>
+              <TableHead>Projeto / Cliente</TableHead>
+              <TableHead className="text-right w-[140px]">Valor</TableHead>
+            </TableRow>
+            <TableRow>
+              <TableHead><Input placeholder="Buscar…" value={fDate} onChange={(e) => setFDate(e.target.value)} className="h-7 text-xs" /></TableHead>
+              <TableHead><Input placeholder="Buscar…" value={fDesc} onChange={(e) => setFDesc(e.target.value)} className="h-7 text-xs" /></TableHead>
+              <TableHead><Input placeholder="Buscar…" value={fCat} onChange={(e) => setFCat(e.target.value)} className="h-7 text-xs" /></TableHead>
+              <TableHead><Input placeholder="Buscar…" value={fOrigem} onChange={(e) => setFOrigem(e.target.value)} className="h-7 text-xs" /></TableHead>
+              <TableHead></TableHead>
+              <TableHead><Input placeholder="Buscar…" value={fValor} onChange={(e) => setFValor(e.target.value)} className="h-7 text-xs" /></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((r: any) => (
+              <TableRow key={r.id}>
+                <TableCell>{r.entry_date ? format(parseISO(r.entry_date), "dd/MM/yyyy") : "—"}</TableCell>
+                <TableCell className="font-medium">{r.description}</TableCell>
+                <TableCell>{r.category ?? "—"}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="text-[10px]">{labelOrigem(r.source_type)}</Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{r.projects?.title ?? r.clients?.name ?? "—"}</TableCell>
+                <TableCell className={`text-right font-medium ${color}`}>{fmtBRL(Number(r.amount))}</TableCell>
+              </TableRow>
+            ))}
+            {filtered.length === 0 && (
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                {rows.length === 0 ? "Nenhum lançamento realizado" : "Nenhum resultado para os filtros"}
+              </TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </Card>
+  );
+}
+
