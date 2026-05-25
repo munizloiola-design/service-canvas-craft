@@ -124,7 +124,7 @@ function Resumo() {
   const fixedConfirmedAmount = Math.max(0, fixedMonthlyPrevisto - aPagar);
   const despesasPrev = expenses + aPagar + (receitasPrev * taxPct) + depreciation;
   const saldoPrev = receitasPrev - despesasPrev;
-  const saldoReal = incomes - expenses;
+  
 
   // 12-month chart — exclusivamente entradas reais confirmadas (financial_entries), sem previstos
   const chart = Array.from({ length: 12 }, (_, idx) => {
