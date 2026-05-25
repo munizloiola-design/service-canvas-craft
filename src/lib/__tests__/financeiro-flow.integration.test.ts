@@ -240,7 +240,6 @@ describe("Coluna Atrasados (overdueItems)", () => {
     expect(out).toHaveLength(2);
     expect(out.every((o) => o.monthDate >= new Date(2026, 2, 1))).toBe(true);
   });
-});
 
   it("confirmar um atraso remove-o da lista (via buildConfirmationEntry)", () => {
     const before = overdueItems({ recurring, fixed: [], entries: [], today: TODAY, monthsBack: 1 });
