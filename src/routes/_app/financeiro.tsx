@@ -497,6 +497,7 @@ function RecurringIncomes() {
     setEditing(i);
     setF({
       client_id: i.client_id, description: i.description, amount: Number(i.amount),
+      commission_pct: Number(i.commission_pct ?? 0),
       recurrence: i.recurrence ?? "monthly",
       next_due: i.next_due ?? new Date().toISOString().slice(0, 10),
       active: i.active,
