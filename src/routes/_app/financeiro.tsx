@@ -397,7 +397,7 @@ function FixedCosts() {
   const openNew = () => { setEditing(null); setF(empty); setOpen(true); };
   const openEdit = (i: any) => {
     setEditing(i);
-    setF({ name: i.name, category: i.category ?? "", amount: Number(i.amount), recurrence: i.recurrence ?? "monthly", due_day: i.due_day ?? 5, active: i.active });
+    setF({ name: i.name, category: i.category ?? "", amount: Number(i.amount), commission_pct: Number(i.commission_pct ?? 0), recurrence: i.recurrence ?? "monthly", due_day: i.due_day ?? 5, active: i.active });
     setOpen(true);
   };
 
