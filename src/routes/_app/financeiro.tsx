@@ -544,7 +544,7 @@ function RecurringIncomes() {
         </DialogContent>
       </Dialog>
       <Table>
-        <TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Descrição</TableHead><TableHead>Recorrência</TableHead><TableHead>Próx. vencimento</TableHead><TableHead className="text-right">Valor</TableHead><TableHead></TableHead></TableRow></TableHeader>
+        <TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Descrição</TableHead><TableHead>Recorrência</TableHead><TableHead>Próx. vencimento</TableHead><TableHead className="text-right">Comissão</TableHead><TableHead className="text-right">Valor</TableHead><TableHead></TableHead></TableRow></TableHeader>
         <TableBody>
           {items.map((i: any) => (
             <TableRow key={i.id}>
@@ -552,6 +552,7 @@ function RecurringIncomes() {
               <TableCell className="font-medium">{i.description} {!i.active && <Badge variant="outline" className="ml-1">inativa</Badge>}</TableCell>
               <TableCell>{i.recurrence === "monthly" ? "Mensal" : "Anual"}</TableCell>
               <TableCell>{i.next_due ? format(parseISO(i.next_due), "dd/MM/yyyy") : "—"}</TableCell>
+              <TableCell className="text-right">{Number(i.commission_pct ?? 0) > 0 ? `${Number(i.commission_pct)}%` : "—"}</TableCell>
               <TableCell className="text-right">{fmtBRL(Number(i.amount))}</TableCell>
               <TableCell className="text-right">
                 {canEdit && <>
@@ -561,7 +562,7 @@ function RecurringIncomes() {
               </TableCell>
             </TableRow>
           ))}
-          {items.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma receita recorrente</TableCell></TableRow>}
+          {items.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma receita recorrente</TableCell></TableRow>}
         </TableBody>
       </Table>
     </Card>
