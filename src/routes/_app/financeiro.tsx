@@ -373,7 +373,7 @@ function FixedCosts() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const { data: items = [] } = useQuery({ queryKey: ["fixed_costs"], queryFn: async () => (await supabase.from("fixed_costs").select("*").order("name")).data ?? [] });
-  const empty = { name: "", category: "", amount: 0, recurrence: "monthly", due_day: 5, active: true };
+  const empty = { name: "", category: "", amount: 0, commission_pct: 0, recurrence: "monthly", due_day: 5, active: true };
   const [f, setF] = useState<any>(empty);
 
   const save = useMutation({
@@ -397,7 +397,7 @@ function FixedCosts() {
   const openNew = () => { setEditing(null); setF(empty); setOpen(true); };
   const openEdit = (i: any) => {
     setEditing(i);
-    setF({ name: i.name, category: i.category ?? "", amount: Number(i.amount), recurrence: i.recurrence ?? "monthly", due_day: i.due_day ?? 5, active: i.active });
+    setF({ name: i.name, category: i.category ?? "", amount: Number(i.amount), commission_pct: Number(i.commission_pct ?? 0), recurrence: i.recurrence ?? "monthly", due_day: i.due_day ?? 5, active: i.active });
     setOpen(true);
   };
 
@@ -416,7 +416,7 @@ function FixedCosts() {
               <div><Label>Categoria</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></div>
               <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={f.amount} onChange={(e) => setF({ ...f, amount: Number(e.target.value) })} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label>Recorrência</Label>
                 <Select value={f.recurrence} onValueChange={(v) => setF({ ...f, recurrence: v })}>
@@ -425,6 +425,7 @@ function FixedCosts() {
                 </Select>
               </div>
               <div><Label>Dia de vencimento</Label><Input type="number" min={1} max={31} value={f.due_day} onChange={(e) => setF({ ...f, due_day: Number(e.target.value) })} /></div>
+              <div><Label>Comissão (%)</Label><Input type="number" step="0.01" min={0} value={f.commission_pct} onChange={(e) => setF({ ...f, commission_pct: Number(e.target.value) })} /></div>
             </div>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <Checkbox checked={f.active} onCheckedChange={(v) => setF({ ...f, active: !!v })} />
@@ -435,7 +436,7 @@ function FixedCosts() {
         </DialogContent>
       </Dialog>
       <Table>
-        <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Categoria</TableHead><TableHead>Recorrência</TableHead><TableHead>Vence dia</TableHead><TableHead className="text-right">Valor</TableHead><TableHead></TableHead></TableRow></TableHeader>
+        <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Categoria</TableHead><TableHead>Recorrência</TableHead><TableHead>Vence dia</TableHead><TableHead className="text-right">Comissão</TableHead><TableHead className="text-right">Valor</TableHead><TableHead></TableHead></TableRow></TableHeader>
         <TableBody>
           {items.map((i: any) => (
             <TableRow key={i.id}>
@@ -443,6 +444,7 @@ function FixedCosts() {
               <TableCell>{i.category ?? "—"}</TableCell>
               <TableCell>{i.recurrence === "monthly" ? "Mensal" : "Anual"}</TableCell>
               <TableCell>{i.due_day ?? "—"}</TableCell>
+              <TableCell className="text-right">{Number(i.commission_pct ?? 0) > 0 ? `${Number(i.commission_pct)}%` : "—"}</TableCell>
               <TableCell className="text-right">{fmtBRL(Number(i.amount))}</TableCell>
               <TableCell className="text-right">
                 {canEdit && <>
@@ -452,7 +454,7 @@ function FixedCosts() {
               </TableCell>
             </TableRow>
           ))}
-          {items.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum custo fixo</TableCell></TableRow>}
+          {items.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum custo fixo</TableCell></TableRow>}
         </TableBody>
       </Table>
     </Card>
@@ -469,7 +471,7 @@ function RecurringIncomes() {
   const [editing, setEditing] = useState<any | null>(null);
   const { data: items = [] } = useQuery({ queryKey: ["recurring_incomes"], queryFn: async () => (await supabase.from("recurring_incomes").select("*, clients(name)").order("description")).data ?? [] });
   const { data: clients = [] } = useQuery({ queryKey: ["clients-mini"], queryFn: async () => (await supabase.from("clients").select("id, name").order("name")).data ?? [] });
-  const empty = { client_id: null as string | null, description: "", amount: 0, recurrence: "monthly", next_due: new Date().toISOString().slice(0, 10), active: true };
+  const empty = { client_id: null as string | null, description: "", amount: 0, commission_pct: 0, recurrence: "monthly", next_due: new Date().toISOString().slice(0, 10), active: true };
   const [f, setF] = useState<any>(empty);
 
   const save = useMutation({
@@ -495,6 +497,7 @@ function RecurringIncomes() {
     setEditing(i);
     setF({
       client_id: i.client_id, description: i.description, amount: Number(i.amount),
+      commission_pct: Number(i.commission_pct ?? 0),
       recurrence: i.recurrence ?? "monthly",
       next_due: i.next_due ?? new Date().toISOString().slice(0, 10),
       active: i.active,
@@ -531,6 +534,7 @@ function RecurringIncomes() {
               </div>
               <div><Label>Próximo vencimento</Label><Input type="date" value={f.next_due} onChange={(e) => setF({ ...f, next_due: e.target.value })} /></div>
             </div>
+            <div><Label>Comissão (%)</Label><Input type="number" step="0.01" min={0} value={f.commission_pct} onChange={(e) => setF({ ...f, commission_pct: Number(e.target.value) })} /></div>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <Checkbox checked={f.active} onCheckedChange={(v) => setF({ ...f, active: !!v })} />
               Ativa
@@ -540,7 +544,7 @@ function RecurringIncomes() {
         </DialogContent>
       </Dialog>
       <Table>
-        <TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Descrição</TableHead><TableHead>Recorrência</TableHead><TableHead>Próx. vencimento</TableHead><TableHead className="text-right">Valor</TableHead><TableHead></TableHead></TableRow></TableHeader>
+        <TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Descrição</TableHead><TableHead>Recorrência</TableHead><TableHead>Próx. vencimento</TableHead><TableHead className="text-right">Comissão</TableHead><TableHead className="text-right">Valor</TableHead><TableHead></TableHead></TableRow></TableHeader>
         <TableBody>
           {items.map((i: any) => (
             <TableRow key={i.id}>
@@ -548,6 +552,7 @@ function RecurringIncomes() {
               <TableCell className="font-medium">{i.description} {!i.active && <Badge variant="outline" className="ml-1">inativa</Badge>}</TableCell>
               <TableCell>{i.recurrence === "monthly" ? "Mensal" : "Anual"}</TableCell>
               <TableCell>{i.next_due ? format(parseISO(i.next_due), "dd/MM/yyyy") : "—"}</TableCell>
+              <TableCell className="text-right">{Number(i.commission_pct ?? 0) > 0 ? `${Number(i.commission_pct)}%` : "—"}</TableCell>
               <TableCell className="text-right">{fmtBRL(Number(i.amount))}</TableCell>
               <TableCell className="text-right">
                 {canEdit && <>
@@ -557,7 +562,7 @@ function RecurringIncomes() {
               </TableCell>
             </TableRow>
           ))}
-          {items.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma receita recorrente</TableCell></TableRow>}
+          {items.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma receita recorrente</TableCell></TableRow>}
         </TableBody>
       </Table>
     </Card>
@@ -617,6 +622,18 @@ function Autorizacoes() {
         if ((error as any).code === "23505") throw new Error("Já confirmado neste mês");
         throw error;
       }
+      const commPct = Number(r.commission_pct ?? 0);
+      if (commPct > 0) {
+        const commAmount = (Number(r.amount) * commPct) / 100;
+        const { error: cErr } = await supabase.from("financial_entries").insert({
+          kind: "expense", entry_date: d.toISOString().slice(0, 10),
+          description: `Comissão — ${r.description}`, amount: commAmount,
+          client_id: r.client_id ?? null, category: "Comissão",
+          created_by: u.user?.id,
+          source_type: "recurring_income_commission", source_id: r.id,
+        });
+        if (cErr && (cErr as any).code !== "23505") throw cErr;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["financial_entries"] });
@@ -643,6 +660,17 @@ function Autorizacoes() {
       if (error) {
         if ((error as any).code === "23505") throw new Error("Já confirmado neste mês");
         throw error;
+      }
+      const commPct = Number(c.commission_pct ?? 0);
+      if (commPct > 0) {
+        const commAmount = (amount * commPct) / 100;
+        const { error: cErr } = await supabase.from("financial_entries").insert({
+          kind: "expense", entry_date: d.toISOString().slice(0, 10),
+          description: `Comissão — ${c.name}`, amount: commAmount,
+          category: "Comissão", created_by: u.user?.id,
+          source_type: "fixed_cost_commission", source_id: c.id,
+        });
+        if (cErr && (cErr as any).code !== "23505") throw cErr;
       }
     },
     onSuccess: () => {
