@@ -598,10 +598,15 @@ function Autorizacoes() {
     return d >= monthStart && d <= monthEnd;
   });
 
+  const createdBeforeOrInMonth = (createdAt?: string | null) =>
+    !createdAt || new Date(createdAt) <= monthEnd;
+
   const pendingRecur = recurring.filter((r: any) =>
+    createdBeforeOrInMonth(r.created_at) &&
     !findEntryForSource({ id: r.id, kind: "income", description: r.description }, monthEntries as any),
   );
   const pendingFixed = fixed.filter((c: any) =>
+    createdBeforeOrInMonth(c.created_at) &&
     !findEntryForSource({ id: c.id, kind: "expense", description: c.name }, monthEntries as any),
   );
 
