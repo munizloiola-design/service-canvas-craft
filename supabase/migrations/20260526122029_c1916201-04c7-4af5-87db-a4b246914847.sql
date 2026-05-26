@@ -1,0 +1,2 @@
+ALTER TABLE public.fixed_costs ADD COLUMN IF NOT EXISTS commission_pct numeric NOT NULL DEFAULT 0;
+ALTER TABLE public.recurring_incomes ADD COLUMN IF NOT EXISTS commission_pct numeric NOT NULL DEFAULT 0;

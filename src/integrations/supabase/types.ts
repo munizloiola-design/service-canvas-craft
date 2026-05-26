@@ -585,6 +585,7 @@ export type Database = {
           active: boolean
           amount: number
           category: string | null
+          commission_pct: number
           created_at: string
           due_day: number | null
           id: string
@@ -597,6 +598,7 @@ export type Database = {
           active?: boolean
           amount?: number
           category?: string | null
+          commission_pct?: number
           created_at?: string
           due_day?: number | null
           id?: string
@@ -609,6 +611,7 @@ export type Database = {
           active?: boolean
           amount?: number
           category?: string | null
+          commission_pct?: number
           created_at?: string
           due_day?: number | null
           id?: string
@@ -1090,6 +1093,7 @@ export type Database = {
           active: boolean
           amount: number
           client_id: string | null
+          commission_pct: number
           created_at: string
           description: string
           id: string
@@ -1102,6 +1106,7 @@ export type Database = {
           active?: boolean
           amount?: number
           client_id?: string | null
+          commission_pct?: number
           created_at?: string
           description: string
           id?: string
@@ -1114,6 +1119,7 @@ export type Database = {
           active?: boolean
           amount?: number
           client_id?: string | null
+          commission_pct?: number
           created_at?: string
           description?: string
           id?: string
