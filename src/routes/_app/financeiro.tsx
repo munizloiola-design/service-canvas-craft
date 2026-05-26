@@ -661,6 +661,17 @@ function Autorizacoes() {
         if ((error as any).code === "23505") throw new Error("Já confirmado neste mês");
         throw error;
       }
+      const commPct = Number(c.commission_pct ?? 0);
+      if (commPct > 0) {
+        const commAmount = (amount * commPct) / 100;
+        const { error: cErr } = await supabase.from("financial_entries").insert({
+          kind: "expense", entry_date: d.toISOString().slice(0, 10),
+          description: `Comissão — ${c.name}`, amount: commAmount,
+          category: "Comissão", created_by: u.user?.id,
+          source_type: "fixed_cost_commission", source_id: c.id,
+        });
+        if (cErr && (cErr as any).code !== "23505") throw cErr;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["financial_entries"] });
