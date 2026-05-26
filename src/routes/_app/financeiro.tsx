@@ -373,7 +373,7 @@ function FixedCosts() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const { data: items = [] } = useQuery({ queryKey: ["fixed_costs"], queryFn: async () => (await supabase.from("fixed_costs").select("*").order("name")).data ?? [] });
-  const empty = { name: "", category: "", amount: 0, recurrence: "monthly", due_day: 5, active: true };
+  const empty = { name: "", category: "", amount: 0, commission_pct: 0, recurrence: "monthly", due_day: 5, active: true };
   const [f, setF] = useState<any>(empty);
 
   const save = useMutation({
