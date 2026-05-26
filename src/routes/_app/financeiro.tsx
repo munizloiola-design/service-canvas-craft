@@ -436,7 +436,7 @@ function FixedCosts() {
         </DialogContent>
       </Dialog>
       <Table>
-        <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Categoria</TableHead><TableHead>Recorrência</TableHead><TableHead>Vence dia</TableHead><TableHead className="text-right">Valor</TableHead><TableHead></TableHead></TableRow></TableHeader>
+        <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Categoria</TableHead><TableHead>Recorrência</TableHead><TableHead>Vence dia</TableHead><TableHead className="text-right">Comissão</TableHead><TableHead className="text-right">Valor</TableHead><TableHead></TableHead></TableRow></TableHeader>
         <TableBody>
           {items.map((i: any) => (
             <TableRow key={i.id}>
@@ -444,6 +444,7 @@ function FixedCosts() {
               <TableCell>{i.category ?? "—"}</TableCell>
               <TableCell>{i.recurrence === "monthly" ? "Mensal" : "Anual"}</TableCell>
               <TableCell>{i.due_day ?? "—"}</TableCell>
+              <TableCell className="text-right">{Number(i.commission_pct ?? 0) > 0 ? `${Number(i.commission_pct)}%` : "—"}</TableCell>
               <TableCell className="text-right">{fmtBRL(Number(i.amount))}</TableCell>
               <TableCell className="text-right">
                 {canEdit && <>
@@ -453,7 +454,7 @@ function FixedCosts() {
               </TableCell>
             </TableRow>
           ))}
-          {items.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum custo fixo</TableCell></TableRow>}
+          {items.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum custo fixo</TableCell></TableRow>}
         </TableBody>
       </Table>
     </Card>
