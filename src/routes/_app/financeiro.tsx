@@ -416,7 +416,7 @@ function FixedCosts() {
               <div><Label>Categoria</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></div>
               <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={f.amount} onChange={(e) => setF({ ...f, amount: Number(e.target.value) })} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label>Recorrência</Label>
                 <Select value={f.recurrence} onValueChange={(v) => setF({ ...f, recurrence: v })}>
@@ -425,6 +425,7 @@ function FixedCosts() {
                 </Select>
               </div>
               <div><Label>Dia de vencimento</Label><Input type="number" min={1} max={31} value={f.due_day} onChange={(e) => setF({ ...f, due_day: Number(e.target.value) })} /></div>
+              <div><Label>Comissão (%)</Label><Input type="number" step="0.01" min={0} value={f.commission_pct} onChange={(e) => setF({ ...f, commission_pct: Number(e.target.value) })} /></div>
             </div>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <Checkbox checked={f.active} onCheckedChange={(v) => setF({ ...f, active: !!v })} />
