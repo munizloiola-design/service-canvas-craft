@@ -47,7 +47,8 @@ export const deleteTeamMember = createServerFn({ method: "POST" })
     return { success: true };
   });
 
-async function assertAdmin(ctx: { supabase: ReturnType<typeof requireSupabaseAuth> extends never ? never : any }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function assertAdmin(ctx: { supabase: any }) {
   const { data: me } = await ctx.supabase.auth.getUser();
   const actorId = me.user?.id as string | undefined;
   if (!actorId) throw new Error("Não autenticado");
@@ -56,6 +57,7 @@ async function assertAdmin(ctx: { supabase: ReturnType<typeof requireSupabaseAut
   if (!isAdmin) throw new Error("Sem permissão");
   return actorId;
 }
+
 
 export const setUserBanned = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
