@@ -46,3 +46,49 @@ export const deleteTeamMember = createServerFn({ method: "POST" })
 
     return { success: true };
   });
+
+async function assertAdmin(ctx: { supabase: ReturnType<typeof requireSupabaseAuth> extends never ? never : any }) {
+  const { data: me } = await ctx.supabase.auth.getUser();
+  const actorId = me.user?.id as string | undefined;
+  if (!actorId) throw new Error("Não autenticado");
+  const { data: roles } = await ctx.supabase.from("user_roles").select("role").eq("user_id", actorId);
+  const isAdmin = roles?.some((r: { role: string }) => r.role === "admin" || r.role === "admin_master") ?? false;
+  if (!isAdmin) throw new Error("Sem permissão");
+  return actorId;
+}
+
+export const setUserBanned = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ userId: z.string().uuid(), banned: z.boolean() }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    const actorId = await assertAdmin(context);
+    if (data.userId === actorId) throw new Error("Não pode bloquear a si mesmo");
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      ban_duration: data.banned ? "876000h" : "none",
+    });
+    if (error) throw error;
+    return { success: true, banned: data.banned };
+  });
+
+export const listBannedUserIds = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const banned: string[] = [];
+    let page = 1;
+    while (page < 20) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
+      if (error) throw error;
+      const users = data?.users ?? [];
+      for (const u of users) {
+        const until = (u as unknown as { banned_until?: string | null }).banned_until;
+        if (until && new Date(until).getTime() > Date.now()) banned.push(u.id);
+      }
+      if (users.length < 200) break;
+      page++;
+    }
+    return banned;
+  });
+
