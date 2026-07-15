@@ -410,13 +410,28 @@ function KanbanCard({ project: p, statuses, priorities: _priorities, maps, assig
   );
 }
 
-function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail }: {
+function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, canManage, onEdit }: {
   projects: Project[]; visibleCols: string[];
   maps: ReturnType<typeof Object> & Record<string, Map<string, unknown>>;
   assigneesByProject: Map<string, Assignee[]>;
   onDetail: (id: string) => void;
+  canManage?: boolean;
+  onEdit?: (p: Project) => void;
 }) {
+  const qc = useQueryClient();
   const { canSee } = useFieldVisibility();
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("projects").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["project_assignees"] });
+      toast.success("Demanda excluída");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const colKeyToField: Record<string, string | null> = {
     client: "client_id", media: "media_type", priority: "priority",
     due_date: "due_date", post_date: "post_date",
@@ -432,7 +447,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail }:
             {ALL_COLUMNS.filter((c) => allowedCols.includes(c.key)).map((c) => (
               <th key={c.key} className="text-left px-3 py-2 font-medium text-xs uppercase text-muted-foreground">{c.label}</th>
             ))}
-            <th className="w-12"></th>
+            <th className="w-32"></th>
           </tr>
         </thead>
         <tbody>
@@ -450,7 +465,26 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail }:
                 {allowedCols.includes("assignees") && <td className="px-3 py-2 text-xs text-muted-foreground">{ass.map((a) => maps.member.get(a.user_id) as string ?? "?").join(", ") || "—"}</td>}
                 {allowedCols.includes("due_date") && <td className="px-3 py-2 text-muted-foreground">{p.due_date ? new Date(p.due_date).toLocaleDateString("pt-BR") : "—"}</td>}
                 {allowedCols.includes("post_date") && <td className="px-3 py-2 text-muted-foreground">{p.post_date ? new Date(p.post_date).toLocaleDateString("pt-BR") : "—"}</td>}
-                <td className="px-2"><Button variant="ghost" size="sm" onClick={() => onDetail(p.id)}><Eye className="h-3.5 w-3.5" /></Button></td>
+                <td className="px-2">
+                  <div className="flex items-center justify-end gap-0.5">
+                    <Button variant="ghost" size="sm" title="Ver detalhes" onClick={() => onDetail(p.id)}>
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                    {canManage && onEdit && (
+                      <Button variant="ghost" size="sm" title="Editar demanda" onClick={() => onEdit(p)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {canManage && (
+                      <Button variant="ghost" size="sm" title="Excluir demanda"
+                        className="text-muted-foreground hover:text-destructive"
+                        disabled={remove.isPending}
+                        onClick={() => { if (confirm(`Excluir a demanda "${p.title}"?`)) remove.mutate(p.id); }}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </td>
               </tr>
             );
           })}
@@ -460,6 +494,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail }:
     </Card>
   );
 }
+
 
 function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, roles, members, editProject, existingAssignees }: {
   onClose: () => void;
