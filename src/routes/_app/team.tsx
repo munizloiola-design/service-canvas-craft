@@ -64,6 +64,15 @@ function TeamPage() {
   const qc = useQueryClient();
   const [openMember, setOpenMember] = useState<string | null>(null);
   const doDelete = useServerFn(deleteTeamMember);
+  const doBan = useServerFn(setUserBanned);
+  const doListBanned = useServerFn(listBannedUserIds);
+
+  const { data: bannedIds = [] } = useQuery({
+    queryKey: ["team-banned"],
+    queryFn: () => doListBanned(),
+    enabled: isMaster,
+  });
+  const bannedSet = new Set(bannedIds as string[]);
 
   const deleteMember = useMutation({
     mutationFn: async (userId: string) => {
@@ -74,9 +83,20 @@ function TeamPage() {
     onSuccess: () => {
       toast.success("Membro excluído");
       qc.invalidateQueries({ queryKey: ["team-overview"] });
+      qc.invalidateQueries({ queryKey: ["team-banned"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const banMember = useMutation({
+    mutationFn: (v: { userId: string; banned: boolean }) => doBan({ data: v }),
+    onSuccess: (r) => {
+      toast.success(r.banned ? "Usuário bloqueado" : "Usuário desbloqueado");
+      qc.invalidateQueries({ queryKey: ["team-banned"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const { data } = useQuery({
     queryKey: ["team-overview"],
