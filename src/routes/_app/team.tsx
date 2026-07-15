@@ -200,13 +200,29 @@ function TeamPage() {
                 </div>
                 {isMaster && (
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setOpenMember(m.id)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Alterar" onClick={() => setOpenMember(m.id)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-8 w-8"
+                      title={bannedSet.has(m.id) ? "Desbloquear" : "Bloquear"}
+                      disabled={banMember.isPending}
+                      onClick={() => {
+                        const willBan = !bannedSet.has(m.id);
+                        if (confirm(`${willBan ? "Bloquear" : "Desbloquear"} ${m.full_name || "este membro"}?`)) {
+                          banMember.mutate({ userId: m.id, banned: willBan });
+                        }
+                      }}
+                    >
+                      {bannedSet.has(m.id) ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-8 w-8 text-destructive hover:text-destructive"
+                      title="Excluir"
                       onClick={() => {
                         if (confirm(`Excluir ${m.full_name || "este membro"} permanentemente?`)) {
                           deleteMember.mutate(m.id);
@@ -221,10 +237,14 @@ function TeamPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                {bannedSet.has(m.id) && (
+                  <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/30">Bloqueado</Badge>
+                )}
                 {memberRoles.length > 0 ? memberRoles.map((r) => (
                   <Badge key={r} variant="outline" className={ROLE_TONES[r]}>{ROLE_LABELS[r]}</Badge>
                 )) : <Badge variant="outline">Sem papel</Badge>}
               </div>
+
 
               {fnNames.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-4">
