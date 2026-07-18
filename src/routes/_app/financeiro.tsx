@@ -161,9 +161,9 @@ function Dashboard() {
               <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={(v: any) => fmtBRL(Number(v))} />
               <Legend />
-              <Bar dataKey="Entradas" fill="hsl(142 70% 45%)" />
-              <Bar dataKey="Saidas" fill="hsl(0 70% 55%)" />
-              <Line type="monotone" dataKey="Resultado" stroke="hsl(221 83% 53%)" strokeWidth={2} dot={{ r: 3 }} />
+              <Bar dataKey="Entradas" fill="var(--chart-1)" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="Saidas" fill="var(--chart-3)" radius={[8, 8, 0, 0]} />
+              <Line type="monotone" dataKey="Resultado" stroke="var(--chart-4)" strokeWidth={3} dot={{ r: 3 }} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
