@@ -222,3 +222,88 @@ function PersonalizacaoPage() {
     </div>
   );
 }
+
+const CHART_KEYS = [
+  { key: "chart1", label: "Gráfico 1 (primária)" },
+  { key: "chart2", label: "Gráfico 2" },
+  { key: "chart3", label: "Gráfico 3" },
+  { key: "chart4", label: "Gráfico 4" },
+  { key: "chart5", label: "Gráfico 5" },
+  { key: "chart6", label: "Gráfico 6" },
+] as const;
+
+const INVOME_PRESET = {
+  primary: "#1a936f",
+  accent: "#0f766e",
+  background: "#f4f6f8",
+  card: "#ffffff",
+  chart1: "#1a936f",
+  chart2: "#38bdf8",
+  chart3: "#f97316",
+  chart4: "#a855f7",
+  chart5: "#ec4899",
+  chart6: "#eab308",
+};
+
+function ThemeEditor({ onSaved }: { onSaved: () => Promise<void> }) {
+  const { branding } = useBranding();
+  const [theme, setTheme] = useState<Record<string, string>>({
+    ...INVOME_PRESET,
+    ...(branding.theme_json ?? {}),
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setTheme({ ...INVOME_PRESET, ...(branding.theme_json ?? {}) });
+  }, [branding.theme_json]);
+
+  const setKey = (k: string, v: string) => setTheme((prev) => ({ ...prev, [k]: v }));
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("app_branding").upsert({
+        id: true,
+        theme_json: theme,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      await onSaved();
+      toast.success("Tema salvo");
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro ao salvar tema");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="p-6 space-y-5">
+      <div>
+        <h3 className="font-semibold">Cores dos gráficos</h3>
+        <p className="text-xs text-muted-foreground">Personalize a paleta usada no Dashboard e Financeiro.</p>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        {CHART_KEYS.map((c) => (
+          <div key={c.key} className="space-y-1.5">
+            <Label>{c.label}</Label>
+            <div className="flex gap-2 items-center">
+              <Input type="color" value={theme[c.key] ?? "#000000"}
+                onChange={(e) => setKey(c.key, e.target.value)} className="h-10 w-14 p-1" />
+              <Input value={theme[c.key] ?? ""} onChange={(e) => setKey(c.key, e.target.value)} className="font-mono" />
+              <span className="h-6 w-6 rounded-full border" style={{ background: theme[c.key] }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={() => setTheme({ ...INVOME_PRESET })}>Restaurar preset Invome</Button>
+        <Button onClick={save} disabled={saving}>
+          {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          Salvar tema
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
