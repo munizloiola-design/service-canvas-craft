@@ -286,8 +286,8 @@ function CashFlow() {
             <XAxis dataKey="month" fontSize={11} />
             <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
             <Tooltip formatter={(v: number) => fmt(v)} />
-            <Line type="monotone" dataKey="entradas" stroke="hsl(var(--success))" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="saidas" stroke="hsl(var(--destructive))" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="entradas" stroke="var(--chart-1)" strokeWidth={3} dot={false} />
+            <Line type="monotone" dataKey="saidas" stroke="var(--chart-3)" strokeWidth={3} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
