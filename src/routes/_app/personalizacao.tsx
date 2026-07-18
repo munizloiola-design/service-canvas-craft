@@ -116,8 +116,13 @@ function PersonalizacaoPage() {
       <Tabs defaultValue="brand">
         <TabsList>
           <TabsTrigger value="brand">Marca</TabsTrigger>
+          <TabsTrigger value="theme">Tema &amp; Gráficos</TabsTrigger>
           <TabsTrigger value="emails">Templates de e-mail</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="theme" className="mt-4">
+          <ThemeEditor onSaved={refresh} />
+        </TabsContent>
 
         <TabsContent value="brand" className="mt-4">
           <Card className="p-6 space-y-5">
