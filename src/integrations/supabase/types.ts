@@ -23,6 +23,7 @@ export type Database = {
           logo_url: string | null
           primary_color: string
           suggestions: string | null
+          theme_json: Json
           updated_at: string
         }
         Insert: {
@@ -33,6 +34,7 @@ export type Database = {
           logo_url?: string | null
           primary_color?: string
           suggestions?: string | null
+          theme_json?: Json
           updated_at?: string
         }
         Update: {
@@ -43,6 +45,7 @@ export type Database = {
           logo_url?: string | null
           primary_color?: string
           suggestions?: string | null
+          theme_json?: Json
           updated_at?: string
         }
         Relationships: []
