@@ -325,6 +325,7 @@ function EntryForm({ initial, projects, clients, onSubmit }: { initial?: any; pr
     kind: "income", entry_date: new Date().toISOString().slice(0, 10),
     description: "", category: "", amount: 0, project_id: null, client_id: null,
   });
+  const { data: categories = [] } = useFinancialCategories(f.kind as "income" | "expense");
   return (
     <DialogContent>
       <DialogHeader><DialogTitle>{initial ? "Editar lançamento" : "Novo lançamento"}</DialogTitle></DialogHeader>
