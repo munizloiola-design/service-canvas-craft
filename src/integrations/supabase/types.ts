@@ -50,6 +50,32 @@ export type Database = {
         }
         Relationships: []
       }
+      area_menu_visibility: {
+        Row: {
+          area_id: string
+          created_at: string
+          menu_key: string
+        }
+        Insert: {
+          area_id: string
+          created_at?: string
+          menu_key: string
+        }
+        Update: {
+          area_id?: string
+          created_at?: string
+          menu_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "area_menu_visibility_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "provider_areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_simulations: {
         Row: {
           created_at: string
@@ -1097,6 +1123,65 @@ export type Database = {
           },
         ]
       }
+      provider_areas: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      provider_specialties: {
+        Row: {
+          area_id: string
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          area_id: string
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          area_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_specialties_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "provider_areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_incomes: {
         Row: {
           active: boolean
@@ -1170,6 +1255,41 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
+      }
+      specialty_field_visibility: {
+        Row: {
+          can_edit: boolean
+          can_view: boolean
+          created_at: string
+          field_key: string
+          specialty_id: string
+          updated_at: string
+        }
+        Insert: {
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          field_key: string
+          specialty_id: string
+          updated_at?: string
+        }
+        Update: {
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          field_key?: string
+          specialty_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "specialty_field_visibility_specialty_id_fkey"
+            columns: ["specialty_id"]
+            isOneToOne: false
+            referencedRelation: "provider_specialties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppressed_emails: {
         Row: {
@@ -1415,6 +1535,32 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_specialties: {
+        Row: {
+          created_at: string
+          specialty_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          specialty_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          specialty_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_specialties_specialty_id_fkey"
+            columns: ["specialty_id"]
+            isOneToOne: false
+            referencedRelation: "provider_specialties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workflow_statuses: {
         Row: {
