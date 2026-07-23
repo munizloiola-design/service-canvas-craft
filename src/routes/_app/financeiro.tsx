@@ -1014,13 +1014,130 @@ function SettingsTab() {
     onError: (e: any) => toast.error(e.message),
   });
   return (
-    <Card className="p-6 max-w-xl space-y-4">
-      <h3 className="font-medium">Configurações financeiras</h3>
-      <div className="grid grid-cols-2 gap-4">
-        <div><Label>Alíquota de imposto padrão (%)</Label><Input type="number" step="0.1" value={taxV} onChange={(e) => setTax(Number(e.target.value))} disabled={!canEdit} /></div>
-        <div><Label>Comissão padrão (%)</Label><Input type="number" step="0.1" value={commV} onChange={(e) => setComm(Number(e.target.value))} disabled={!canEdit} /></div>
+    <div className="space-y-6 max-w-3xl">
+      <Card className="p-6 space-y-4">
+        <h3 className="font-medium">Configurações financeiras</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div><Label>Alíquota de imposto padrão (%)</Label><Input type="number" step="0.1" value={taxV} onChange={(e) => setTax(Number(e.target.value))} disabled={!canEdit} /></div>
+          <div><Label>Comissão padrão (%)</Label><Input type="number" step="0.1" value={commV} onChange={(e) => setComm(Number(e.target.value))} disabled={!canEdit} /></div>
+        </div>
+        {canEdit && <Button onClick={() => save.mutate()}>Salvar</Button>}
+      </Card>
+
+      <CategoriesSettings canEdit={canEdit} />
+    </div>
+  );
+}
+
+function CategoriesSettings({ canEdit }: { canEdit: boolean }) {
+  const qc = useQueryClient();
+  const { data: cats = [] } = useQuery({
+    queryKey: ["financial_categories", "all"],
+    queryFn: async () => (await supabase.from("financial_categories").select("id, name, kind, is_fixed, sort_order").order("kind").order("sort_order")).data as FinCat[] ?? [],
+  });
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Partial<FinCat> | null>(null);
+
+  const save = useMutation({
+    mutationFn: async (f: Partial<FinCat>) => {
+      if (!f.name?.trim() || !f.kind) throw new Error("Nome e tipo são obrigatórios");
+      if (f.id) {
+        const { error } = await supabase.from("financial_categories").update({ name: f.name, kind: f.kind, is_fixed: !!f.is_fixed, updated_at: new Date().toISOString() }).eq("id", f.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("financial_categories").insert({ name: f.name, kind: f.kind, is_fixed: !!f.is_fixed } as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_categories"] }); toast.success("Salvo"); setOpen(false); setEditing(null); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const del = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("financial_categories").delete().eq("id", id); if (error) throw error; },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["financial_categories"] }),
+  });
+  const toggleFixed = useMutation({
+    mutationFn: async (c: FinCat) => { const { error } = await supabase.from("financial_categories").update({ is_fixed: !c.is_fixed }).eq("id", c.id); if (error) throw error; },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["financial_categories"] }),
+  });
+
+  return (
+    <Card className="p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-medium">Categorias financeiras</h3>
+          <p className="text-xs text-muted-foreground">Marque quais categorias compõem os custos fixos.</p>
+        </div>
+        {canEdit && (
+          <Button size="sm" onClick={() => { setEditing({ name: "", kind: "expense", is_fixed: false }); setOpen(true); }}>
+            <Plus className="h-4 w-4 mr-1" /> Nova categoria
+          </Button>
+        )}
       </div>
-      {canEdit && <Button onClick={() => save.mutate()}>Salvar</Button>}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nome</TableHead>
+            <TableHead>Tipo</TableHead>
+            <TableHead>Custo fixo</TableHead>
+            <TableHead></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {cats.map((c) => (
+            <TableRow key={c.id}>
+              <TableCell className="font-medium">{c.name}</TableCell>
+              <TableCell>{c.kind === "expense" ? "Saída" : "Entrada"}</TableCell>
+              <TableCell>
+                <Checkbox
+                  checked={c.is_fixed}
+                  disabled={!canEdit || c.kind !== "expense"}
+                  onCheckedChange={() => toggleFixed.mutate(c)}
+                />
+              </TableCell>
+              <TableCell className="text-right">
+                {canEdit && <>
+                  <Button size="icon" variant="ghost" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => { if (confirm(`Remover "${c.name}"?`)) del.mutate(c.id); }}><Trash2 className="h-4 w-4" /></Button>
+                </>}
+              </TableCell>
+            </TableRow>
+          ))}
+          {cats.length === 0 && (
+            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Nenhuma categoria cadastrada</TableCell></TableRow>
+          )}
+        </TableBody>
+      </Table>
+
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editing?.id ? "Editar categoria" : "Nova categoria"}</DialogTitle></DialogHeader>
+          {editing && (
+            <div className="space-y-3">
+              <div><Label>Nome</Label><Input value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
+              <div>
+                <Label>Tipo</Label>
+                <Select value={editing.kind ?? "expense"} onValueChange={(v) => setEditing({ ...editing, kind: v as "expense" | "income" })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="expense">Saída (despesa)</SelectItem>
+                    <SelectItem value="income">Entrada (receita)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {editing.kind === "expense" && (
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox checked={!!editing.is_fixed} onCheckedChange={(v) => setEditing({ ...editing, is_fixed: !!v })} />
+                  Compõe os custos fixos
+                </label>
+              )}
+              <DialogFooter>
+                <Button onClick={() => save.mutate(editing)} disabled={save.isPending}>Salvar</Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
