@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Settings, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { describeSupabaseError } from "@/lib/supabase-error";
 
 export const Route = createFileRoute("/_app/acessos")({
   head: () => ({ meta: [{ title: "Perfis e Acessos" }] }),
@@ -58,7 +59,7 @@ function HierarchyTab() {
   const [fieldSpecId, setFieldSpecId] = useState<string | null>(null);
   const [renameTarget, setRenameTarget] = useState<{ type: "area" | "spec"; id: string; name: string } | null>(null);
 
-  const { data: areas = [] } = useQuery<Area[]>({
+  const areasQ = useQuery<Area[]>({
     queryKey: ["provider_areas"],
     queryFn: async () => {
       const { data, error } = await supabase.from("provider_areas").select("*").order("sort_order").order("name");
@@ -66,8 +67,9 @@ function HierarchyTab() {
       return (data ?? []) as Area[];
     },
   });
+  const areas = areasQ.data ?? [];
 
-  const { data: specs = [] } = useQuery<Specialty[]>({
+  const specsQ = useQuery<Specialty[]>({
     queryKey: ["provider_specialties"],
     queryFn: async () => {
       const { data, error } = await supabase.from("provider_specialties").select("*").order("sort_order").order("name");
@@ -75,6 +77,14 @@ function HierarchyTab() {
       return (data ?? []) as Specialty[];
     },
   });
+  const specs = specsQ.data ?? [];
+
+  useEffect(() => {
+    if (areasQ.error) { console.error("[acessos:areas]", areasQ.error); toast.error("Falha ao carregar áreas: " + describeSupabaseError(areasQ.error)); }
+  }, [areasQ.error]);
+  useEffect(() => {
+    if (specsQ.error) { console.error("[acessos:specs]", specsQ.error); toast.error("Falha ao carregar especialidades: " + describeSupabaseError(specsQ.error)); }
+  }, [specsQ.error]);
 
   const activeArea = selectedArea ?? areas[0]?.id ?? null;
   const areaSpecs = specs.filter((s) => s.area_id === activeArea);
@@ -85,7 +95,7 @@ function HierarchyTab() {
       if (error) throw error;
     },
     onSuccess: () => { setNewAreaName(""); qc.invalidateQueries({ queryKey: ["provider_areas"] }); toast.success("Área criada"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   const deleteArea = useMutation({
@@ -94,7 +104,7 @@ function HierarchyTab() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["provider_areas"] }); toast.success("Área excluída"); setSelectedArea(null); },
-    onError: (e: any) => toast.error("Não foi possível excluir: " + e.message),
+    onError: (e: unknown) => { console.error("[acessos:delete]", e); toast.error("Não foi possível excluir: " + describeSupabaseError(e)); },
   });
 
   const createSpec = useMutation({
@@ -103,7 +113,7 @@ function HierarchyTab() {
       if (error) throw error;
     },
     onSuccess: () => { setNewSpecName(""); qc.invalidateQueries({ queryKey: ["provider_specialties"] }); toast.success("Especialidade criada"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   const deleteSpec = useMutation({
@@ -112,7 +122,7 @@ function HierarchyTab() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["provider_specialties"] }); toast.success("Especialidade excluída"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   const rename = useMutation({
@@ -126,7 +136,7 @@ function HierarchyTab() {
       setRenameTarget(null);
       toast.success("Renomeado");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   return (
@@ -227,7 +237,7 @@ function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: ()
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["area_menu_visibility", areaId] }),
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   const grouped = MENU_REGISTRY.reduce<Record<string, typeof MENU_REGISTRY>>((acc, m) => {
@@ -282,7 +292,7 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["specialty_field_visibility", specialtyId] }),
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   return (
@@ -324,7 +334,7 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
 
 function AssignTab() {
   const qc = useQueryClient();
-  const { data: members = [] } = useQuery<MemberProfile[]>({
+  const membersQ = useQuery<MemberProfile[]>({
     queryKey: ["team-members-for-assign"],
     queryFn: async () => {
       const { data, error } = await supabase.from("profiles").select("id, full_name").order("full_name");
@@ -332,27 +342,43 @@ function AssignTab() {
       return (data ?? []) as MemberProfile[];
     },
   });
-  const { data: areas = [] } = useQuery<Area[]>({
+  const members = membersQ.data ?? [];
+  const areasQ = useQuery<Area[]>({
     queryKey: ["provider_areas"],
     queryFn: async () => {
-      const { data } = await supabase.from("provider_areas").select("*").order("name");
+      const { data, error } = await supabase.from("provider_areas").select("*").order("name");
+      if (error) throw error;
       return (data ?? []) as Area[];
     },
   });
-  const { data: specs = [] } = useQuery<Specialty[]>({
+  const areas = areasQ.data ?? [];
+  const specsQ = useQuery<Specialty[]>({
     queryKey: ["provider_specialties"],
     queryFn: async () => {
-      const { data } = await supabase.from("provider_specialties").select("*").order("name");
+      const { data, error } = await supabase.from("provider_specialties").select("*").order("name");
+      if (error) throw error;
       return (data ?? []) as Specialty[];
     },
   });
-  const { data: userSpecs = [] } = useQuery({
+  const specs = specsQ.data ?? [];
+  const userSpecsQ = useQuery({
     queryKey: ["all_user_specialties"],
     queryFn: async () => {
-      const { data } = await supabase.from("user_specialties").select("user_id, specialty_id");
+      const { data, error } = await supabase.from("user_specialties").select("user_id, specialty_id");
+      if (error) throw error;
       return (data ?? []) as { user_id: string; specialty_id: string }[];
     },
   });
+  const userSpecs = userSpecsQ.data ?? [];
+
+  useEffect(() => {
+    for (const [label, q] of [
+      ["profiles", membersQ], ["provider_areas", areasQ],
+      ["provider_specialties", specsQ], ["user_specialties", userSpecsQ],
+    ] as const) {
+      if (q.error) { console.error(`[acessos:assign:${label}]`, q.error); toast.error(`Falha em ${label}: ${describeSupabaseError(q.error)}`); }
+    }
+  }, [membersQ.error, areasQ.error, specsQ.error, userSpecsQ.error]);
 
   const toggle = useMutation({
     mutationFn: async ({ userId, specId, on }: { userId: string; specId: string; on: boolean }) => {
@@ -365,7 +391,7 @@ function AssignTab() {
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["all_user_specialties"] }),
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   const areaNameOf = (specId: string) => {
