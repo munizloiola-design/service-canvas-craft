@@ -38,6 +38,7 @@ import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppClientesAreaRouteImport } from './routes/_app/clientes-area'
 import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
+import { Route as AppAcessosRouteImport } from './routes/_app/acessos'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -189,6 +190,11 @@ const AppCadastrosRoute = AppCadastrosRouteImport.update({
   path: '/cadastros',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAcessosRoute = AppAcessosRouteImport.update({
+  id: '/acessos',
+  path: '/acessos',
+  getParentRoute: () => AppRoute,
+} as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
@@ -229,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/portal': typeof PortalRouteWithChildren
   '/ticket': typeof TicketRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/acessos': typeof AppAcessosRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
   '/clientes-area': typeof AppClientesAreaRoute
@@ -264,6 +271,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/ticket': typeof TicketRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/acessos': typeof AppAcessosRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
   '/clientes-area': typeof AppClientesAreaRoute
@@ -302,6 +310,7 @@ export interface FileRoutesById {
   '/portal': typeof PortalRouteWithChildren
   '/ticket': typeof TicketRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/_app/acessos': typeof AppAcessosRoute
   '/_app/cadastros': typeof AppCadastrosRoute
   '/_app/calendario': typeof AppCalendarioRoute
   '/_app/clientes-area': typeof AppClientesAreaRoute
@@ -340,6 +349,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/ticket'
     | '/unsubscribe'
+    | '/acessos'
     | '/cadastros'
     | '/calendario'
     | '/clientes-area'
@@ -375,6 +385,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/ticket'
     | '/unsubscribe'
+    | '/acessos'
     | '/cadastros'
     | '/calendario'
     | '/clientes-area'
@@ -412,6 +423,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/ticket'
     | '/unsubscribe'
+    | '/_app/acessos'
     | '/_app/cadastros'
     | '/_app/calendario'
     | '/_app/clientes-area'
@@ -665,6 +677,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCadastrosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/acessos': {
+      id: '/_app/acessos'
+      path: '/acessos'
+      fullPath: '/acessos'
+      preLoaderRoute: typeof AppAcessosRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/lovable/email/suppression': {
       id: '/lovable/email/suppression'
       path: '/lovable/email/suppression'
@@ -711,6 +730,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppAcessosRoute: typeof AppAcessosRoute
   AppCadastrosRoute: typeof AppCadastrosRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
   AppClientesAreaRoute: typeof AppClientesAreaRoute
@@ -730,6 +750,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAcessosRoute: AppAcessosRoute,
   AppCadastrosRoute: AppCadastrosRoute,
   AppCalendarioRoute: AppCalendarioRoute,
   AppClientesAreaRoute: AppClientesAreaRoute,

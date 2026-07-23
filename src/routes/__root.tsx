@@ -11,6 +11,7 @@ import {
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth-context";
 import { PermissionsProvider } from "@/lib/permissions";
+import { AccessProvider } from "@/lib/access-context";
 import { BrandingProvider } from "@/lib/branding-context";
 import { FieldVisibilityProvider } from "@/lib/field-visibility";
 import { Toaster } from "@/components/ui/sonner";
@@ -112,10 +113,12 @@ function RootComponent() {
       <AuthProvider>
         <BrandingProvider>
           <PermissionsProvider>
-            <FieldVisibilityProvider>
-              <Outlet />
-              <Toaster richColors position="top-right" />
-            </FieldVisibilityProvider>
+            <AccessProvider>
+              <FieldVisibilityProvider>
+                <Outlet />
+                <Toaster richColors position="top-right" />
+              </FieldVisibilityProvider>
+            </AccessProvider>
           </PermissionsProvider>
         </BrandingProvider>
       </AuthProvider>

@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, Navigate, Link, useRouterState, useNavigate } 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { usePermissions, type Resource } from "@/lib/permissions";
+import { useAccess } from "@/lib/access-context";
 import { useBranding } from "@/lib/branding-context";
 import { LayoutDashboard, FolderKanban, Users, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck, Facebook, Sparkles, Plug, Inbox, Palette, Menu, ChevronDown, Building2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ const navGroups: NavGroup[] = [
       { to: "/cadastros", label: "Cadastros", icon: Settings, resource: "cadastros" },
       { to: "/integracoes", label: "Integrações", icon: Plug, resource: "integracoes" },
       { to: "/personalizacao", label: "Personalização", icon: Palette, resource: "branding" },
+      { to: "/acessos", label: "Perfis e Acessos", icon: ShieldCheck, resource: "cadastros", masterOnly: true },
       { to: "/permissoes", label: "Permissões", icon: ShieldCheck, resource: "cadastros", masterOnly: true },
     ],
   },
@@ -60,12 +62,13 @@ function AppLayout() {
   const { user, loading, signOut, roles, isClient, isMaster } = useAuth();
   const { branding } = useBranding();
   const { can, loading: permsLoading } = usePermissions();
+  const { menuAllowed, loading: accessLoading } = useAccess();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
-  if (loading || permsLoading) {
+  if (loading || permsLoading || accessLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -80,7 +83,8 @@ function AppLayout() {
       ...g,
       items: g.items.filter((item) => {
         if (item.masterOnly && !isMaster) return false;
-        return can(item.resource, "view");
+        if (!can(item.resource, "view")) return false;
+        return menuAllowed(item.to);
       }),
     }))
     .filter((g) => g.items.length > 0);
