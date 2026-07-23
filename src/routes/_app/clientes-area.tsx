@@ -28,7 +28,7 @@ function ClientesAreaPage() {
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <header className="mb-6">
-        <h1 className="text-3xl font-semibold tracking-tight">Área do Cliente</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-gradient">Área do Cliente</h1>
         <p className="text-muted-foreground mt-1">Gerencie clientes e seu cadastro estratégico.</p>
       </header>
       <Tabs defaultValue="clientes">

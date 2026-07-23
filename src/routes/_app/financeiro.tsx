@@ -28,7 +28,7 @@ function FinanceiroPage() {
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Financeiro</h1>
+        <h1 className="text-2xl font-semibold text-gradient">Financeiro</h1>
         <p className="text-sm text-muted-foreground">Dashboard, cadastros, autorizações, lançamentos e relatório.</p>
       </div>
       <Tabs defaultValue="dashboard">

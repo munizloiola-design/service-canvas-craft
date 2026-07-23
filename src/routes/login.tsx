@@ -102,9 +102,7 @@ function LoginPage() {
 
       <div className={`w-full flex ${justify} p-6 ${!branding.background_image ? "lg:pl-[50%]" : ""}`}>
         <Card
-          className={`w-full max-w-md p-8 shadow-2xl backdrop-blur-md ${
-            branding.background_image ? "bg-card/85" : "bg-card/95"
-          } motion-safe:animate-fade-in motion-safe:animate-scale-in transition-all duration-300`}
+          className={`w-full max-w-md p-8 rounded-3xl glass-strong motion-safe:animate-fade-in motion-safe:animate-scale-in transition-all duration-300`}
         >
           <div
             key={kind ?? "choose"}
@@ -112,7 +110,7 @@ function LoginPage() {
           >
             {!kind && (
               <>
-                <h2 className="text-2xl font-semibold tracking-tight text-center motion-safe:animate-fade-in">
+                <h2 className="text-2xl font-semibold tracking-tight text-center motion-safe:animate-fade-in text-gradient">
                   {branding.welcome_title}
                 </h2>
                 <p

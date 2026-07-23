@@ -204,7 +204,7 @@ function TempoPage() {
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
+          <h1 className="text-2xl font-semibold flex items-center gap-2 text-gradient">
             <Clock className="h-6 w-6" /> Relatório de tempo
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Horas trabalhadas por projeto e por usuário.</p>

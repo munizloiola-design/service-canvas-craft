@@ -115,7 +115,7 @@ function DashboardPage() {
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <header className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-gradient">Dashboard</h1>
           <p className="text-muted-foreground mt-1">Visão geral da operação. Personalize os widgets.</p>
         </div>
         <div className="flex gap-2">
