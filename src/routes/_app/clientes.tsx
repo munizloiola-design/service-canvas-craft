@@ -120,11 +120,12 @@ function useTeams() {
 function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void }) {
   const qc = useQueryClient();
   const { data: rows = [] } = useClients();
-  const { data: teamNameByClient = new Map<string, string>() } = useDefaultClientTeams();
+  const { data: teams = [] } = useTeams();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
   const [status, setStatus] = useState<ClientStatus>("ativo");
+  const [teamId, setTeamId] = useState<string>("none");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ClientStatus | "all">("all");
 
