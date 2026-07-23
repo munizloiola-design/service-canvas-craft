@@ -216,10 +216,11 @@ function PersonalizacaoPage() {
           <h2 className="text-lg font-semibold">Paleta de Cores</h2>
         </div>
         <Separator />
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <ColorPicker label="Cor primária" value={primary} onChange={setPrimary} />
           <ColorPicker label="Cor de destaque" value={accent} onChange={setAccent} />
           <ColorPicker label="Cor do menu lateral" value={sidebar} onChange={setSidebar} />
+          <ColorPicker label="Cor dos botões" value={buttonColor} onChange={setButtonColor} />
         </div>
         <div>
           <p className="text-sm font-medium mb-2">Cores dos gráficos</p>
