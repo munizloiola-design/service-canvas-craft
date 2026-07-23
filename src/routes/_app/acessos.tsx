@@ -86,7 +86,7 @@ function HierarchyTab() {
       if (error) throw error;
     },
     onSuccess: () => { setNewAreaName(""); qc.invalidateQueries({ queryKey: ["provider_areas"] }); toast.success("Área criada"); },
-    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   const deleteArea = useMutation({
@@ -95,7 +95,7 @@ function HierarchyTab() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["provider_areas"] }); toast.success("Área excluída"); setSelectedArea(null); },
-    onError: (e: unknown) => toast.error("Não foi possível excluir: " + describeSupabaseError(e)),
+    onError: (e: unknown) => { console.error("[acessos:delete]", e); toast.error("Não foi possível excluir: " + describeSupabaseError(e)); },
   });
 
   const createSpec = useMutation({
@@ -104,7 +104,7 @@ function HierarchyTab() {
       if (error) throw error;
     },
     onSuccess: () => { setNewSpecName(""); qc.invalidateQueries({ queryKey: ["provider_specialties"] }); toast.success("Especialidade criada"); },
-    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   const deleteSpec = useMutation({
@@ -113,7 +113,7 @@ function HierarchyTab() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["provider_specialties"] }); toast.success("Especialidade excluída"); },
-    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   const rename = useMutation({
@@ -127,7 +127,7 @@ function HierarchyTab() {
       setRenameTarget(null);
       toast.success("Renomeado");
     },
-    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   return (
@@ -228,7 +228,7 @@ function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: ()
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["area_menu_visibility", areaId] }),
-    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   const grouped = MENU_REGISTRY.reduce<Record<string, typeof MENU_REGISTRY>>((acc, m) => {
@@ -283,7 +283,7 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["specialty_field_visibility", specialtyId] }),
-    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   return (
@@ -366,7 +366,7 @@ function AssignTab() {
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["all_user_specialties"] }),
-    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
   const areaNameOf = (specId: string) => {
