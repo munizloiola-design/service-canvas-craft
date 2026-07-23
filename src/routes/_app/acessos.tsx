@@ -334,7 +334,7 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
 
 function AssignTab() {
   const qc = useQueryClient();
-  const { data: members = [] } = useQuery<MemberProfile[]>({
+  const membersQ = useQuery<MemberProfile[]>({
     queryKey: ["team-members-for-assign"],
     queryFn: async () => {
       const { data, error } = await supabase.from("profiles").select("id, full_name").order("full_name");
@@ -342,27 +342,43 @@ function AssignTab() {
       return (data ?? []) as MemberProfile[];
     },
   });
-  const { data: areas = [] } = useQuery<Area[]>({
+  const members = membersQ.data ?? [];
+  const areasQ = useQuery<Area[]>({
     queryKey: ["provider_areas"],
     queryFn: async () => {
-      const { data } = await supabase.from("provider_areas").select("*").order("name");
+      const { data, error } = await supabase.from("provider_areas").select("*").order("name");
+      if (error) throw error;
       return (data ?? []) as Area[];
     },
   });
-  const { data: specs = [] } = useQuery<Specialty[]>({
+  const areas = areasQ.data ?? [];
+  const specsQ = useQuery<Specialty[]>({
     queryKey: ["provider_specialties"],
     queryFn: async () => {
-      const { data } = await supabase.from("provider_specialties").select("*").order("name");
+      const { data, error } = await supabase.from("provider_specialties").select("*").order("name");
+      if (error) throw error;
       return (data ?? []) as Specialty[];
     },
   });
-  const { data: userSpecs = [] } = useQuery({
+  const specs = specsQ.data ?? [];
+  const userSpecsQ = useQuery({
     queryKey: ["all_user_specialties"],
     queryFn: async () => {
-      const { data } = await supabase.from("user_specialties").select("user_id, specialty_id");
+      const { data, error } = await supabase.from("user_specialties").select("user_id, specialty_id");
+      if (error) throw error;
       return (data ?? []) as { user_id: string; specialty_id: string }[];
     },
   });
+  const userSpecs = userSpecsQ.data ?? [];
+
+  useEffect(() => {
+    for (const [label, q] of [
+      ["profiles", membersQ], ["provider_areas", areasQ],
+      ["provider_specialties", specsQ], ["user_specialties", userSpecsQ],
+    ] as const) {
+      if (q.error) { console.error(`[acessos:assign:${label}]`, q.error); toast.error(`Falha em ${label}: ${describeSupabaseError(q.error)}`); }
+    }
+  }, [membersQ.error, areasQ.error, specsQ.error, userSpecsQ.error]);
 
   const toggle = useMutation({
     mutationFn: async ({ userId, specId, on }: { userId: string; specId: string; on: boolean }) => {
