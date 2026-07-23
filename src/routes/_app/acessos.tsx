@@ -53,11 +53,13 @@ function AcessosPage() {
 function HierarchyTab() {
   const qc = useQueryClient();
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
-  const [newAreaName, setNewAreaName] = useState("");
-  const [newSpecName, setNewSpecName] = useState("");
   const [menuAreaId, setMenuAreaId] = useState<string | null>(null);
   const [fieldSpecId, setFieldSpecId] = useState<string | null>(null);
   const [renameTarget, setRenameTarget] = useState<{ type: "area" | "spec"; id: string; name: string } | null>(null);
+  const [newAreaOpen, setNewAreaOpen] = useState(false);
+  const [newSpecOpen, setNewSpecOpen] = useState(false);
+  const [newAreaName, setNewAreaName] = useState("");
+  const [newSpecName, setNewSpecName] = useState("");
 
   const areasQ = useQuery<Area[]>({
     queryKey: ["provider_areas"],
