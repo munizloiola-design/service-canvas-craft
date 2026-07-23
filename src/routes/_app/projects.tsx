@@ -691,8 +691,34 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
           ))}
         </div>
 
-        <Field label="Briefing / Descrição"><Textarea name="description" rows={3} defaultValue={editProject?.description ?? ""} /></Field>
-        <Field label="Observações internas"><Textarea name="notes" rows={2} defaultValue={editProject?.notes ?? ""} /></Field>
+        <Field label="Direção de arte"><Textarea name="notes" rows={2} defaultValue={editProject?.notes ?? ""} /></Field>
+
+        <div className="space-y-2">
+          <Label>Briefing / Descrição</Label>
+          <div className="space-y-3">
+            {descCards.map((card, i) => (
+              <div key={i} className="rounded-md border p-3 space-y-2 bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-muted-foreground">{card.title}</span>
+                  {descCards.length > 1 && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeCard(i)}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+                <Textarea
+                  rows={3}
+                  value={card.content}
+                  onChange={(e) => updateCard(i, e.target.value)}
+                  placeholder={`Descrição do ${card.title.toLowerCase()}...`}
+                />
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={addCard}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar novo card
+            </Button>
+          </div>
+        </div>
 
         {isEdit && existingAttachments.length > 0 && (
           <div className="space-y-2">
@@ -711,7 +737,13 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         )}
 
         <div className="space-y-2">
-          <Label>{isEdit ? "Adicionar novos anexos" : "Anexos de referência"}</Label>
+          <Label>{isEdit ? "Adicionar arquivo ou link finalizado" : "Arquivo ou link finalizado"}</Label>
+          <Input
+            type="url"
+            placeholder="https://... (link do arquivo finalizado)"
+            value={finalLink}
+            onChange={(e) => setFinalLink(e.target.value)}
+          />
           <Input type="file" multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
           {files.length > 0 && (
             <ul className="text-xs text-muted-foreground space-y-0.5">
@@ -719,6 +751,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
             </ul>
           )}
         </div>
+
 
         <DialogFooter>
           <Button type="submit" disabled={save.isPending}>{save.isPending ? "Salvando..." : (isEdit ? "Salvar alterações" : "Criar demanda")}</Button>
