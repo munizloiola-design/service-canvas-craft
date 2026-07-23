@@ -58,14 +58,32 @@ function TempoPage() {
   const to = search.to ?? isoDay(new Date());
   const projectFilter = search.project ?? "";
   const userFilter = search.user ?? "";
+  const teamFilter = search.team ?? "";
 
   const setSearch = (patch: Partial<SearchParams>) => {
     navigate({ to: "/tempo", search: (prev: SearchParams) => ({ ...prev, ...patch }) });
   };
 
-  const { data: logs = [], isLoading } = useQuery({
-    queryKey: ["time_logs_report", from, to, projectFilter, userFilter],
+  const { data: teams = [] } = useQuery({
+    queryKey: ["all_teams_min"],
+    queryFn: async () => (await supabase.from("teams").select("id, name").order("name")).data ?? [],
+  });
+
+  const { data: teamUserIds = null } = useQuery({
+    queryKey: ["team_members_ids", teamFilter],
+    enabled: !!teamFilter,
     queryFn: async () => {
+      const { data, error } = await supabase.from("team_members").select("user_id").eq("team_id", teamFilter);
+      if (error) throw error;
+      return (data ?? []).map((r: any) => r.user_id as string);
+    },
+  });
+
+  const { data: logs = [], isLoading } = useQuery({
+    queryKey: ["time_logs_report", from, to, projectFilter, userFilter, teamFilter, teamUserIds],
+    enabled: !teamFilter || teamUserIds !== null,
+    queryFn: async () => {
+      if (teamFilter && (!teamUserIds || teamUserIds.length === 0)) return [] as Row[];
       let q = supabase
         .from("time_logs_with_duration")
         .select("id, project_id, user_id, status_id, started_at, ended_at, duration_seconds")
@@ -74,6 +92,7 @@ function TempoPage() {
         .order("started_at", { ascending: false });
       if (projectFilter) q = q.eq("project_id", projectFilter);
       if (userFilter) q = q.eq("user_id", userFilter);
+      if (teamFilter && teamUserIds && teamUserIds.length > 0) q = q.in("user_id", teamUserIds);
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as Row[];
