@@ -228,7 +228,7 @@ function ProjectsPage() {
                 editProject={editingProject}
                 onClose={() => { setOpen(false); setEditingProject(null); }}
                 clients={clients} mediaTypes={mediaTypes} statuses={statuses} priorities={priorities}
-                roles={roles} members={members}
+                roles={roles} members={members} teams={teams}
                 existingAssignees={editingProject ? (assigneesByProject.get(editingProject.id) ?? []) : []}
               />
             </Dialog>
@@ -510,10 +510,10 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
 }
 
 
-function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, roles, members, editProject, existingAssignees }: {
+function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, roles, members, teams, editProject, existingAssignees }: {
   onClose: () => void;
   clients: Client[]; mediaTypes: MediaType[]; statuses: Status[]; priorities: Priority[];
-  roles: Role[]; members: Profile[];
+  roles: Role[]; members: Profile[]; teams: Team[];
   editProject?: Project | null;
   existingAssignees?: Assignee[];
 }) {
