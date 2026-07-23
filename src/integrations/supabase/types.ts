@@ -236,7 +236,15 @@ export type Database = {
           valores?: string | null
           visao?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "client_briefings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       client_team_members: {
         Row: {
@@ -1228,7 +1236,15 @@ export type Database = {
           id?: string
           project_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "project_comments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_roles: {
         Row: {
