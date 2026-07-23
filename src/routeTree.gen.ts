@@ -31,6 +31,7 @@ import { Route as AppSquadRouteImport } from './routes/_app/squad'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
 import { Route as AppPersonalizacaoRouteImport } from './routes/_app/personalizacao'
 import { Route as AppPermissoesRouteImport } from './routes/_app/permissoes'
+import { Route as AppParceirosRouteImport } from './routes/_app/parceiros'
 import { Route as AppOrcamentoRouteImport } from './routes/_app/orcamento'
 import { Route as AppIntegracoesRouteImport } from './routes/_app/integracoes'
 import { Route as AppFinanceiroRouteImport } from './routes/_app/financeiro'
@@ -160,6 +161,11 @@ const AppPermissoesRoute = AppPermissoesRouteImport.update({
   path: '/permissoes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppParceirosRoute = AppParceirosRouteImport.update({
+  id: '/parceiros',
+  path: '/parceiros',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOrcamentoRoute = AppOrcamentoRouteImport.update({
   id: '/orcamento',
   path: '/orcamento',
@@ -277,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/financeiro': typeof AppFinanceiroRoute
   '/integracoes': typeof AppIntegracoesRoute
   '/orcamento': typeof AppOrcamentoRoute
+  '/parceiros': typeof AppParceirosRoute
   '/permissoes': typeof AppPermissoesRoute
   '/personalizacao': typeof AppPersonalizacaoRoute
   '/projects': typeof AppProjectsRoute
@@ -318,6 +325,7 @@ export interface FileRoutesByTo {
   '/financeiro': typeof AppFinanceiroRoute
   '/integracoes': typeof AppIntegracoesRoute
   '/orcamento': typeof AppOrcamentoRoute
+  '/parceiros': typeof AppParceirosRoute
   '/permissoes': typeof AppPermissoesRoute
   '/personalizacao': typeof AppPersonalizacaoRoute
   '/projects': typeof AppProjectsRoute
@@ -362,6 +370,7 @@ export interface FileRoutesById {
   '/_app/financeiro': typeof AppFinanceiroRoute
   '/_app/integracoes': typeof AppIntegracoesRoute
   '/_app/orcamento': typeof AppOrcamentoRoute
+  '/_app/parceiros': typeof AppParceirosRoute
   '/_app/permissoes': typeof AppPermissoesRoute
   '/_app/personalizacao': typeof AppPersonalizacaoRoute
   '/_app/projects': typeof AppProjectsRoute
@@ -406,6 +415,7 @@ export interface FileRouteTypes {
     | '/financeiro'
     | '/integracoes'
     | '/orcamento'
+    | '/parceiros'
     | '/permissoes'
     | '/personalizacao'
     | '/projects'
@@ -447,6 +457,7 @@ export interface FileRouteTypes {
     | '/financeiro'
     | '/integracoes'
     | '/orcamento'
+    | '/parceiros'
     | '/permissoes'
     | '/personalizacao'
     | '/projects'
@@ -490,6 +501,7 @@ export interface FileRouteTypes {
     | '/_app/financeiro'
     | '/_app/integracoes'
     | '/_app/orcamento'
+    | '/_app/parceiros'
     | '/_app/permissoes'
     | '/_app/personalizacao'
     | '/_app/projects'
@@ -690,6 +702,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPermissoesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/parceiros': {
+      id: '/_app/parceiros'
+      path: '/parceiros'
+      fullPath: '/parceiros'
+      preLoaderRoute: typeof AppParceirosRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/orcamento': {
       id: '/_app/orcamento'
       path: '/orcamento'
@@ -851,6 +870,7 @@ interface AppRouteChildren {
   AppFinanceiroRoute: typeof AppFinanceiroRoute
   AppIntegracoesRoute: typeof AppIntegracoesRoute
   AppOrcamentoRoute: typeof AppOrcamentoRoute
+  AppParceirosRoute: typeof AppParceirosRoute
   AppPermissoesRoute: typeof AppPermissoesRoute
   AppPersonalizacaoRoute: typeof AppPersonalizacaoRoute
   AppProjectsRoute: typeof AppProjectsRoute
@@ -873,6 +893,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppFinanceiroRoute: AppFinanceiroRoute,
   AppIntegracoesRoute: AppIntegracoesRoute,
   AppOrcamentoRoute: AppOrcamentoRoute,
+  AppParceirosRoute: AppParceirosRoute,
   AppPermissoesRoute: AppPermissoesRoute,
   AppPersonalizacaoRoute: AppPersonalizacaoRoute,
   AppProjectsRoute: AppProjectsRoute,
