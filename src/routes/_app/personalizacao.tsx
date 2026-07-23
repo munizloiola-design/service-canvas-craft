@@ -1,22 +1,42 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useBranding } from "@/lib/branding-context";
+import { useBranding, type LoginBoxPosition } from "@/lib/branding-context";
 import { usePermissions } from "@/lib/permissions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { toast } from "sonner";
-import { Loader2, Upload, Palette } from "lucide-react";
+import { Loader2, Upload, Palette, Image as ImageIcon, Type, Mail, PaintBucket } from "lucide-react";
 
 export const Route = createFileRoute("/_app/personalizacao")({
   component: PersonalizacaoPage,
 });
 
 type EmailTpl = { id: string; key: string; subject: string; body_html: string };
+
+const CHART_KEYS = [
+  { key: "chart1", label: "Gráfico 1 (primária)" },
+  { key: "chart2", label: "Gráfico 2" },
+  { key: "chart3", label: "Gráfico 3" },
+  { key: "chart4", label: "Gráfico 4" },
+  { key: "chart5", label: "Gráfico 5" },
+  { key: "chart6", label: "Gráfico 6" },
+] as const;
+
+const INVOME_PRESET = {
+  chart1: "#1a936f",
+  chart2: "#38bdf8",
+  chart3: "#f97316",
+  chart4: "#a855f7",
+  chart5: "#ec4899",
+  chart6: "#eab308",
+};
 
 function PersonalizacaoPage() {
   const { can, loading: pLoading } = usePermissions();
@@ -27,8 +47,17 @@ function PersonalizacaoPage() {
   const [faviconUrl, setFaviconUrl] = useState(branding.favicon_url ?? "");
   const [primary, setPrimary] = useState(branding.primary_color);
   const [accent, setAccent] = useState(branding.accent_color);
+  const [sidebar, setSidebar] = useState(branding.sidebar_color ?? branding.primary_color);
+  const [bgImage, setBgImage] = useState(branding.background_image ?? "");
+  const [boxPos, setBoxPos] = useState<LoginBoxPosition>(branding.login_box_position);
+  const [welcomeTitle, setWelcomeTitle] = useState(branding.welcome_title);
+  const [welcomeSubtitle, setWelcomeSubtitle] = useState(branding.welcome_subtitle);
   const [suggestions, setSuggestions] = useState(branding.suggestions ?? "");
-  const [savingB, setSavingB] = useState(false);
+  const [theme, setTheme] = useState<Record<string, string>>({
+    ...INVOME_PRESET,
+    ...(branding.theme_json ?? {}),
+  });
+  const [saving, setSaving] = useState(false);
 
   const [templates, setTemplates] = useState<EmailTpl[]>([]);
   const [savingT, setSavingT] = useState<string | null>(null);
@@ -39,7 +68,13 @@ function PersonalizacaoPage() {
     setFaviconUrl(branding.favicon_url ?? "");
     setPrimary(branding.primary_color);
     setAccent(branding.accent_color);
+    setSidebar(branding.sidebar_color ?? branding.primary_color);
+    setBgImage(branding.background_image ?? "");
+    setBoxPos(branding.login_box_position);
+    setWelcomeTitle(branding.welcome_title);
+    setWelcomeSubtitle(branding.welcome_subtitle);
     setSuggestions(branding.suggestions ?? "");
+    setTheme({ ...INVOME_PRESET, ...(branding.theme_json ?? {}) });
   }, [branding]);
 
   useEffect(() => {
@@ -50,7 +85,7 @@ function PersonalizacaoPage() {
   if (pLoading) return <div className="p-4 md:p-8">Carregando...</div>;
   if (!can("branding" as any, "manage")) return <Navigate to="/dashboard" />;
 
-  const upload = async (file: File, kind: "logo" | "favicon") => {
+  const upload = async (file: File, kind: "logo" | "favicon" | "background") => {
     const ext = file.name.split(".").pop() ?? "png";
     const path = `${kind}/${Date.now()}.${ext}`;
     const up = await supabase.storage.from("brand-assets").upload(path, file, {
@@ -59,12 +94,13 @@ function PersonalizacaoPage() {
     if (up.error) { toast.error(up.error.message); return; }
     const { data } = supabase.storage.from("brand-assets").getPublicUrl(path);
     if (kind === "logo") setLogoUrl(data.publicUrl);
-    else setFaviconUrl(data.publicUrl);
-    toast.success(`${kind === "logo" ? "Logo" : "Favicon"} enviado`);
+    else if (kind === "favicon") setFaviconUrl(data.publicUrl);
+    else setBgImage(data.publicUrl);
+    toast.success("Imagem enviada");
   };
 
-  const saveBranding = async () => {
-    setSavingB(true);
+  const saveAll = async () => {
+    setSaving(true);
     try {
       const { error } = await supabase.from("app_branding").upsert({
         id: true,
@@ -73,7 +109,13 @@ function PersonalizacaoPage() {
         favicon_url: faviconUrl || null,
         primary_color: primary,
         accent_color: accent,
+        sidebar_color: sidebar || null,
+        background_image: bgImage || null,
+        login_box_position: boxPos,
+        welcome_title: welcomeTitle.trim() || "Como deseja entrar?",
+        welcome_subtitle: welcomeSubtitle.trim() || "Escolha o tipo de acesso.",
         suggestions: suggestions || null,
+        theme_json: theme,
         updated_at: new Date().toISOString(),
       });
       if (error) throw error;
@@ -82,7 +124,7 @@ function PersonalizacaoPage() {
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao salvar");
     } finally {
-      setSavingB(false);
+      setSaving(false);
     }
   };
 
@@ -103,207 +145,196 @@ function PersonalizacaoPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto">
-      <header className="mb-6">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
+      <header>
         <h1 className="text-2xl font-semibold flex items-center gap-2">
-          <Palette className="h-6 w-6" /> Personalização
+          <Palette className="h-6 w-6" /> Identidade &amp; Aparência
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Identidade visual do sistema e templates de e-mail.
+          Centralize toda a identidade visual do sistema em um só lugar.
         </p>
       </header>
 
-      <Tabs defaultValue="brand">
-        <TabsList>
-          <TabsTrigger value="brand">Marca</TabsTrigger>
-          <TabsTrigger value="theme">Tema &amp; Gráficos</TabsTrigger>
-          <TabsTrigger value="emails">Templates de e-mail</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="theme" className="mt-4">
-          <ThemeEditor onSaved={refresh} />
-        </TabsContent>
-
-        <TabsContent value="brand" className="mt-4">
-          <Card className="p-6 space-y-5">
-            <div className="space-y-1.5">
-              <Label htmlFor="brand_name">Nome do sistema</Label>
-              <Input id="brand_name" value={brandName} onChange={(e) => setBrandName(e.target.value)} maxLength={80} />
+      {/* Marca & Ícones */}
+      <Card className="p-6 space-y-5">
+        <div className="flex items-center gap-2">
+          <ImageIcon className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Marca &amp; Ícones</h2>
+        </div>
+        <Separator />
+        <div className="space-y-1.5">
+          <Label htmlFor="brand_name">Nome do sistema</Label>
+          <Input id="brand_name" value={brandName} onChange={(e) => setBrandName(e.target.value)} maxLength={80} />
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Logo</Label>
+            <div className="flex items-center gap-3">
+              {logoUrl && <img src={logoUrl} alt="logo" className="h-10 w-10 rounded object-contain border" />}
+              <label className="inline-flex items-center gap-2 cursor-pointer text-sm border rounded-md px-3 py-2 hover:bg-muted/40">
+                <Upload className="h-4 w-4" /> Enviar imagem
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "logo")} />
+              </label>
+              {logoUrl && <Button variant="ghost" size="sm" onClick={() => setLogoUrl("")}>Remover</Button>}
             </div>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Logo</Label>
-                <div className="flex items-center gap-3">
-                  {logoUrl && <img src={logoUrl} alt="logo" className="h-10 w-10 rounded object-contain border" />}
-                  <label className="inline-flex items-center gap-2 cursor-pointer text-sm border rounded-md px-3 py-2 hover:bg-muted/40">
-                    <Upload className="h-4 w-4" /> Enviar imagem
-                    <input type="file" accept="image/*" className="hidden"
-                      onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "logo")} />
-                  </label>
-                  {logoUrl && <Button variant="ghost" size="sm" onClick={() => setLogoUrl("")}>Remover</Button>}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Favicon</Label>
-                <div className="flex items-center gap-3">
-                  {faviconUrl && <img src={faviconUrl} alt="favicon" className="h-8 w-8 rounded object-contain border" />}
-                  <label className="inline-flex items-center gap-2 cursor-pointer text-sm border rounded-md px-3 py-2 hover:bg-muted/40">
-                    <Upload className="h-4 w-4" /> Enviar imagem
-                    <input type="file" accept="image/*" className="hidden"
-                      onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "favicon")} />
-                  </label>
-                  {faviconUrl && <Button variant="ghost" size="sm" onClick={() => setFaviconUrl("")}>Remover</Button>}
-                </div>
-              </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Favicon</Label>
+            <div className="flex items-center gap-3">
+              {faviconUrl && <img src={faviconUrl} alt="favicon" className="h-8 w-8 rounded object-contain border" />}
+              <label className="inline-flex items-center gap-2 cursor-pointer text-sm border rounded-md px-3 py-2 hover:bg-muted/40">
+                <Upload className="h-4 w-4" /> Enviar imagem
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "favicon")} />
+              </label>
+              {faviconUrl && <Button variant="ghost" size="sm" onClick={() => setFaviconUrl("")}>Remover</Button>}
             </div>
+          </div>
+        </div>
+      </Card>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="primary">Cor primária</Label>
-                <div className="flex gap-2 items-center">
-                  <Input id="primary" type="color" value={primary} onChange={(e) => setPrimary(e.target.value)} className="h-10 w-14 p-1" />
-                  <Input value={primary} onChange={(e) => setPrimary(e.target.value)} className="font-mono" />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="accent">Cor de destaque</Label>
-                <div className="flex gap-2 items-center">
-                  <Input id="accent" type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="h-10 w-14 p-1" />
-                  <Input value={accent} onChange={(e) => setAccent(e.target.value)} className="font-mono" />
-                </div>
-              </div>
-            </div>
+      {/* Paleta de Cores */}
+      <Card className="p-6 space-y-5">
+        <div className="flex items-center gap-2">
+          <PaintBucket className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Paleta de Cores</h2>
+        </div>
+        <Separator />
+        <div className="grid sm:grid-cols-3 gap-4">
+          <ColorPicker label="Cor primária" value={primary} onChange={setPrimary} />
+          <ColorPicker label="Cor de destaque" value={accent} onChange={setAccent} />
+          <ColorPicker label="Cor do menu lateral" value={sidebar} onChange={setSidebar} />
+        </div>
+        <div>
+          <p className="text-sm font-medium mb-2">Cores dos gráficos</p>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {CHART_KEYS.map((c) => (
+              <ColorPicker
+                key={c.key}
+                label={c.label}
+                value={theme[c.key] ?? "#000000"}
+                onChange={(v) => setTheme((prev) => ({ ...prev, [c.key]: v }))}
+              />
+            ))}
+          </div>
+        </div>
+      </Card>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="suggestions">Sugestões / observações de marca</Label>
-              <Textarea id="suggestions" rows={4} maxLength={2000}
-                placeholder="Ex: tom de voz amigável, evitar uso de roxo escuro, slogan 'Criatividade que entrega'..."
-                value={suggestions} onChange={(e) => setSuggestions(e.target.value)} />
-            </div>
+      {/* Tela de Login */}
+      <Card className="p-6 space-y-5">
+        <div className="flex items-center gap-2">
+          <Type className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Tela de Login</h2>
+        </div>
+        <Separator />
+        <div className="space-y-1.5">
+          <Label>Imagem de fundo</Label>
+          <div className="flex items-center gap-3">
+            {bgImage && (
+              <img src={bgImage} alt="fundo" className="h-16 w-24 rounded object-cover border" />
+            )}
+            <label className="inline-flex items-center gap-2 cursor-pointer text-sm border rounded-md px-3 py-2 hover:bg-muted/40">
+              <Upload className="h-4 w-4" /> Enviar imagem
+              <input type="file" accept="image/*" className="hidden"
+                onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "background")} />
+            </label>
+            {bgImage && <Button variant="ghost" size="sm" onClick={() => setBgImage("")}>Remover</Button>}
+          </div>
+          <p className="text-xs text-muted-foreground">Sem imagem, o painel verde padrão é exibido.</p>
+        </div>
 
-            <Button onClick={saveBranding} disabled={savingB}>
-              {savingB && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Salvar personalização
-            </Button>
-          </Card>
-        </TabsContent>
+        <div className="space-y-1.5">
+          <Label>Posição da caixa de login</Label>
+          <RadioGroup value={boxPos} onValueChange={(v) => setBoxPos(v as LoginBoxPosition)} className="grid grid-cols-3 gap-3">
+            {(["left","center","right"] as const).map((pos) => (
+              <label key={pos} className="flex items-center gap-2 border rounded-md px-3 py-2 cursor-pointer hover:bg-muted/40 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                <RadioGroupItem value={pos} id={`pos-${pos}`} />
+                <span className="text-sm capitalize">
+                  {pos === "left" ? "Esquerda" : pos === "center" ? "Centro" : "Direita"}
+                </span>
+              </label>
+            ))}
+          </RadioGroup>
+        </div>
 
-        <TabsContent value="emails" className="mt-4 space-y-4">
-          <Card className="p-4 bg-muted/30 text-xs">
-            Variáveis disponíveis nos templates: <code>{"{{requester_name}}"}</code>, <code>{"{{title}}"}</code>, <code>{"{{review_notes}}"}</code>, <code>{"{{brand_name}}"}</code>
-          </Card>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="wt">Título de boas-vindas</Label>
+            <Input id="wt" value={welcomeTitle} onChange={(e) => setWelcomeTitle(e.target.value)} maxLength={80} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ws">Subtítulo</Label>
+            <Input id="ws" value={welcomeSubtitle} onChange={(e) => setWelcomeSubtitle(e.target.value)} maxLength={140} />
+          </div>
+        </div>
+      </Card>
+
+      {/* Observações de marca */}
+      <Card className="p-6 space-y-3">
+        <Label htmlFor="suggestions" className="text-base font-semibold">Sugestões / observações de marca</Label>
+        <Textarea id="suggestions" rows={3} maxLength={2000}
+          placeholder="Ex: tom de voz amigável, evitar uso de roxo escuro, slogan 'Criatividade que entrega'..."
+          value={suggestions} onChange={(e) => setSuggestions(e.target.value)} />
+      </Card>
+
+      <div className="sticky bottom-4 z-10">
+        <Card className="p-4 flex items-center justify-between shadow-lg">
+          <p className="text-sm text-muted-foreground">Salve para aplicar as mudanças em todo o sistema.</p>
+          <Button onClick={saveAll} disabled={saving}>
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Salvar personalização
+          </Button>
+        </Card>
+      </div>
+
+      {/* Templates de e-mail */}
+      <Card className="p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <Mail className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Templates de e-mail</h2>
+        </div>
+        <Separator />
+        <p className="text-xs text-muted-foreground">
+          Variáveis disponíveis: <code>{"{{requester_name}}"}</code>, <code>{"{{title}}"}</code>, <code>{"{{review_notes}}"}</code>, <code>{"{{brand_name}}"}</code>
+        </p>
+        <Accordion type="single" collapsible className="w-full">
           {templates.map((t) => (
-            <Card key={t.id} className="p-5 space-y-3">
-              <div>
-                <h3 className="font-semibold">
-                  {t.key === "ticket_approved" ? "✓ Ticket aprovado" : "✗ Ticket recusado"}
-                </h3>
-                <p className="text-xs text-muted-foreground">Enviado para o e-mail do solicitante.</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Assunto</Label>
-                <Input value={t.subject} onChange={(e) => setTemplates(templates.map((x) => x.id === t.id ? { ...x, subject: e.target.value } : x))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Corpo (HTML)</Label>
-                <Textarea rows={8} className="font-mono text-xs" value={t.body_html}
-                  onChange={(e) => setTemplates(templates.map((x) => x.id === t.id ? { ...x, body_html: e.target.value } : x))} />
-              </div>
-              <Button size="sm" onClick={() => saveTemplate(t)} disabled={savingT === t.id}>
-                {savingT === t.id && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Salvar
-              </Button>
-            </Card>
+            <AccordionItem key={t.id} value={t.id}>
+              <AccordionTrigger className="text-left">
+                {t.key === "ticket_approved" ? "✓ Ticket aprovado" : "✗ Ticket recusado"}
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label>Assunto</Label>
+                  <Input value={t.subject} onChange={(e) => setTemplates(templates.map((x) => x.id === t.id ? { ...x, subject: e.target.value } : x))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Corpo (HTML)</Label>
+                  <Textarea rows={8} className="font-mono text-xs" value={t.body_html}
+                    onChange={(e) => setTemplates(templates.map((x) => x.id === t.id ? { ...x, body_html: e.target.value } : x))} />
+                </div>
+                <Button size="sm" onClick={() => saveTemplate(t)} disabled={savingT === t.id}>
+                  {savingT === t.id && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Salvar template
+                </Button>
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </TabsContent>
-      </Tabs>
+        </Accordion>
+      </Card>
     </div>
   );
 }
 
-const CHART_KEYS = [
-  { key: "chart1", label: "Gráfico 1 (primária)" },
-  { key: "chart2", label: "Gráfico 2" },
-  { key: "chart3", label: "Gráfico 3" },
-  { key: "chart4", label: "Gráfico 4" },
-  { key: "chart5", label: "Gráfico 5" },
-  { key: "chart6", label: "Gráfico 6" },
-] as const;
-
-const INVOME_PRESET = {
-  primary: "#1a936f",
-  accent: "#0f766e",
-  background: "#f4f6f8",
-  card: "#ffffff",
-  chart1: "#1a936f",
-  chart2: "#38bdf8",
-  chart3: "#f97316",
-  chart4: "#a855f7",
-  chart5: "#ec4899",
-  chart6: "#eab308",
-};
-
-function ThemeEditor({ onSaved }: { onSaved: () => Promise<void> }) {
-  const { branding } = useBranding();
-  const [theme, setTheme] = useState<Record<string, string>>({
-    ...INVOME_PRESET,
-    ...(branding.theme_json ?? {}),
-  });
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setTheme({ ...INVOME_PRESET, ...(branding.theme_json ?? {}) });
-  }, [branding.theme_json]);
-
-  const setKey = (k: string, v: string) => setTheme((prev) => ({ ...prev, [k]: v }));
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      const { error } = await supabase.from("app_branding").upsert({
-        id: true,
-        theme_json: theme,
-        updated_at: new Date().toISOString(),
-      });
-      if (error) throw error;
-      await onSaved();
-      toast.success("Tema salvo");
-    } catch (e: any) {
-      toast.error(e.message ?? "Erro ao salvar tema");
-    } finally {
-      setSaving(false);
-    }
-  };
-
+function ColorPicker({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
-    <Card className="p-6 space-y-5">
-      <div>
-        <h3 className="font-semibold">Cores dos gráficos</h3>
-        <p className="text-xs text-muted-foreground">Personalize a paleta usada no Dashboard e Financeiro.</p>
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <div className="flex gap-2 items-center">
+        <Input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="h-10 w-14 p-1" />
+        <Input value={value} onChange={(e) => onChange(e.target.value)} className="font-mono" />
       </div>
-      <div className="grid sm:grid-cols-2 gap-4">
-        {CHART_KEYS.map((c) => (
-          <div key={c.key} className="space-y-1.5">
-            <Label>{c.label}</Label>
-            <div className="flex gap-2 items-center">
-              <Input type="color" value={theme[c.key] ?? "#000000"}
-                onChange={(e) => setKey(c.key, e.target.value)} className="h-10 w-14 p-1" />
-              <Input value={theme[c.key] ?? ""} onChange={(e) => setKey(c.key, e.target.value)} className="font-mono" />
-              <span className="h-6 w-6 rounded-full border" style={{ background: theme[c.key] }} />
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={() => setTheme({ ...INVOME_PRESET })}>Restaurar preset Invome</Button>
-        <Button onClick={save} disabled={saving}>
-          {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Salvar tema
-        </Button>
-      </div>
-    </Card>
+    </div>
   );
 }
-

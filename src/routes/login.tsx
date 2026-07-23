@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useBranding } from "@/lib/branding-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ type Kind = "cliente" | "agencia";
 
 function LoginPage() {
   const { user, loading, isClient } = useAuth();
+  const { branding } = useBranding();
   const [kind, setKind] = useState<Kind | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -32,7 +34,6 @@ function LoginPage() {
       setBusy(false);
       return toast.error(error?.message ?? "Falha no login");
     }
-    // Verify role matches selected portal
     const { data: rolesData } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
     const roles = (rolesData ?? []).map((r) => r.role as string);
     const isCli = roles.includes("cliente");
@@ -48,27 +49,50 @@ function LoginPage() {
     toast.success("Bem-vindo!");
   }
 
-  return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-background">
-      <div className="hidden lg:flex flex-col justify-between p-12 bg-primary text-primary-foreground">
-        <div className="flex items-center gap-2 text-lg font-semibold">
-          <Briefcase className="h-6 w-6" /> Equipe.io
-        </div>
-        <div>
-          <h1 className="text-4xl font-bold leading-tight">Portal de Clientes e Agência.</h1>
-          <p className="mt-4 text-primary-foreground/80 max-w-md">
-            Escolha como deseja entrar. Clientes acompanham entregas e aprovam; agências e colaboradores gerenciam o fluxo completo.
-          </p>
-        </div>
-        <p className="text-xs text-primary-foreground/60">© {new Date().getFullYear()} Equipe.io</p>
-      </div>
+  const justify =
+    branding.login_box_position === "left"
+      ? "justify-start"
+      : branding.login_box_position === "center"
+      ? "justify-center"
+      : "justify-end";
 
-      <div className="flex items-center justify-center p-6">
-        <Card className="w-full max-w-md p-8">
+  const bgStyle = branding.background_image
+    ? { backgroundImage: `url(${branding.background_image})` }
+    : undefined;
+
+  return (
+    <div
+      className={`min-h-screen w-full flex ${justify} items-center bg-cover bg-center bg-no-repeat ${
+        branding.background_image ? "" : "bg-background"
+      }`}
+      style={bgStyle}
+    >
+      {!branding.background_image && (
+        <div className="hidden lg:flex absolute inset-y-0 left-0 w-1/2 flex-col justify-between p-12 bg-primary text-primary-foreground">
+          <div className="flex items-center gap-2 text-lg font-semibold">
+            {branding.logo_url ? (
+              <img src={branding.logo_url} alt="logo" className="h-7 w-7 rounded object-contain" />
+            ) : (
+              <Briefcase className="h-6 w-6" />
+            )}
+            {branding.brand_name}
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold leading-tight">Portal de Clientes e Agência.</h1>
+            <p className="mt-4 text-primary-foreground/80 max-w-md">
+              Escolha como deseja entrar. Clientes acompanham entregas e aprovam; agências e colaboradores gerenciam o fluxo completo.
+            </p>
+          </div>
+          <p className="text-xs text-primary-foreground/60">© {new Date().getFullYear()} {branding.brand_name}</p>
+        </div>
+      )}
+
+      <div className={`w-full flex ${justify} p-6 ${!branding.background_image ? "lg:pl-[50%]" : ""}`}>
+        <Card className="w-full max-w-md p-8 shadow-2xl backdrop-blur-sm bg-card/95">
           {!kind && (
             <>
-              <h2 className="text-2xl font-semibold tracking-tight text-center">Como deseja entrar?</h2>
-              <p className="text-sm text-muted-foreground text-center mt-1 mb-6">Escolha o tipo de acesso.</p>
+              <h2 className="text-2xl font-semibold tracking-tight text-center">{branding.welcome_title}</h2>
+              <p className="text-sm text-muted-foreground text-center mt-1 mb-6">{branding.welcome_subtitle}</p>
               <div className="grid grid-cols-2 gap-3">
                 <ChoiceCard icon={Building2} label="Cliente" desc="Acesso ao portal de aprovações" onClick={() => setKind("cliente")} />
                 <ChoiceCard icon={Briefcase} label="Agência" desc="Colaboradores e gestores" onClick={() => setKind("agencia")} />
