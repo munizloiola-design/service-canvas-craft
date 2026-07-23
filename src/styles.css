@@ -120,7 +120,7 @@
     var(--primary),
     color-mix(in oklab, var(--primary) 70%, var(--accent))
   );
-  --gradient-text: linear-gradient(90deg, var(--primary), var(--accent));
+  --gradient-text: linear-gradient(90deg, var(--primary), oklch(0.62 0.14 210));
   --gradient-mesh:
     radial-gradient(1200px 800px at 8% -10%, color-mix(in oklab, var(--primary) 22%, transparent), transparent 60%),
     radial-gradient(1000px 700px at 108% 12%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 60%),
