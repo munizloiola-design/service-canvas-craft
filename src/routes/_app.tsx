@@ -71,7 +71,16 @@ function AppLayout() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("sidebar:collapsed") === "1";
+  });
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("sidebar:collapsed", desktopCollapsed ? "1" : "0");
+    }
+  }, [desktopCollapsed]);
 
   if (loading || permsLoading || accessLoading) {
     return (
