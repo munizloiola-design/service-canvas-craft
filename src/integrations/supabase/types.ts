@@ -18,6 +18,8 @@ export type Database = {
         Row: {
           accent_color: string
           brand_name: string
+          contact_email: string | null
+          contact_phone: string | null
           favicon_url: string | null
           id: boolean
           logo_url: string | null
@@ -25,10 +27,13 @@ export type Database = {
           suggestions: string | null
           theme_json: Json
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           accent_color?: string
           brand_name?: string
+          contact_email?: string | null
+          contact_phone?: string | null
           favicon_url?: string | null
           id?: boolean
           logo_url?: string | null
@@ -36,10 +41,13 @@ export type Database = {
           suggestions?: string | null
           theme_json?: Json
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           accent_color?: string
           brand_name?: string
+          contact_email?: string | null
+          contact_phone?: string | null
           favicon_url?: string | null
           id?: boolean
           logo_url?: string | null
@@ -47,6 +55,7 @@ export type Database = {
           suggestions?: string | null
           theme_json?: Json
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
@@ -818,6 +827,51 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_registrations: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          rejection_reason: string | null
+          requested_role: Database["public"]["Enums"]["app_role"] | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          type: string
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          rejection_reason?: string | null
+          requested_role?: Database["public"]["Enums"]["app_role"] | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          type: string
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          rejection_reason?: string | null
+          requested_role?: Database["public"]["Enums"]["app_role"] | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          type?: string
+        }
+        Relationships: []
+      }
       priorities: {
         Row: {
           color: string
@@ -856,6 +910,8 @@ export type Database = {
           hourly_cost: number
           id: string
           job_title: string | null
+          password_setup_expires_at: string | null
+          password_setup_link: string | null
           phone: string | null
           start_date: string | null
           updated_at: string
@@ -873,6 +929,8 @@ export type Database = {
           hourly_cost?: number
           id: string
           job_title?: string | null
+          password_setup_expires_at?: string | null
+          password_setup_link?: string | null
           phone?: string | null
           start_date?: string | null
           updated_at?: string
@@ -890,6 +948,8 @@ export type Database = {
           hourly_cost?: number
           id?: string
           job_title?: string | null
+          password_setup_expires_at?: string | null
+          password_setup_link?: string | null
           phone?: string | null
           start_date?: string | null
           updated_at?: string
