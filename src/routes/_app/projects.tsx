@@ -519,6 +519,20 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
       : [{ user_id: "", role_id: "" }]
   );
   const [hasRef, setHasRef] = useState(!!editProject?.has_reference);
+  const [descCards, setDescCards] = useState<DescriptionCard[]>(() => {
+    const existing = editProject?.description_cards;
+    if (Array.isArray(existing) && existing.length) return existing.map((c) => ({ title: c.title || "", content: c.content || "" }));
+    if (editProject?.description) return [{ title: "Card 01", content: editProject.description }];
+    return [{ title: "Card 01", content: "" }];
+  });
+  const [finalLink, setFinalLink] = useState<string>(editProject?.final_link ?? "");
+
+  const addCard = () =>
+    setDescCards((cur) => [...cur, { title: `Card ${String(cur.length + 1).padStart(2, "0")}`, content: "" }]);
+  const removeCard = (i: number) =>
+    setDescCards((cur) => cur.filter((_, j) => j !== i).map((c, k) => ({ ...c, title: `Card ${String(k + 1).padStart(2, "0")}` })));
+  const updateCard = (i: number, content: string) =>
+    setDescCards((cur) => cur.map((c, j) => (j === i ? { ...c, content } : c)));
 
   const { data: existingAttachments = [] } = useQuery({
     queryKey: ["attachments", editProject?.id, "edit"],
