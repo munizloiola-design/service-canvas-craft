@@ -345,7 +345,17 @@ function EntryForm({ initial, projects, clients, onSubmit }: { initial?: any; pr
         </div>
         <div><Label>Descrição</Label><Input value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Categoria</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></div>
+          <div>
+            <Label>Categoria</Label>
+            <Select value={f.category || "__none__"} onValueChange={(v) => setF({ ...f, category: v === "__none__" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— sem categoria —</SelectItem>
+                {categories.map((c) => <SelectItem key={c.id} value={c.name}>{c.name}{c.is_fixed ? " (fixo)" : ""}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground mt-1">Gerencie categorias em Configurações.</p>
+          </div>
           <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={f.amount} onChange={(e) => setF({ ...f, amount: Number(e.target.value) })} /></div>
         </div>
         {f.kind === "income" && (
