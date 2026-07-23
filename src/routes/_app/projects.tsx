@@ -290,7 +290,7 @@ function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, 
   const { canSee } = useFieldVisibility();
   const updateStatus = useMutation({
     mutationFn: async ({ id, status_id, from }: { id: string; status_id: string; from: string | null }) => {
-      const { error } = await supabase.from("projects").update({ status_id }).eq("id", id);
+      const { error } = await supabase.rpc("update_project_schedule", { _id: id, _status_id: status_id });
       if (error) throw error;
       if (user) {
         await supabase.from("project_transitions").insert({

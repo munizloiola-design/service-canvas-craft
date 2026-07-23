@@ -2189,6 +2189,17 @@ export type Database = {
         Returns: boolean
       }
       unaccent_safe: { Args: { _t: string }; Returns: string }
+      update_project_schedule: {
+        Args: {
+          _clear_due?: boolean
+          _clear_post?: boolean
+          _due_date?: string
+          _id: string
+          _post_date?: string
+          _status_id?: string
+        }
+        Returns: undefined
+      }
       user_max_rank: { Args: { _uid: string }; Returns: number }
     }
     Enums: {
