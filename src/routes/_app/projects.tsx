@@ -520,55 +520,46 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
       : [{ user_id: "", role_id: "" }]
   );
   const [clientId, setClientId] = useState<string>(editProject?.client_id ?? "");
-  const [teamId, setTeamId] = useState<string>(editProject?.team_id ?? "");
+  const [lastAutoFilledClient, setLastAutoFilledClient] = useState<string>(editProject?.client_id ?? "");
 
-  // Load teams for selected client
-  const { data: clientTeams = [] } = useQuery({
-    queryKey: ["client_teams_for_project", clientId],
+  // Load the team assigned to the selected client
+  const { data: clientTeamId } = useQuery({
+    queryKey: ["client_team_id", clientId],
     enabled: !!clientId,
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase.from as any)("client_teams").select("id, name, is_default").eq("client_id", clientId).order("name");
-      return (data ?? []) as { id: string; name: string; is_default: boolean }[];
+      const { data } = await (supabase.from as any)("clients").select("team_id").eq("id", clientId).maybeSingle();
+      return (data?.team_id as string | null) ?? null;
     },
   });
 
-  // Load members for the current team (only when a team is selected)
+  // Load members of that team
   const { data: teamMemberIds = [] } = useQuery({
-    queryKey: ["client_team_members_for_team", teamId],
-    enabled: !!teamId,
+    queryKey: ["team_members_for_team", clientTeamId],
+    enabled: !!clientTeamId,
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase.from as any)("client_team_members").select("user_id").eq("team_id", teamId);
+      const { data } = await (supabase.from as any)("team_members").select("user_id").eq("team_id", clientTeamId);
       return ((data ?? []) as { user_id: string }[]).map((x) => x.user_id);
     },
   });
 
-  // Auto-select default team on client change (only when creating, not when editing an existing project)
+  // Auto-fill assignees when client changes (creation flow, or manual client swap during edit).
+  // Preserves manual additions and never blocks the user from editing.
   useEffect(() => {
-    if (isEdit) return;
-    if (!clientId) { setTeamId(""); return; }
-    const def = clientTeams.find((t) => t.is_default) ?? (clientTeams.length === 1 ? clientTeams[0] : undefined);
-    if (def && !teamId) setTeamId(def.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, clientTeams]);
-
-  // When team changes (manual selection), pre-fill assignees from team
-  const applyTeamMembers = (ids: string[]) => {
-    if (!ids.length) return;
+    if (!clientId || clientId === lastAutoFilledClient) return;
+    if (!teamMemberIds.length) { setLastAutoFilledClient(clientId); return; }
     setAssignees((cur) => {
-      // preserve any existing user_ids not in the team; add team members not already present
       const existingIds = new Set(cur.filter((a) => a.user_id).map((a) => a.user_id));
-      const toAdd = ids.filter((id) => !existingIds.has(id)).map((id) => ({ user_id: id, role_id: "" }));
+      const toAdd = teamMemberIds.filter((id) => !existingIds.has(id)).map((id) => ({ user_id: id, role_id: "" }));
       const kept = cur.filter((a) => a.user_id);
       const result = [...kept, ...toAdd];
       return result.length ? result : [{ user_id: "", role_id: "" }];
     });
-  };
-  useEffect(() => {
-    if (teamId && teamMemberIds.length) applyTeamMembers(teamMemberIds);
+    setLastAutoFilledClient(clientId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId, teamMemberIds.join(",")]);
+  }, [clientId, teamMemberIds.join(",")]);
+
   const [hasRef, setHasRef] = useState(!!editProject?.has_reference);
   const [descCards, setDescCards] = useState<DescriptionCard[]>(() => {
     const existing = editProject?.description_cards;
