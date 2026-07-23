@@ -25,6 +25,7 @@ import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe
 import { Route as AppTicketsRouteImport } from './routes/_app/tickets'
 import { Route as AppTempoRouteImport } from './routes/_app/tempo'
 import { Route as AppTeamRouteImport } from './routes/_app/team'
+import { Route as AppSquadRouteImport } from './routes/_app/squad'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
 import { Route as AppPersonalizacaoRouteImport } from './routes/_app/personalizacao'
 import { Route as AppPermissoesRouteImport } from './routes/_app/permissoes'
@@ -123,6 +124,11 @@ const AppTempoRoute = AppTempoRouteImport.update({
 const AppTeamRoute = AppTeamRouteImport.update({
   id: '/team',
   path: '/team',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSquadRoute = AppSquadRouteImport.update({
+  id: '/squad',
+  path: '/squad',
   getParentRoute: () => AppRoute,
 } as any)
 const AppProjectsRoute = AppProjectsRouteImport.update({
@@ -249,6 +255,7 @@ export interface FileRoutesByFullPath {
   '/permissoes': typeof AppPermissoesRoute
   '/personalizacao': typeof AppPersonalizacaoRoute
   '/projects': typeof AppProjectsRoute
+  '/squad': typeof AppSquadRoute
   '/team': typeof AppTeamRoute
   '/tempo': typeof AppTempoRoute
   '/tickets': typeof AppTicketsRoute
@@ -285,6 +292,7 @@ export interface FileRoutesByTo {
   '/permissoes': typeof AppPermissoesRoute
   '/personalizacao': typeof AppPersonalizacaoRoute
   '/projects': typeof AppProjectsRoute
+  '/squad': typeof AppSquadRoute
   '/team': typeof AppTeamRoute
   '/tempo': typeof AppTempoRoute
   '/tickets': typeof AppTicketsRoute
@@ -324,6 +332,7 @@ export interface FileRoutesById {
   '/_app/permissoes': typeof AppPermissoesRoute
   '/_app/personalizacao': typeof AppPersonalizacaoRoute
   '/_app/projects': typeof AppProjectsRoute
+  '/_app/squad': typeof AppSquadRoute
   '/_app/team': typeof AppTeamRoute
   '/_app/tempo': typeof AppTempoRoute
   '/_app/tickets': typeof AppTicketsRoute
@@ -363,6 +372,7 @@ export interface FileRouteTypes {
     | '/permissoes'
     | '/personalizacao'
     | '/projects'
+    | '/squad'
     | '/team'
     | '/tempo'
     | '/tickets'
@@ -399,6 +409,7 @@ export interface FileRouteTypes {
     | '/permissoes'
     | '/personalizacao'
     | '/projects'
+    | '/squad'
     | '/team'
     | '/tempo'
     | '/tickets'
@@ -437,6 +448,7 @@ export interface FileRouteTypes {
     | '/_app/permissoes'
     | '/_app/personalizacao'
     | '/_app/projects'
+    | '/_app/squad'
     | '/_app/team'
     | '/_app/tempo'
     | '/_app/tickets'
@@ -584,6 +596,13 @@ declare module '@tanstack/react-router' {
       path: '/team'
       fullPath: '/team'
       preLoaderRoute: typeof AppTeamRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/squad': {
+      id: '/_app/squad'
+      path: '/squad'
+      fullPath: '/squad'
+      preLoaderRoute: typeof AppSquadRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/projects': {
@@ -744,6 +763,7 @@ interface AppRouteChildren {
   AppPermissoesRoute: typeof AppPermissoesRoute
   AppPersonalizacaoRoute: typeof AppPersonalizacaoRoute
   AppProjectsRoute: typeof AppProjectsRoute
+  AppSquadRoute: typeof AppSquadRoute
   AppTeamRoute: typeof AppTeamRoute
   AppTempoRoute: typeof AppTempoRoute
   AppTicketsRoute: typeof AppTicketsRoute
@@ -764,6 +784,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPermissoesRoute: AppPermissoesRoute,
   AppPersonalizacaoRoute: AppPersonalizacaoRoute,
   AppProjectsRoute: AppProjectsRoute,
+  AppSquadRoute: AppSquadRoute,
   AppTeamRoute: AppTeamRoute,
   AppTempoRoute: AppTempoRoute,
   AppTicketsRoute: AppTicketsRoute,

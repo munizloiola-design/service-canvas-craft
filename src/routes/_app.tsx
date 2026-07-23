@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { usePermissions, type Resource } from "@/lib/permissions";
 import { useAccess } from "@/lib/access-context";
 import { useBranding } from "@/lib/branding-context";
-import { LayoutDashboard, FolderKanban, Users, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck, Facebook, Sparkles, Plug, Inbox, Palette, Menu, ChevronDown, Building2, Clock } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Users, Users2, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck, Facebook, Sparkles, Plug, Inbox, Palette, Menu, ChevronDown, Building2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -45,15 +45,20 @@ const navGroups: NavGroup[] = [
       { to: "/diguinho", label: "Diguinho IA", icon: Sparkles, resource: "diguinho" },
     ],
   },
-  { items: [{ to: "/team", label: "Equipe", icon: Users, resource: "team" }] },
+  {
+    label: "Squad",
+    items: [
+      { to: "/team", label: "Equipe", icon: Users, resource: "team" },
+      { to: "/squad", label: "Squad", icon: Users2, resource: "clientes_area" },
+      { to: "/acessos", label: "Perfis e Acessos", icon: ShieldCheck, resource: "cadastros", masterOnly: true },
+    ],
+  },
   {
     label: "Configurações",
     items: [
       { to: "/cadastros", label: "Cadastros", icon: Settings, resource: "cadastros" },
       { to: "/integracoes", label: "Integrações", icon: Plug, resource: "integracoes" },
       { to: "/personalizacao", label: "Personalização", icon: Palette, resource: "branding" },
-      { to: "/acessos", label: "Perfis e Acessos", icon: ShieldCheck, resource: "cadastros", masterOnly: true },
-      { to: "/permissoes", label: "Permissões", icon: ShieldCheck, resource: "cadastros", masterOnly: true },
     ],
   },
 ];
