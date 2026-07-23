@@ -864,8 +864,30 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
             )}
           </div>
 
-          {project.description && canSee("description") && <div><Label className="text-xs text-muted-foreground">Descrição</Label><p className="mt-1 whitespace-pre-wrap">{project.description}</p></div>}
-          {project.notes && canSee("notes") && <div><Label className="text-xs text-muted-foreground">Observações</Label><p className="mt-1 whitespace-pre-wrap">{project.notes}</p></div>}
+          {project.notes && canSee("notes") && <div><Label className="text-xs text-muted-foreground">Direção de arte</Label><p className="mt-1 whitespace-pre-wrap">{project.notes}</p></div>}
+          {canSee("description") && (
+            (project.description_cards && project.description_cards.length > 0) ? (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Descrição</Label>
+                {project.description_cards.map((c, i) => (
+                  <div key={i} className="rounded-md border p-3 bg-muted/20">
+                    <div className="text-xs font-semibold text-muted-foreground mb-1">{c.title}</div>
+                    <p className="whitespace-pre-wrap text-sm">{c.content}</p>
+                  </div>
+                ))}
+              </div>
+            ) : project.description ? (
+              <div><Label className="text-xs text-muted-foreground">Descrição</Label><p className="mt-1 whitespace-pre-wrap">{project.description}</p></div>
+            ) : null
+          )}
+          {project.final_link && (
+            <div>
+              <Label className="text-xs text-muted-foreground">Arquivo ou link finalizado</Label>
+              <a href={project.final_link} target="_blank" rel="noreferrer" className="mt-1 text-info hover:underline inline-flex items-center gap-1 break-all">
+                <LinkIcon className="h-3 w-3" /> {project.final_link}
+              </a>
+            </div>
+          )}
 
           {project.reference_links?.length > 0 && canSee("reference_links") && (
             <div>
