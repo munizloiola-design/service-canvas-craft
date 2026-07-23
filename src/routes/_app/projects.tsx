@@ -693,19 +693,12 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
 
         <Field label="Valor (R$)"><Input name="budget" type="number" step="0.01" defaultValue={editProject?.budget ?? ""} /></Field>
 
-        {clientId && clientTeams.length > 0 && (
-          <Field label="Equipe do cliente">
-            <Select value={teamId || "__none__"} onValueChange={(v) => setTeamId(v === "__none__" ? "" : v)}>
-              <SelectTrigger><SelectValue placeholder="Sem equipe" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Sem equipe (personalizado)</SelectItem>
-                {clientTeams.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}{t.is_default ? " · padrão" : ""}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+        {clientId && teamMemberIds.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Time do cliente aplicado automaticamente: {teamMemberIds.length} responsável(is) pré-preenchido(s). Você ainda pode adicionar ou remover pessoas manualmente.
+          </p>
         )}
+
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
