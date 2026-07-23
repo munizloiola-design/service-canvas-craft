@@ -356,7 +356,6 @@ export type Database = {
           prospect_stage: string | null
           prospect_value: number | null
           status: string
-          team_id: string | null
           updated_at: string
         }
         Insert: {
@@ -372,7 +371,6 @@ export type Database = {
           prospect_stage?: string | null
           prospect_value?: number | null
           status?: string
-          team_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -388,18 +386,9 @@ export type Database = {
           prospect_stage?: string | null
           prospect_value?: number | null
           status?: string
-          team_id?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "clients_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       collaborator_functions: {
         Row: {
