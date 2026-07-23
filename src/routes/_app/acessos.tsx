@@ -59,7 +59,7 @@ function HierarchyTab() {
   const [fieldSpecId, setFieldSpecId] = useState<string | null>(null);
   const [renameTarget, setRenameTarget] = useState<{ type: "area" | "spec"; id: string; name: string } | null>(null);
 
-  const { data: areas = [] } = useQuery<Area[]>({
+  const areasQ = useQuery<Area[]>({
     queryKey: ["provider_areas"],
     queryFn: async () => {
       const { data, error } = await supabase.from("provider_areas").select("*").order("sort_order").order("name");
@@ -67,8 +67,9 @@ function HierarchyTab() {
       return (data ?? []) as Area[];
     },
   });
+  const areas = areasQ.data ?? [];
 
-  const { data: specs = [] } = useQuery<Specialty[]>({
+  const specsQ = useQuery<Specialty[]>({
     queryKey: ["provider_specialties"],
     queryFn: async () => {
       const { data, error } = await supabase.from("provider_specialties").select("*").order("sort_order").order("name");
@@ -76,6 +77,14 @@ function HierarchyTab() {
       return (data ?? []) as Specialty[];
     },
   });
+  const specs = specsQ.data ?? [];
+
+  useEffect(() => {
+    if (areasQ.error) { console.error("[acessos:areas]", areasQ.error); toast.error("Falha ao carregar áreas: " + describeSupabaseError(areasQ.error)); }
+  }, [areasQ.error]);
+  useEffect(() => {
+    if (specsQ.error) { console.error("[acessos:specs]", specsQ.error); toast.error("Falha ao carregar especialidades: " + describeSupabaseError(specsQ.error)); }
+  }, [specsQ.error]);
 
   const activeArea = selectedArea ?? areas[0]?.id ?? null;
   const areaSpecs = specs.filter((s) => s.area_id === activeArea);
