@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useBranding } from "@/lib/branding-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Briefcase, CalendarDays, ClipboardCheck, CheckCircle2, LogOut, Target } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -54,7 +55,10 @@ function PortalLayout() {
               </div>
             )}
             <div className="min-w-0">
-              <p className="font-semibold truncate">{branding.brand_name}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold truncate">{branding.brand_name}</p>
+                <Badge variant="secondary" className="text-[10px]">Cliente</Badge>
+              </div>
               <p className="text-xs text-muted-foreground truncate">
                 {clients.length > 0 ? clients.map((c) => c.name).join(", ") : user.email}
               </p>
