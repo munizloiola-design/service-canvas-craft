@@ -1,53 +1,48 @@
 ## Objetivo
-Criar a tabela `public.time_logs` para rastreamento oculto de tempo por projeto/usuário/status, com RLS adequada e GRANTs obrigatórios (que faltavam no SQL enviado).
+Criar um painel de análise de tempo alimentado pela view `public.time_logs_with_duration`, com gráficos e tabelas agregadas por projeto e por usuário, filtráveis por período.
 
-## Ajustes ao SQL enviado
-1. **Adicionar GRANTs** — obrigatório no schema `public`, senão a Data API retorna erro de permissão.
-2. **Remover coluna gerada `duration_seconds`** — `EXTRACT(EPOCH FROM ...)` não é `IMMUTABLE`, então Postgres rejeita em `GENERATED ALWAYS AS ... STORED`. Substituir por uma **view** `time_logs_with_duration` ou uma coluna comum preenchida por trigger no `UPDATE` quando `ended_at` for setado. Recomendo a view (mais simples e sempre consistente).
-3. **Separar policies** — a policy `FOR ALL` com só `USING` não cobre `WITH CHECK` em INSERT/UPDATE. Dividir em:
-   - INSERT/UPDATE/DELETE do próprio usuário (com `WITH CHECK`).
-   - SELECT do próprio usuário + SELECT de gestores/admins.
-4. **FK do `user_id`** — apontar para `auth.users(id)` (padrão do projeto) em vez de `profiles(id)`, mantendo consistência com as demais tabelas.
-5. Adicionar índices em `(project_id)`, `(user_id)`, `(started_at)` para consultas de relatório.
+## Acesso
+- Somente Gerentes / Administradores (a view/RLS já limita o SELECT via `is_manager`/`is_master`).
+- Novo recurso de permissão `time_reports` (view) adicionado ao tipo `Resource` em `src/lib/permissions.tsx` e ao seed via migração em `role_permissions` para `admin` e `gerente`.
 
-## Migração final (resumo)
-```sql
-CREATE TABLE public.time_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  status_id UUID REFERENCES public.workflow_statuses(id) ON DELETE SET NULL,
-  started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  ended_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+## Navegação
+- Adicionar item "Tempo" (ícone `Clock`) no grupo **Operação** de `src/routes/_app.tsx`, apontando para `/tempo`, visível apenas quando `can("time_reports","view")`.
 
-CREATE INDEX idx_time_logs_project ON public.time_logs(project_id);
-CREATE INDEX idx_time_logs_user ON public.time_logs(user_id);
-CREATE INDEX idx_time_logs_started ON public.time_logs(started_at);
+## Rota
+Novo arquivo `src/routes/_app/tempo.tsx` (`createFileRoute("/_app/tempo")`), com `head()` próprio ("Relatório de tempo").
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.time_logs TO authenticated;
-GRANT ALL ON public.time_logs TO service_role;
+Filtros no topo:
+- Período (data início / data fim) — padrão: últimos 30 dias. Estado sincronizado na URL via `validateSearch` (`from`, `to`).
+- Seletor de projeto (opcional) e de usuário (opcional).
+- Botão "Exportar CSV" das linhas agregadas visíveis.
 
-ALTER TABLE public.time_logs ENABLE ROW LEVEL SECURITY;
+## Consulta de dados
+- Um único `useQuery` server-side que lê `time_logs_with_duration` filtrando `started_at >= from` e `ended_at <= to` (ou `ended_at IS NOT NULL`), trazendo `project_id`, `user_id`, `status_id`, `duration_seconds`, `started_at`, `ended_at`.
+- Consultas auxiliares em paralelo para nomes: `projects(id,title)`, `profiles(id,full_name)`, `workflow_statuses(id,name,color)`.
+- Agregações feitas no cliente em `useMemo` (volume esperado modesto): totais por projeto, por usuário, por dia, por etapa.
 
-CREATE POLICY "own_select" ON public.time_logs FOR SELECT
-  USING (auth.uid() = user_id);
-CREATE POLICY "managers_select_all" ON public.time_logs FOR SELECT
-  USING (public.is_manager(auth.uid()) OR public.is_master(auth.uid()));
-CREATE POLICY "own_insert" ON public.time_logs FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "own_update" ON public.time_logs FOR UPDATE
-  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "own_delete" ON public.time_logs FOR DELETE
-  USING (auth.uid() = user_id);
+## Layout do painel
+1. **KPIs (4 cards)**: Horas totais no período, Nº de sessões, Projetos ativos, Colaboradores ativos.
+2. **Gráfico de linha — Horas por dia** (Recharts `LineChart`) usando token `--chart-1`.
+3. **Gráfico de barras — Top 10 projetos por horas** (`BarChart` horizontal), token `--chart-2`.
+4. **Gráfico de barras — Horas por usuário** (`BarChart`), token `--chart-3`.
+5. **Gráfico donut — Distribuição por etapa** (`PieChart`) usando cores das `workflow_statuses`.
+6. **Tabela "Por projeto"**: Projeto · Sessões · Horas · Última atividade · Colaboradores distintos. Ordenável por horas.
+7. **Tabela "Por usuário"**: Usuário · Sessões · Horas · Projetos distintos · Média por sessão. Ordenável por horas.
+8. **Tabela detalhada (colapsável)**: uma linha por sessão (`started_at`, `ended_at`, projeto, usuário, etapa, duração).
 
-CREATE OR REPLACE VIEW public.time_logs_with_duration AS
-  SELECT *, EXTRACT(EPOCH FROM (ended_at - started_at))::INT AS duration_seconds
-  FROM public.time_logs;
-GRANT SELECT ON public.time_logs_with_duration TO authenticated;
-```
+Todas as tabelas respeitam os filtros do topo. Exportação CSV usa a agregação exibida (uma função utilitária local).
 
-## Perguntas antes de aplicar
-1. Este é só o schema, ou você quer que eu **já integre** o tracking automático (iniciar log quando o projeto entra num status, encerrar quando muda) e uma **tela de relatório de tempo** para gestores?
-2. `user_id` deve referenciar `auth.users` (padrão do projeto) — confirma?
+## Detalhes técnicos
+- Formatação de duração: helper local `formatHours(seconds)` → `"12h 30m"` e `secondsToHours(seconds)` para valores numéricos nos gráficos.
+- Recharts usa as CSS variables `--chart-1..6` já existentes no tema, mantendo consistência com Dashboard/Financeiro.
+- Sessões em aberto (`ended_at IS NULL`) são excluídas das agregações mas contadas como "Sessões em andamento" em um pequeno badge.
+- Consulta com `.select("... ")` tipada como `string` via helper `sel()` para evitar o custo de parsing do tipo do Supabase (padrão do projeto).
+- Nenhuma alteração de schema além do seed de `role_permissions` para o novo recurso `time_reports`.
+
+## Passos de implementação
+1. Migração: `INSERT INTO role_permissions (role, resource, action)` para `('admin','time_reports','view')` e `('gerente','time_reports','view')` (idempotente com `ON CONFLICT DO NOTHING`).
+2. Atualizar `Resource` em `src/lib/permissions.tsx`.
+3. Adicionar item de menu em `src/routes/_app.tsx`.
+4. Criar `src/routes/_app/tempo.tsx` com filtros, KPIs, gráficos (LineChart, BarChart x2, PieChart) e tabelas descritas.
+5. Verificar build/typecheck.
