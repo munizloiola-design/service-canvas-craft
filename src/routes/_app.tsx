@@ -62,12 +62,13 @@ function AppLayout() {
   const { user, loading, signOut, roles, isClient, isMaster } = useAuth();
   const { branding } = useBranding();
   const { can, loading: permsLoading } = usePermissions();
+  const { menuAllowed, loading: accessLoading } = useAccess();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
-  if (loading || permsLoading) {
+  if (loading || permsLoading || accessLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -82,7 +83,8 @@ function AppLayout() {
       ...g,
       items: g.items.filter((item) => {
         if (item.masterOnly && !isMaster) return false;
-        return can(item.resource, "view");
+        if (!can(item.resource, "view")) return false;
+        return menuAllowed(item.to);
       }),
     }))
     .filter((g) => g.items.length > 0);
