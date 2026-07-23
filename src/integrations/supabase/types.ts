@@ -301,6 +301,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          team_id: string | null
           updated_at: string
         }
         Insert: {
@@ -311,6 +312,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          team_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -321,9 +323,18 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          team_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       collaborator_functions: {
         Row: {
@@ -1392,6 +1403,39 @@ export type Database = {
         }
         Relationships: []
       }
+      team_members: {
+        Row: {
+          created_at: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_private_notes: {
         Row: {
           content: string
@@ -1413,6 +1457,27 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      teams: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
         }
         Relationships: []
       }
