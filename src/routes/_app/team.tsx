@@ -174,9 +174,12 @@ function TeamPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">Equipe</h1>
-        <p className="text-muted-foreground mt-1">Acompanhe a carga e o desempenho da equipe.</p>
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Equipe</h1>
+          <p className="text-muted-foreground mt-1">Acompanhe a carga e o desempenho da equipe.</p>
+        </div>
+        {isManager && <NewUserButton />}
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
