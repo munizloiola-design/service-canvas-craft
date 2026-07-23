@@ -95,8 +95,8 @@ function SquadRelatorioPage() {
   };
 
   const teamsQ = useQuery({
-    queryKey: ["rel_client_teams"],
-    queryFn: async () => (await supabase.from("client_teams").select("id, name, client_id, is_default").order("name")).data ?? [],
+    queryKey: ["rel_teams"],
+    queryFn: async () => (await supabase.from("teams").select("id, name").order("name")).data ?? [],
   });
   const teams = teamsQ.data ?? [];
   const profilesQ = useQuery({
@@ -105,8 +105,8 @@ function SquadRelatorioPage() {
   });
   const profiles = profilesQ.data ?? [];
   const membershipsQ = useQuery({
-    queryKey: ["rel_client_team_members"],
-    queryFn: async () => (await supabase.from("client_team_members").select("team_id, user_id")).data ?? [],
+    queryKey: ["rel_team_members"],
+    queryFn: async () => (await supabase.from("team_members").select("team_id, user_id")).data ?? [],
   });
   const memberships = membershipsQ.data ?? [];
   const clientsQ = useQuery({
@@ -116,7 +116,7 @@ function SquadRelatorioPage() {
   const clients = clientsQ.data ?? [];
   const projectsQ = useQuery({
     queryKey: ["rel_projects_min"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, client_id").order("title")).data ?? [],
+    queryFn: async () => (await supabase.from("projects").select("id, title, client_id, team_id").order("title")).data ?? [],
   });
   const projects = projectsQ.data ?? [];
   const statusesQ = useQuery({
@@ -129,12 +129,6 @@ function SquadRelatorioPage() {
   const userMap = useMemo(() => new Map(profiles.map((p: any) => [p.id, p.full_name || "Sem nome"])), [profiles]);
   const projectMap = useMemo(() => new Map(projects.map((p: any) => [p.id, p])), [projects]);
   const clientMap = useMemo(() => new Map(clients.map((c: any) => [c.id, c])), [clients]);
-  const teamClientId = useMemo(() => new Map(teams.map((t: any) => [t.id, t.client_id])), [teams]);
-  const clientToDefaultTeam = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const t of teams as any[]) if (t.is_default) m.set(t.client_id, t.id);
-    return m;
-  }, [teams]);
   const statusMap = useMemo(() => new Map(statuses.map((s: any) => [s.id, s.name])), [statuses]);
 
   const teamUserIds = useMemo(() => {
@@ -144,10 +138,9 @@ function SquadRelatorioPage() {
 
   const teamProjectIds = useMemo(() => {
     if (!teamFilter) return null;
-    const cid = teamClientId.get(teamFilter);
-    if (!cid) return [];
-    return projects.filter((p: any) => p.client_id === cid).map((p: any) => p.id);
-  }, [projects, teamFilter, teamClientId]);
+    return projects.filter((p: any) => p.team_id === teamFilter).map((p: any) => p.id as string);
+  }, [projects, teamFilter]);
+
 
   const teamMembersOptions = useMemo(() => {
     const ids = teamFilter
