@@ -571,6 +571,16 @@ function RecurringIncomes() {
               </div>
               <div><Label>Próximo vencimento</Label><Input type="date" value={f.next_due} onChange={(e) => setF({ ...f, next_due: e.target.value })} /></div>
             </div>
+            <div>
+              <Label>Categoria</Label>
+              <Select value={f.category_id ?? "__none__"} onValueChange={(v) => setF({ ...f, category_id: v === "__none__" ? null : v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— sem categoria —</SelectItem>
+                  {incomeCats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div><Label>Comissão (%)</Label><Input type="number" step="0.01" min={0} value={f.commission_pct} onChange={(e) => setF({ ...f, commission_pct: Number(e.target.value) })} /></div>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <Checkbox checked={f.active} onCheckedChange={(v) => setF({ ...f, active: !!v })} />
