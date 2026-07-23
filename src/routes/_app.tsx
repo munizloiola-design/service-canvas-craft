@@ -196,14 +196,16 @@ function AppLayout() {
   );
 
   const sidebarStyle = branding.sidebar_color
-    ? ({ backgroundColor: branding.sidebar_color } as React.CSSProperties)
+    ? ({
+        backgroundColor: `color-mix(in srgb, ${branding.sidebar_color} 65%, transparent)`,
+      } as React.CSSProperties)
     : undefined;
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex">
       <aside
         style={sidebarStyle}
-        className={`hidden md:flex shrink-0 border-r bg-sidebar text-sidebar-foreground flex-col overflow-hidden transition-[width] duration-200 ${
+        className={`hidden md:flex shrink-0 border-r border-white/30 dark:border-white/10 bg-white/55 dark:bg-white/5 backdrop-blur-xl text-sidebar-foreground flex-col overflow-hidden transition-[width] duration-200 shadow-[0_8px_32px_0_rgba(15,23,42,0.05)] ${
           desktopCollapsed ? "w-0 border-r-0" : "w-64"
         }`}
       >
@@ -213,7 +215,7 @@ function AppLayout() {
       {/* Mobile topbar */}
       <header
         style={sidebarStyle}
-        className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-sidebar text-sidebar-foreground border-b border-sidebar-border flex items-center justify-between px-3"
+        className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-white/55 dark:bg-white/5 backdrop-blur-xl text-sidebar-foreground border-b border-white/30 dark:border-white/10 flex items-center justify-between px-3"
       >
         <div className="flex items-center gap-2">
           {branding.logo_url ? (
@@ -229,7 +231,7 @@ function AppLayout() {
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="h-9 w-9"><Menu className="h-5 w-5" /></Button>
           </SheetTrigger>
-          <SheetContent side="left" style={sidebarStyle} className="p-0 w-72 bg-sidebar text-sidebar-foreground flex flex-col">
+          <SheetContent side="left" style={sidebarStyle} className="p-0 w-72 text-sidebar-foreground flex flex-col">
             <SheetTitle className="sr-only">Menu</SheetTitle>
             {SidebarContent}
           </SheetContent>
