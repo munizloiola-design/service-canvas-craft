@@ -54,14 +54,12 @@ function ClientesPage() {
           <TabsTrigger value="acessos" className="gap-1.5"><KeyRound className="h-4 w-4" /> Acessos do Portal</TabsTrigger>
           <TabsTrigger value="briefing" className="gap-1.5"><FileText className="h-4 w-4" /> Briefing & Estratégia</TabsTrigger>
           <TabsTrigger value="projetos" className="gap-1.5"><FolderKanban className="h-4 w-4" /> Projetos Ativos</TabsTrigger>
-          <TabsTrigger value="crm" className="gap-1.5"><Sparkles className="h-4 w-4" /> CRM Prospecção</TabsTrigger>
         </TabsList>
 
         <TabsContent value="diretorio"><DirectoryTab onOpenBriefing={setSelectedClient} /></TabsContent>
         <TabsContent value="acessos"><AccessTab /></TabsContent>
         <TabsContent value="briefing"><BriefingTab clientId={selectedClient} setClientId={setSelectedClient} /></TabsContent>
         <TabsContent value="projetos"><ProjectsTab clientId={selectedClient} setClientId={setSelectedClient} /></TabsContent>
-        <TabsContent value="crm"><CrmTab /></TabsContent>
       </Tabs>
     </div>
   );
@@ -763,7 +761,7 @@ function ProjectsTab({ clientId, setClientId }: { clientId: string; setClientId:
 const STAGES = ["Novo lead", "Qualificação", "Proposta enviada", "Negociação", "Ganho", "Perdido"] as const;
 type Stage = (typeof STAGES)[number];
 
-function CrmTab() {
+export function CrmTab() {
   const qc = useQueryClient();
   const { data: rows = [] } = useClients();
   const prospects = useMemo(() => rows.filter((r) => r.status === "prospeccao"), [rows]);
