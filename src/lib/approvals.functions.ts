@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-async function assertManager(ctx: { supabase: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: boolean | null }> }; userId: string }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function assertManager(ctx: any) {
   const { data } = await ctx.supabase.rpc("is_manager", { _uid: ctx.userId });
   if (!data) throw new Error("Sem permissão");
 }
