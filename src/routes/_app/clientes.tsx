@@ -80,8 +80,6 @@ type Client = {
   prospect_value: number | null;
   prospect_next_action: string | null;
   prospect_next_action_at: string | null;
-  team_id?: string | null;
-  teams?: { name: string } | null;
 };
 
 const STATUS_META: Record<ClientStatus, { label: string; className: string }> = {
@@ -94,23 +92,27 @@ function useClients() {
   return useQuery({
     queryKey: ["clients"],
     queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.from as any)("clients")
-        .select("*, teams(name)")
-        .order("name");
+      const { data, error } = await supabase.from("clients").select("*").order("name");
       if (error) throw error;
       return (data ?? []) as Client[];
     },
   });
 }
 
-function useTeams() {
+function useDefaultClientTeams() {
   return useQuery({
-    queryKey: ["teams", "options"],
+    queryKey: ["client_teams", "defaults"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("teams").select("id, name").order("name");
+      const { data, error } = await supabase
+        .from("client_teams")
+        .select("client_id, name")
+        .eq("is_default", true);
       if (error) throw error;
-      return (data ?? []) as Array<{ id: string; name: string }>;
+      const map = new Map<string, string>();
+      for (const row of (data ?? []) as Array<{ client_id: string; name: string }>) {
+        map.set(row.client_id, row.name);
+      }
+      return map;
     },
   });
 }
