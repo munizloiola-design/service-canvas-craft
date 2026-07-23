@@ -27,6 +27,7 @@ const navGroups: NavGroup[] = [
       { to: "/calendario", label: "Calendário", icon: CalendarDays, resource: "calendario" },
       { to: "/clientes-area", label: "Área do Cliente", icon: Building2, resource: "clientes_area" },
       { to: "/equipamentos", label: "Equipamentos", icon: Wrench, resource: "equipamentos" },
+      { to: "/tempo", label: "Tempo", icon: Clock, resource: "time_reports" },
     ],
   },
   {
