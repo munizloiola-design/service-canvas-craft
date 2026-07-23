@@ -1,62 +1,63 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Navigate, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Briefcase } from "lucide-react";
+import { Briefcase, Building2 } from "lucide-react";
 
-export const Route = createFileRoute("/login")({
-  component: LoginPage,
-});
+export const Route = createFileRoute("/login")({ component: LoginPage });
+
+type Kind = "cliente" | "agencia";
 
 function LoginPage() {
-  const { user, signIn, signUp, loading, isClient } = useAuth();
+  const { user, loading, isClient } = useAuth();
+  const [kind, setKind] = useState<Kind | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (!loading && user) return <Navigate to={isClient ? "/portal/calendario" : "/dashboard"} />;
+  if (!loading && user) return <Navigate to={isClient ? "/portal" : "/dashboard"} />;
 
-  const handleSignIn = async (e: FormEvent<HTMLFormElement>) => {
+  async function onSignIn(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!kind) return;
     const fd = new FormData(e.currentTarget);
+    const email = String(fd.get("email")).trim().toLowerCase();
+    const password = String(fd.get("password"));
     setBusy(true);
-    const { error } = await signIn(String(fd.get("email")), String(fd.get("password")));
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) {
+      setBusy(false);
+      return toast.error(error?.message ?? "Falha no login");
+    }
+    // Verify role matches selected portal
+    const { data: rolesData } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
+    const roles = (rolesData ?? []).map((r) => r.role as string);
+    const isCli = roles.includes("cliente");
     setBusy(false);
-    if (error) return toast.error(error);
+    if (kind === "cliente" && !isCli) {
+      await supabase.auth.signOut();
+      return toast.error("Esta conta não é de cliente. Selecione 'Agência'.");
+    }
+    if (kind === "agencia" && isCli) {
+      await supabase.auth.signOut();
+      return toast.error("Esta é uma conta de cliente. Selecione 'Cliente'.");
+    }
     toast.success("Bem-vindo!");
-    // navigation handled by Navigate above when roles load
-  };
-
-  const handleSignUp = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    setBusy(true);
-    const { error } = await signUp(
-      String(fd.get("email")),
-      String(fd.get("password")),
-      String(fd.get("fullName")),
-    );
-    setBusy(false);
-    if (error) return toast.error(error);
-    toast.success("Conta criada! Você já pode entrar.");
-  };
+  }
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
       <div className="hidden lg:flex flex-col justify-between p-12 bg-primary text-primary-foreground">
         <div className="flex items-center gap-2 text-lg font-semibold">
-          <Briefcase className="h-6 w-6" />
-          Equipe.io
+          <Briefcase className="h-6 w-6" /> Equipe.io
         </div>
         <div>
-          <h1 className="text-4xl font-bold leading-tight">
-            Gestão de equipe e<br />serviços, simplificada.
-          </h1>
+          <h1 className="text-4xl font-bold leading-tight">Portal de Clientes e Agência.</h1>
           <p className="mt-4 text-primary-foreground/80 max-w-md">
-            Receba demandas, acompanhe projetos em um quadro Kanban e visualize o desempenho da sua equipe — tudo em um só lugar.
+            Escolha como deseja entrar. Clientes acompanham entregas e aprovam; agências e colaboradores gerenciam o fluxo completo.
           </p>
         </div>
         <p className="text-xs text-primary-foreground/60">© {new Date().getFullYear()} Equipe.io</p>
@@ -64,23 +65,34 @@ function LoginPage() {
 
       <div className="flex items-center justify-center p-6">
         <Card className="w-full max-w-md p-8">
-          <div className="lg:hidden flex items-center gap-2 mb-6 text-lg font-semibold">
-            <Briefcase className="h-6 w-6 text-primary" />
-            Equipe.io
-          </div>
-          <h2 className="text-2xl font-semibold tracking-tight">Acesse sua conta</h2>
-          <p className="text-sm text-muted-foreground mt-1 mb-6">
-            Entre ou crie uma conta para começar.
-          </p>
+          {!kind && (
+            <>
+              <h2 className="text-2xl font-semibold tracking-tight text-center">Como deseja entrar?</h2>
+              <p className="text-sm text-muted-foreground text-center mt-1 mb-6">Escolha o tipo de acesso.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <ChoiceCard icon={Building2} label="Cliente" desc="Acesso ao portal de aprovações" onClick={() => setKind("cliente")} />
+                <ChoiceCard icon={Briefcase} label="Agência" desc="Colaboradores e gestores" onClick={() => setKind("agencia")} />
+              </div>
+              <div className="mt-8 pt-6 border-t space-y-2 text-center text-sm">
+                <p className="text-muted-foreground">Ainda não tem cadastro?</p>
+                <div className="flex flex-col gap-2">
+                  <Button asChild variant="outline" size="sm"><Link to="/cadastro/cliente">Cadastro de Cliente</Link></Button>
+                  <Button asChild variant="outline" size="sm"><Link to="/cadastro/usuario">Cadastro de Usuário</Link></Button>
+                </div>
+              </div>
+            </>
+          )}
 
-          <Tabs defaultValue="signin">
-            <TabsList className="grid grid-cols-2 w-full">
-              <TabsTrigger value="signin">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Criar conta</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4 mt-4">
+          {kind && (
+            <>
+              <button type="button" onClick={() => setKind(null)} className="text-xs text-muted-foreground hover:text-foreground mb-3">
+                ← trocar tipo de acesso
+              </button>
+              <h2 className="text-2xl font-semibold tracking-tight">
+                Entrar como {kind === "cliente" ? "Cliente" : "Agência"}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1 mb-6">Informe seu e-mail e senha.</p>
+              <form onSubmit={onSignIn} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">E-mail</Label>
                   <Input id="email" name="email" type="email" required autoComplete="email" />
@@ -89,37 +101,34 @@ function LoginPage() {
                   <Label htmlFor="password">Senha</Label>
                   <Input id="password" name="password" type="password" required autoComplete="current-password" />
                 </div>
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? "Entrando..." : "Entrar"}
-                </Button>
+                <Button type="submit" className="w-full" disabled={busy}>{busy ? "Entrando..." : "Entrar"}</Button>
               </form>
-            </TabsContent>
-
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Nome completo</Label>
-                  <Input id="fullName" name="fullName" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="su-email">E-mail</Label>
-                  <Input id="su-email" name="email" type="email" required autoComplete="email" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="su-password">Senha</Label>
-                  <Input id="su-password" name="password" type="password" required minLength={6} autoComplete="new-password" />
-                </div>
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? "Criando..." : "Criar conta"}
-                </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  O primeiro usuário cadastrado se torna administrador.
-                </p>
-              </form>
-            </TabsContent>
-          </Tabs>
+              <div className="mt-6 pt-4 border-t text-center text-xs text-muted-foreground">
+                Sem cadastro?{" "}
+                <Link to={kind === "cliente" ? "/cadastro/cliente" : "/cadastro/usuario"} className="text-primary hover:underline">
+                  {kind === "cliente" ? "Cadastre-se como cliente" : "Cadastre-se como usuário"}
+                </Link>
+              </div>
+            </>
+          )}
         </Card>
       </div>
     </div>
+  );
+}
+
+function ChoiceCard({ icon: Icon, label, desc, onClick }: { icon: React.ElementType; label: string; desc: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-lg border p-5 text-left hover:bg-muted hover:border-primary/40 transition-colors group"
+    >
+      <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+        <Icon className="h-5 w-5" />
+      </div>
+      <p className="font-semibold">{label}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+    </button>
   );
 }

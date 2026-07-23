@@ -22,6 +22,7 @@ import { Route as PortalEstrategiaRouteImport } from './routes/portal/estrategia
 import { Route as PortalCalendarioRouteImport } from './routes/portal/calendario'
 import { Route as PortalAprovadosRouteImport } from './routes/portal/aprovados'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as CadastroClienteRouteImport } from './routes/cadastro.cliente'
 import { Route as AppTicketsRouteImport } from './routes/_app/tickets'
 import { Route as AppTempoRouteImport } from './routes/_app/tempo'
 import { Route as AppTeamRouteImport } from './routes/_app/team'
@@ -110,6 +111,11 @@ const PortalAprovadosRoute = PortalAprovadosRouteImport.update({
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
   path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CadastroClienteRoute = CadastroClienteRouteImport.update({
+  id: '/cadastro/cliente',
+  path: '/cadastro/cliente',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppTicketsRoute = AppTicketsRouteImport.update({
@@ -265,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/team': typeof AppTeamRoute
   '/tempo': typeof AppTempoRoute
   '/tickets': typeof AppTicketsRoute
+  '/cadastro/cliente': typeof CadastroClienteRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
   '/portal/calendario': typeof PortalCalendarioRoute
@@ -303,6 +310,7 @@ export interface FileRoutesByTo {
   '/team': typeof AppTeamRoute
   '/tempo': typeof AppTempoRoute
   '/tickets': typeof AppTicketsRoute
+  '/cadastro/cliente': typeof CadastroClienteRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
   '/portal/calendario': typeof PortalCalendarioRoute
@@ -344,6 +352,7 @@ export interface FileRoutesById {
   '/_app/team': typeof AppTeamRoute
   '/_app/tempo': typeof AppTempoRoute
   '/_app/tickets': typeof AppTicketsRoute
+  '/cadastro/cliente': typeof CadastroClienteRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
   '/portal/calendario': typeof PortalCalendarioRoute
@@ -385,6 +394,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/tempo'
     | '/tickets'
+    | '/cadastro/cliente'
     | '/email/unsubscribe'
     | '/portal/aprovados'
     | '/portal/calendario'
@@ -423,6 +433,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/tempo'
     | '/tickets'
+    | '/cadastro/cliente'
     | '/email/unsubscribe'
     | '/portal/aprovados'
     | '/portal/calendario'
@@ -463,6 +474,7 @@ export interface FileRouteTypes {
     | '/_app/team'
     | '/_app/tempo'
     | '/_app/tickets'
+    | '/cadastro/cliente'
     | '/email/unsubscribe'
     | '/portal/aprovados'
     | '/portal/calendario'
@@ -486,6 +498,7 @@ export interface RootRouteChildren {
   PortalRoute: typeof PortalRouteWithChildren
   TicketRoute: typeof TicketRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  CadastroClienteRoute: typeof CadastroClienteRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   VTokenRoute: typeof VTokenRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -587,6 +600,13 @@ declare module '@tanstack/react-router' {
       path: '/email/unsubscribe'
       fullPath: '/email/unsubscribe'
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cadastro/cliente': {
+      id: '/cadastro/cliente'
+      path: '/cadastro/cliente'
+      fullPath: '/cadastro/cliente'
+      preLoaderRoute: typeof CadastroClienteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/tickets': {
@@ -849,6 +869,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortalRoute: PortalRouteWithChildren,
   TicketRoute: TicketRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  CadastroClienteRoute: CadastroClienteRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   VTokenRoute: VTokenRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
