@@ -16,7 +16,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, Legend,
 } from "recharts";
 
-type SearchParams = { from?: string; to?: string; project?: string; user?: string };
+type SearchParams = { from?: string; to?: string; project?: string; user?: string; team?: string };
 
 function isoDay(d: Date) { return d.toISOString().slice(0, 10); }
 function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return isoDay(d); }
