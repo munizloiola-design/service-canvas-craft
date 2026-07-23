@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil, Users } from "lucide-react";
+import { Plus, Trash2, Pencil, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/squad")({ component: SquadPage });
