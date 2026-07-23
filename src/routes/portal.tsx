@@ -5,6 +5,7 @@ import { useBranding } from "@/lib/branding-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Briefcase, CalendarDays, ClipboardCheck, CheckCircle2, LogOut, Target } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/portal")({ component: PortalLayout });
 
