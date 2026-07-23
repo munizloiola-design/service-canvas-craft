@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Plus, Trash2, Pencil, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_app/squad")({ component: SquadPage });
+export const Route = createFileRoute("/_app/squad/")({ component: SquadPage });
 
 type Team = { id: string; name: string };
 type TeamMember = { team_id: string; user_id: string };
