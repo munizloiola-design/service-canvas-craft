@@ -122,15 +122,15 @@ function LoginPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <ChoiceCard
                     icon={Building2}
-                    label="Cliente"
-                    desc="Acesso ao portal de aprovações"
+                    label={branding.login_client_label}
+                    desc={branding.login_client_desc}
                     onClick={() => switchStep("cliente")}
                     delay={120}
                   />
                   <ChoiceCard
                     icon={Briefcase}
-                    label="Agência"
-                    desc="Colaboradores e gestores"
+                    label={branding.login_agency_label}
+                    desc={branding.login_agency_desc}
                     onClick={() => switchStep("agencia")}
                     delay={200}
                   />
