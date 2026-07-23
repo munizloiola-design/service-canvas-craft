@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Settings, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { describeSupabaseError } from "@/lib/supabase-error";
 
 export const Route = createFileRoute("/_app/acessos")({
   head: () => ({ meta: [{ title: "Perfis e Acessos" }] }),
@@ -85,7 +86,7 @@ function HierarchyTab() {
       if (error) throw error;
     },
     onSuccess: () => { setNewAreaName(""); qc.invalidateQueries({ queryKey: ["provider_areas"] }); toast.success("Área criada"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
   const deleteArea = useMutation({
@@ -94,7 +95,7 @@ function HierarchyTab() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["provider_areas"] }); toast.success("Área excluída"); setSelectedArea(null); },
-    onError: (e: any) => toast.error("Não foi possível excluir: " + e.message),
+    onError: (e: unknown) => toast.error("Não foi possível excluir: " + describeSupabaseError(e)),
   });
 
   const createSpec = useMutation({
@@ -103,7 +104,7 @@ function HierarchyTab() {
       if (error) throw error;
     },
     onSuccess: () => { setNewSpecName(""); qc.invalidateQueries({ queryKey: ["provider_specialties"] }); toast.success("Especialidade criada"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
   const deleteSpec = useMutation({
@@ -112,7 +113,7 @@ function HierarchyTab() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["provider_specialties"] }); toast.success("Especialidade excluída"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
   const rename = useMutation({
@@ -126,7 +127,7 @@ function HierarchyTab() {
       setRenameTarget(null);
       toast.success("Renomeado");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
   return (
@@ -227,7 +228,7 @@ function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: ()
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["area_menu_visibility", areaId] }),
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
   const grouped = MENU_REGISTRY.reduce<Record<string, typeof MENU_REGISTRY>>((acc, m) => {
@@ -282,7 +283,7 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["specialty_field_visibility", specialtyId] }),
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
   return (
@@ -365,7 +366,7 @@ function AssignTab() {
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["all_user_specialties"] }),
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
   const areaNameOf = (specId: string) => {
