@@ -216,7 +216,7 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
               </TableRow>
             )}
             {filtered.map((r) => {
-              const tn = teamNameByClient.get(r.id) ?? null;
+              const tn = r.teams?.name ?? null;
               return (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.name}</TableCell>
