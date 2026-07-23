@@ -181,7 +181,11 @@ function AppLayout() {
 
   return (
     <div className="min-h-screen flex bg-background">
-      <aside className="hidden md:flex w-64 shrink-0 border-r bg-sidebar text-sidebar-foreground flex-col">
+      <aside
+        className={`hidden md:flex shrink-0 border-r bg-sidebar text-sidebar-foreground flex-col overflow-hidden transition-[width] duration-200 ${
+          desktopCollapsed ? "w-0 border-r-0" : "w-64"
+        }`}
+      >
         {SidebarContent}
       </aside>
 
@@ -209,6 +213,17 @@ function AppLayout() {
       </header>
 
       <main className="flex-1 overflow-auto pt-14 md:pt-0 min-w-0">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setDesktopCollapsed((v) => !v)}
+          className="hidden md:inline-flex fixed top-3 z-50 h-9 w-9 bg-background/80 backdrop-blur border shadow-sm"
+          style={{ left: desktopCollapsed ? "0.75rem" : "16.5rem" }}
+          aria-label={desktopCollapsed ? "Mostrar menu" : "Esconder menu"}
+          title={desktopCollapsed ? "Mostrar menu" : "Esconder menu"}
+        >
+          {desktopCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </Button>
         <Outlet />
       </main>
     </div>
