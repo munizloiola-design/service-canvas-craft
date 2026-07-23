@@ -1,15 +1,14 @@
-Mover o botão de recolher/expandir o menu do `<main>` para dentro do cabeçalho do sidebar (a div do logo/título em `src/routes/_app.tsx`).
+Remover o campo **Nome** do formulário da modal de criação/edição de times em `src/routes/_app/squad.tsx`, mantendo apenas a barra de pesquisa e a seleção de membros.
 
 ### Alterações
 
-1. **Remover** o botão flutuante atualmente localizado em `src/routes/_app.tsx` dentro do `<main>` (linhas 216-226).
-2. **Adicionar** o botão de recolher/expandir dentro da div do cabeçalho do sidebar (linha 111), ao lado do logo e do nome da marca.
-3. **Ajustar estilos** para que o botão fique alinhado visualmente com o logo e o texto, respeitando o estado colapsado (`desktopCollapsed`).
-4. **Manter comportamentos**:
-   - Persistência do estado no `localStorage`.
-   - Ícone muda entre `PanelLeft` e `PanelLeftClose` conforme estado.
-   - Tooltip/aria-label atualizado.
+1. **Remover o campo "Nome"** do JSX da modal (`TeamDialog`), incluindo o `Label`, o `Input` e a validação obrigatória (`if (!name.trim())`).
+2. **Manter a geração automática do nome** para preservar a integridade da coluna `name` (NOT NULL) na tabela `teams`:
+   - Ao criar um novo time, gerar um nome padrão automaticamente (ex.: "Novo time", "Time #<timestamp>" ou baseado na data).
+   - Ao editar um time existente, manter o nome já cadastrado sem exibi-lo na modal.
+3. **Manter a seleção de membros** com a barra de pesquisa e a lista de checkboxes exatamente como está.
+4. **Garantir que o botão "Salvar"** continue funcionando e que o toast de erro não exija mais o nome.
 
 ### Resultado esperado
 
-O botão de recolher o menu ficará posicionado dentro do cabeçalho do sidebar, próximo ao logo "DIG.WORKFLOW", em vez de flutuar sobre o conteúdo principal.
+A modal de criar/editar time exibirá apenas a barra de pesquisa de membros e a lista de seleção, sem o campo "Nome".
