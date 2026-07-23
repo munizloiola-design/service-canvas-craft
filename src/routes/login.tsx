@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Briefcase, Building2, ArrowLeft } from "lucide-react";
 
@@ -20,6 +21,7 @@ function LoginPage() {
   const [kind, setKind] = useState<Kind | null>(null);
   const [busy, setBusy] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   if (!loading && user) return <Navigate to={isClient ? "/portal" : "/dashboard"} />;
 
@@ -193,7 +195,17 @@ function LoginPage() {
                       {busy ? "Entrando..." : "Entrar"}
                     </Button>
                   </div>
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                      onClick={() => setForgotOpen(true)}
+                    >
+                      Esqueci minha senha
+                    </button>
+                  </div>
                 </form>
+                <ForgotPasswordDialog open={forgotOpen} onOpenChange={setForgotOpen} />
                 <div className="mt-6 pt-4 border-t text-center text-xs text-muted-foreground">
                   Sem cadastro?{" "}
                   <Link to={kind === "cliente" ? "/cadastro/cliente" : "/cadastro/usuario"} className="text-primary hover:underline">
@@ -235,5 +247,58 @@ function ChoiceCard({
       <p className="font-semibold">{label}</p>
       <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
     </button>
+  );
+}
+
+function ForgotPasswordDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/set-password`,
+      });
+      toast.success("Se o e-mail existir, enviaremos as instruções em instantes.");
+      onOpenChange(false);
+      setEmail("");
+    } catch (err) {
+      console.error("[forgot-password]", err);
+      toast.error("Não foi possível enviar. Tente novamente.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Recuperar senha</DialogTitle></DialogHeader>
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="forgot-email">E-mail cadastrado</Label>
+            <Input
+              id="forgot-email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Enviaremos um link para você criar uma nova senha.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="submit" disabled={busy || !email}>
+              {busy ? "Enviando…" : "Enviar link"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

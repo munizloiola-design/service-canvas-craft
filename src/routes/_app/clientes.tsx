@@ -322,7 +322,7 @@ function AccessTab() {
   });
 
   const inviteMut = useMutation({
-    mutationFn: () => invite({ data: { email, client_id: clientId } }),
+    mutationFn: () => invite({ data: { email, client_id: clientId, redirect_to: `${window.location.origin}/set-password` } }),
     onSuccess: (r) => {
       toast.success(r.invited ? "Convite enviado por e-mail" : "Acesso vinculado");
       qc.invalidateQueries({ queryKey: ["client_access"] });

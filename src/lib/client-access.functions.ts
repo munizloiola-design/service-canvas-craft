@@ -12,6 +12,7 @@ async function assertManager(userId: string) {
 const InviteSchema = z.object({
   email: z.string().email().max(255),
   client_id: z.string().uuid(),
+  redirect_to: z.string().url().optional(),
 });
 
 export const inviteClientUser = createServerFn({ method: "POST" })
@@ -29,8 +30,10 @@ export const inviteClientUser = createServerFn({ method: "POST" })
     if (existing) {
       userId = existing.id;
     } else {
-      const redirectTo = `${process.env.SUPABASE_URL ? "" : ""}`; // placeholder; supabase uses Site URL
-      const { data: inv, error: invErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, redirectTo ? { redirectTo } : undefined);
+      const { data: inv, error: invErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+        email,
+        data.redirect_to ? { redirectTo: data.redirect_to } : undefined,
+      );
       if (invErr || !inv?.user) throw new Error(invErr?.message ?? "Falha ao convidar usuário");
       userId = inv.user.id;
     }

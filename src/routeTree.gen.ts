@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as TicketRouteImport } from './routes/ticket'
+import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
@@ -62,6 +63,11 @@ const UnsubscribeRoute = UnsubscribeRouteImport.update({
 const TicketRoute = TicketRouteImport.update({
   id: '/ticket',
   path: '/ticket',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetPasswordRoute = SetPasswordRouteImport.update({
+  id: '/set-password',
+  path: '/set-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalRoute = PortalRouteImport.update({
@@ -281,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/portal': typeof PortalRouteWithChildren
+  '/set-password': typeof SetPasswordRoute
   '/ticket': typeof TicketRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/acessos': typeof AppAcessosRoute
@@ -325,6 +332,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/set-password': typeof SetPasswordRoute
   '/ticket': typeof TicketRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/acessos': typeof AppAcessosRoute
@@ -371,6 +379,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/portal': typeof PortalRouteWithChildren
+  '/set-password': typeof SetPasswordRoute
   '/ticket': typeof TicketRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_app/acessos': typeof AppAcessosRoute
@@ -418,6 +427,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/portal'
+    | '/set-password'
     | '/ticket'
     | '/unsubscribe'
     | '/acessos'
@@ -462,6 +472,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/set-password'
     | '/ticket'
     | '/unsubscribe'
     | '/acessos'
@@ -507,6 +518,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/portal'
+    | '/set-password'
     | '/ticket'
     | '/unsubscribe'
     | '/_app/acessos'
@@ -554,6 +566,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   PortalRoute: typeof PortalRouteWithChildren
+  SetPasswordRoute: typeof SetPasswordRoute
   TicketRoute: typeof TicketRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   CadastroClienteRoute: typeof CadastroClienteRoute
@@ -582,6 +595,13 @@ declare module '@tanstack/react-router' {
       path: '/ticket'
       fullPath: '/ticket'
       preLoaderRoute: typeof TicketRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/set-password': {
+      id: '/set-password'
+      path: '/set-password'
+      fullPath: '/set-password'
+      preLoaderRoute: typeof SetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal': {
@@ -979,6 +999,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   PortalRoute: PortalRouteWithChildren,
+  SetPasswordRoute: SetPasswordRoute,
   TicketRoute: TicketRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   CadastroClienteRoute: CadastroClienteRoute,

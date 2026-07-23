@@ -1,39 +1,41 @@
+## Objetivo
+1. Colocar "Esqueci minha senha" no `/login`.
+2. Quando o admin envia acesso ao portal, o cliente recebe um e-mail que abre uma tela para ele criar a própria senha.
+
 ## Situação atual (verificada)
+- `/login` já existe (`src/routes/login.tsx`) e faz `signInWithPassword`. Sem link de recuperação.
+- Convite do cliente usa `inviteClientUser` (`src/lib/client-access.functions.ts`) chamando `supabaseAdmin.auth.admin.inviteUserByEmail(email)` — hoje sem `redirectTo`, então o link do e-mail cai na Site URL padrão do Supabase, sem página dedicada de criar senha.
 
-Reli `src/routes/_app/acessos.tsx` e `src/routes/_app/permissoes.tsx` e consultei o banco. A tela `acessos.tsx` já está majoritariamente alinhada à nova hierarquia:
+## Mudanças
 
-- Lê `provider_areas` e `provider_specialties` via TanStack Query.
-- Cria subfunção enviando `area_id` para `provider_specialties`.
-- Grava vínculo em `user_specialties` (`user_id`, `specialty_id`).
-- Mutations já têm `onError` com `console.error` + `toast.error(describeSupabaseError(...))`.
+### 1. Nova rota pública `/set-password` (`src/routes/set-password.tsx`)
+- Página pública (fora de `_authenticated`).
+- Lê o hash da URL (`#access_token=...&type=invite|recovery`) — o Supabase Auth já hidrata a sessão automaticamente via `detectSessionInUrl` no cliente. Confirma com `supabase.auth.getSession()` num `useEffect`.
+- Se não houver sessão de recuperação/convite, mostra mensagem "Link inválido ou expirado" com botão para voltar ao login.
+- Formulário: nova senha + confirmação (min. 8 caracteres, iguais). Envia `supabase.auth.updateUser({ password })`.
+- Ao sucesso: `toast.success` e redireciona — clientes (têm role `cliente`) vão para `/portal`; demais para `/dashboard`. Usa `supabase.auth.getUser()` + consulta a `user_roles` para decidir.
+- Trata erros com `describeSupabaseError` + `console.error`.
 
-Ainda assim há pontos que causam "quebras silenciosas" e itens do pedido que faltam. Não confirmei qual erro exato aparece hoje (não há logs) — a 1ª etapa do plano é reproduzir e capturar o erro antes de mexer.
+### 2. Link "Esqueci minha senha" no `/login`
+- Abaixo do campo de senha, botão "Esqueci minha senha" abre um `Dialog` com input de e-mail.
+- Chama `supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/set-password` })`.
+- Mostra toast "Se o e-mail existir, enviaremos as instruções" (sem vazar existência de conta) e fecha o dialog.
 
-## O que fazer
+### 3. Ajuste no convite do cliente (`src/lib/client-access.functions.ts`)
+- Acrescentar campo opcional `redirect_to: string().url()` no schema.
+- Passar `{ redirectTo: data.redirect_to }` para `inviteUserByEmail` quando presente.
+- No chamador (`src/routes/_app/clientes.tsx`), enviar `redirect_to: `${window.location.origin}/set-password``. Assim o link do convite abre direto a tela de criar senha.
 
-### 1. Reproduzir e diagnosticar (antes de refatorar)
-- Abrir `/acessos`, capturar console + network e identificar a query/mutation que quebra. Provável suspeito: aba "Atribuição de usuários" carrega `internal_profiles` (view) — se a view tiver mudado de schema, o `select("id, full_name")` falha em silêncio.
-
-### 2. Ajustes em `src/routes/_app/acessos.tsx`
-- **Dropdown agrupado por Área**: hoje a "Atribuição" usa checkboxes livres. Trocar por um `Select` agrupado por Área (usando `SelectGroup`/`SelectLabel`) listando as `provider_specialties`, mantendo os badges das já atribuídas e um botão "Remover" por badge. Mantém a semântica multi-select, mas com UX de "escolher cargo" pedida.
-- **Fallback de membros**: se `internal_profiles` falhar, cair para `profiles` filtrando por `has_role != 'cliente'` e logar o motivo.
-- **Toaster de erro nas queries**: já existe via `useEffect`; garantir que também dispare quando `data` volta vazio por permissão (checar `error?.code === '42501'`).
-- **Empty states amigáveis** quando não há áreas ou não há especialidades na área ativa (já existe texto simples — trocar por card com CTA "Criar primeira área/subfunção").
-
-### 3. Ajustes em `src/routes/_app/permissoes.tsx`
-- Envolver as duas mutations (`toggle`, `toggleVisibility`) com `console.error` + `describeSupabaseError` (hoje só mostram `e.message` cru).
-- Trocar a fonte da aba "Visibilidade por função" de `collaborator_functions` para `provider_specialties` agrupadas por `provider_areas`, gravando em `specialty_field_visibility` — assim as duas telas passam a operar sobre a mesma hierarquia nova (hoje `permissoes.tsx` ainda usa a tabela legada `collaborator_functions` + `function_field_visibility`).
-
-### 4. Sem migrações de banco
-Nenhuma alteração de schema/RLS é necessária — as tabelas e políticas já existem e estão corretas para os fluxos acima.
+### 4. E-mails de auth
+- Se o projeto já tem templates de auth Lovable ativos, os assuntos "Convite" e "Recuperação de senha" continuam funcionando — o link dentro deles aponta para `redirectTo`. Nenhuma alteração de template necessária.
+- Não vou habilitar templates customizados agora — só se o usuário pedir.
 
 ## Detalhes técnicos
-
-- `Select` agrupado: `Select` do shadcn com `SelectGroup` + `SelectLabel` por área; opções = specialties dessa área.
-- Grid da aba assign continua rederizando um card por usuário (`internal_profiles`), mas o input principal vira o Select; checkbox grid fica como fallback avançado num `<details>` "Ver todas as especialidades".
-- Todos os `mutation.onError` seguem o padrão: `console.error("[acessos:<ctx>]", e); toast.error(describeSupabaseError(e));`.
-- Nenhum arquivo novo; apenas edições em `acessos.tsx` e `permissoes.tsx`.
+- Sessão do link vem no fragmento (`#`); TanStack Start é SSR mas o hash não é enviado ao servidor, então o handling é 100% client (`useEffect`).
+- `resetPasswordForEmail` sempre retorna sucesso (não confirma existência) — bom para segurança.
+- Cliente sem role `cliente` ainda pode chegar em `/set-password` (fluxo de recuperação normal); redirect final decide pelo tipo de usuário.
 
 ## Fora de escopo
-- Alterações em `access-registry.ts`, `field-visibility.ts` ou nas RLS.
-- Remover a tabela legada `collaborator_functions` (usada por outras telas de cadastro).
+- Alterar Site URL/Redirect URLs no Supabase (assumo que `window.location.origin` já está permitido; se falhar, aviso o usuário para adicionar a URL na lista de Redirect URLs do projeto).
+- Custom auth email templates.
+- Migrações de banco.
