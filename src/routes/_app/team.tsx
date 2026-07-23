@@ -5,6 +5,8 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/lib/auth-context";
 import { deleteTeamMember, setUserBanned, listBannedUserIds } from "@/lib/team.functions";
+import { createTeamUser, regeneratePasswordLink } from "@/lib/approvals.functions";
+import { PasswordLinkModal } from "@/routes/_app/aprovacoes";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AlertCircle, Activity, Clock, Hourglass, ShieldAlert, Pencil, Upload, Trash2, Lock, Unlock } from "lucide-react";
+import { AlertCircle, Activity, Clock, Hourglass, ShieldAlert, Pencil, Upload, Trash2, Lock, Unlock, UserPlus, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 
 
@@ -172,9 +174,12 @@ function TeamPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">Equipe</h1>
-        <p className="text-muted-foreground mt-1">Acompanhe a carga e o desempenho da equipe.</p>
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Equipe</h1>
+          <p className="text-muted-foreground mt-1">Acompanhe a carga e o desempenho da equipe.</p>
+        </div>
+        {isManager && <NewUserButton />}
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -553,3 +558,66 @@ function Field({ label, value, onChange, type = "text" }: { label: string; value
     </div>
   );
 }
+
+function NewUserButton() {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [link, setLink] = useState<string | null>(null);
+  const [form, setForm] = useState({ full_name: "", email: "", phone: "", role: "membro" as "admin" | "gerente" | "membro" });
+  const qc = useQueryClient();
+  const doCreate = useServerFn(createTeamUser);
+
+  async function submit() {
+    if (!form.full_name || !form.email) return toast.error("Nome e e-mail obrigatórios");
+    setBusy(true);
+    try {
+      const res = await doCreate({ data: { full_name: form.full_name, email: form.email, phone: form.phone || undefined, role: form.role } });
+      toast.success("Usuário criado");
+      qc.invalidateQueries({ queryKey: ["team-overview"] });
+      setForm({ full_name: "", email: "", phone: "", role: "membro" });
+      setOpen(false);
+      if (res?.action_link) setLink(res.action_link);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}><UserPlus className="h-4 w-4 mr-1" /> Novo usuário</Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Adicionar usuário à equipe</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Field label="Nome completo" value={form.full_name} onChange={(v) => setForm({ ...form, full_name: v })} />
+            <Field label="E-mail" value={form.email} onChange={(v) => setForm({ ...form, email: v })} type="email" />
+            <Field label="Telefone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
+            <div>
+              <Label className="text-xs">Papel inicial</Label>
+              <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as typeof form.role })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="membro">Colaborador</SelectItem>
+                  <SelectItem value="gerente">Gerente</SelectItem>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              <LinkIcon className="h-3 w-3 inline mr-1" />
+              Um link para criar senha será gerado ao salvar.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button onClick={submit} disabled={busy}>{busy ? "Criando..." : "Criar usuário"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <PasswordLinkModal link={link} onClose={() => setLink(null)} />
+    </>
+  );
+}
+

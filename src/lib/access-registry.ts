@@ -14,6 +14,7 @@ export const MENU_REGISTRY: { key: string; label: string; group?: string }[] = [
   { key: "/facebook", label: "Facebook Ads", group: "Marketing" },
   { key: "/diguinho", label: "Diguinho IA", group: "Marketing" },
   { key: "/team", label: "Equipe" },
+  { key: "/aprovacoes", label: "Aprovações" },
   { key: "/cadastros", label: "Cadastros", group: "Configurações" },
   { key: "/integracoes", label: "Integrações", group: "Configurações" },
   { key: "/personalizacao", label: "Personalização", group: "Configurações" },
