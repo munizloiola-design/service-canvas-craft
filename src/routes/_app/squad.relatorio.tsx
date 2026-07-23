@@ -270,7 +270,7 @@ function SquadRelatorioPage() {
     const map = new Map<string, { seconds: number; sessions: number; users: Set<string> }>();
     for (const l of closed) {
       const proj: any = projectMap.get(l.project_id);
-      const tId = proj ? clientToDefaultTeam.get(proj.client_id) ?? "__none" : "__none";
+      const tId = proj?.team_id ?? "__none";
       const cur = map.get(tId) ?? { seconds: 0, sessions: 0, users: new Set<string>() };
       cur.seconds += l.duration_seconds ?? 0;
       cur.sessions += 1;
@@ -281,7 +281,8 @@ function SquadRelatorioPage() {
       id, name: id === "__none" ? "Sem time" : (teamMap.get(id) ?? "—"),
       seconds: v.seconds, sessions: v.sessions, users: v.users.size,
     })).sort((a, b) => b.seconds - a.seconds);
-  }, [closed, projectMap, clientToDefaultTeam, teamMap]);
+  }, [closed, projectMap, teamMap]);
+
 
   const byMember = useMemo(() => {
     const map = new Map<string, { seconds: number; sessions: number; projects: Set<string> }>();
