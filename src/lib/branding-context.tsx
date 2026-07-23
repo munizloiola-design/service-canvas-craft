@@ -75,7 +75,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   const load = async () => {
     const { data } = await supabase
       .from("app_branding")
-      .select("brand_name, logo_url, favicon_url, primary_color, accent_color, sidebar_color, background_image, login_box_position, welcome_title, welcome_subtitle, suggestions, theme_json")
+      .select("brand_name, logo_url, favicon_url, primary_color, accent_color, sidebar_color, button_color, background_image, login_box_position, welcome_title, welcome_subtitle, login_client_label, login_client_desc, login_agency_label, login_agency_desc, suggestions, theme_json")
       .eq("id", true)
       .maybeSingle();
     if (data) {
@@ -85,6 +85,10 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
         login_box_position: ((data as any).login_box_position ?? "right") as LoginBoxPosition,
         welcome_title: (data as any).welcome_title ?? DEFAULT.welcome_title,
         welcome_subtitle: (data as any).welcome_subtitle ?? DEFAULT.welcome_subtitle,
+        login_client_label: (data as any).login_client_label ?? DEFAULT.login_client_label,
+        login_client_desc: (data as any).login_client_desc ?? DEFAULT.login_client_desc,
+        login_agency_label: (data as any).login_agency_label ?? DEFAULT.login_agency_label,
+        login_agency_desc: (data as any).login_agency_desc ?? DEFAULT.login_agency_desc,
       });
     }
   };
