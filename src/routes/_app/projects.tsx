@@ -39,6 +39,7 @@ type Project = {
   budget: number | null; deliverable_path: string | null;
   client_token: string | null; client_decision: string | null; client_feedback: string | null;
   created_at: string;
+  team_id?: string | null;
 };
 type Client = { id: string; name: string };
 type MediaType = { id: string; name: string };
@@ -518,6 +519,56 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
       ? existingAssignees.map((a) => ({ user_id: a.user_id, role_id: a.role_id ?? "" }))
       : [{ user_id: "", role_id: "" }]
   );
+  const [clientId, setClientId] = useState<string>(editProject?.client_id ?? "");
+  const [teamId, setTeamId] = useState<string>(editProject?.team_id ?? "");
+
+  // Load teams for selected client
+  const { data: clientTeams = [] } = useQuery({
+    queryKey: ["client_teams_for_project", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from as any)("client_teams").select("id, name, is_default").eq("client_id", clientId).order("name");
+      return (data ?? []) as { id: string; name: string; is_default: boolean }[];
+    },
+  });
+
+  // Load members for the current team (only when a team is selected)
+  const { data: teamMemberIds = [] } = useQuery({
+    queryKey: ["client_team_members_for_team", teamId],
+    enabled: !!teamId,
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from as any)("client_team_members").select("user_id").eq("team_id", teamId);
+      return ((data ?? []) as { user_id: string }[]).map((x) => x.user_id);
+    },
+  });
+
+  // Auto-select default team on client change (only when creating, not when editing an existing project)
+  useEffect(() => {
+    if (isEdit) return;
+    if (!clientId) { setTeamId(""); return; }
+    const def = clientTeams.find((t) => t.is_default) ?? (clientTeams.length === 1 ? clientTeams[0] : undefined);
+    if (def && !teamId) setTeamId(def.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId, clientTeams]);
+
+  // When team changes (manual selection), pre-fill assignees from team
+  const applyTeamMembers = (ids: string[]) => {
+    if (!ids.length) return;
+    setAssignees((cur) => {
+      // preserve any existing user_ids not in the team; add team members not already present
+      const existingIds = new Set(cur.filter((a) => a.user_id).map((a) => a.user_id));
+      const toAdd = ids.filter((id) => !existingIds.has(id)).map((id) => ({ user_id: id, role_id: "" }));
+      const kept = cur.filter((a) => a.user_id);
+      const result = [...kept, ...toAdd];
+      return result.length ? result : [{ user_id: "", role_id: "" }];
+    });
+  };
+  useEffect(() => {
+    if (teamId && teamMemberIds.length) applyTeamMembers(teamMemberIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId, teamMemberIds.join(",")]);
   const [hasRef, setHasRef] = useState(!!editProject?.has_reference);
   const [descCards, setDescCards] = useState<DescriptionCard[]>(() => {
     const existing = editProject?.description_cards;
@@ -553,7 +604,8 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         description_cards: cleanCards,
         notes: String(fd.get("notes") || "") || null,
         final_link: (finalLink.trim() || null),
-        client_id: (fd.get("client_id") as string) || null,
+        client_id: clientId || null,
+        team_id: teamId || null,
         media_type_id: (fd.get("media_type_id") as string) || null,
         status_id: (fd.get("status_id") as string) || null,
         priority_id: (fd.get("priority_id") as string) || null,
@@ -631,7 +683,12 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
           <Input id="title" name="title" required defaultValue={editProject?.title ?? ""} />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Empresa / Cliente"><Select name="client_id" defaultValue={editProject?.client_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></Field>
+          <Field label="Empresa / Cliente">
+            <Select value={clientId} onValueChange={(v) => { setClientId(v); setTeamId(""); }}>
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
           <Field label="Tipo de mídia"><Select name="media_type_id" defaultValue={editProject?.media_type_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{mediaTypes.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></Field>
           <Field label="Etapa"><Select name="status_id" defaultValue={editProject?.status_id ?? statuses[0]?.id}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></Field>
           <Field label="Prioridade"><Select name="priority_id" defaultValue={editProject?.priority_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field>
@@ -644,6 +701,20 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         </div>
 
         <Field label="Valor (R$)"><Input name="budget" type="number" step="0.01" defaultValue={editProject?.budget ?? ""} /></Field>
+
+        {clientId && clientTeams.length > 0 && (
+          <Field label="Equipe do cliente">
+            <Select value={teamId || "__none__"} onValueChange={(v) => setTeamId(v === "__none__" ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="Sem equipe" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Sem equipe (personalizado)</SelectItem>
+                {clientTeams.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}{t.is_default ? " · padrão" : ""}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        )}
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
