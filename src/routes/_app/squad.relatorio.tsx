@@ -310,7 +310,7 @@ function SquadRelatorioPage() {
     return teamsList.map((t: any) => ({
       id: t.id, name: t.name,
       members: memberships.filter((m: any) => m.team_id === t.id).map((m: any) => userMap.get(m.user_id) ?? "—"),
-      clients: clients.filter((c: any) => c.team_id === t.id).map((c: any) => c.name),
+      clients: clients.filter((c: any) => c.id === t.client_id).map((c: any) => c.name),
     }));
   }, [teams, memberships, clients, teamFilter, userMap]);
 
