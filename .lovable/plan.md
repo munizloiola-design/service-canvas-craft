@@ -1,45 +1,55 @@
-## 1. Melhorar Relatório de Squad (`/squad/relatorio`)
+## Objetivo
 
-Página abre vazia porque não há times/membros/sessões cadastradas. Ajustes:
+Refatorar a área de gestão de clientes em uma página CRM centralizada em `/clientes`, com 4 abas e layout SaaS clean.
 
-- Detectar quando **não há times cadastrados**, **não há membros de time** e **não há sessões no período** e mostrar estado vazio ilustrativo com CTAs:
-  - "Criar time" → abre `/squad` (aba Times)
-  - "Adicionar membros a um time" → `/squad` (aba Equipe)
-  - "Registrar tempo" → `/tempo`
-- Suprimir os gráficos e as tabelas de "Por time / Por membro" quando não houver dados, mantendo a aba "Composição" visível para orientar o próximo passo.
-- Reaproveitar filtros existentes (De, Até, Time, Membro, Exportar CSV) — já estão funcionais.
+## Mudanças
 
-## 2. Nova aba "Atividades" no Relatório de Squad
+### 1. Menu lateral (`src/routes/_app.tsx`)
 
-Adicionar aba **Atividades** consolidando timeline de eventos do time no período com filtros compartilhados (data, time, membro):
+- Renomear entrada "Área do Cliente" → **"Clientes"** apontando para `/clientes` (ícone `Building2` já em uso).
 
-- **Sessões de tempo** (`time_logs_with_duration` + `projects` + `clients`)
-- **Mudanças de status** (`project_transitions` → de/para status + ator)
-- **Comentários** (`project_comments`)
-- **Anexos** (`project_attachments`)
-- **Tickets** (`ticket_requests` — abertura e resolução)
+### 2. Nova rota `/clientes` (`src/routes/_app/clientes.tsx`)
 
-UI:
-- KPIs adicionais: nº de eventos por tipo no período.
-- Timeline cronológica (desc), com ícone por tipo, membro, projeto/cliente e link para o projeto.
-- Sub-filtro por tipo de atividade (checkbox multi).
-- Botão **Exportar CSV** da timeline.
+Criar novo arquivo (substituindo `clientes-area.tsx`, que será removido) com layout limpo — container mais largo (`max-w-7xl`), cards em `bg-card/95` translúcido, espaçamento generoso e 4 abas via shadcn `Tabs`:
 
-## 3. Auditoria de botões sem ação (varredura completa)
+**Aba 1 — Diretório (default)**
 
-Percorrer rotas em `src/routes/_app/*` e `src/routes/portal/*` procurando:
+- Migrar CRUD atual de `clients`.
+- Tabela moderna (shadcn `Table`) com colunas: Nome, Contato, Telefone, E-mail, Time Responsável, Ações (editar/excluir).
+- Busca por nome/e-mail no topo, botão "Novo cliente".
 
-- `<Button>` sem `onClick`, `type="submit"` fora de `<form onSubmit>`, ou `href`/`asChild` ausentes.
-- `DropdownMenuItem`, `MenuItem`, ícones clicáveis sem handler.
-- Handlers que só fazem `console.log` / `TODO` / vazio.
+**Aba 2 — Acessos do Portal**
 
-Para cada botão morto: ou implementar a ação esperada pelo contexto, ou remover se for legado. Priorizar as áreas que sofreram mudanças recentes (Financeiro, Squad, Área do Cliente, Acessos, Calendário, Configurações).
+- Migrar painel existente de `client_users` (`inviteClientUser` / `listClientAccess` / `removeClientAccess`).
+- Formulário para criar login (e-mail + senha) vinculando a um cliente do diretório.
+- Lista dos vínculos ativos com opção de remover.
 
-Entregável: lista curta no fim da execução com botões corrigidos e justificativa.
+**Aba 3 — Briefing & Estratégia**
+
+- Seletor de cliente no topo; formulário rico salvo em `client_briefings` via TanStack Query (`useMutation` + `invalidateQueries`).
+- Reaproveitar campos existentes (público, persona, SWOT, referências, concorrência, canais, arquétipo, missão/visão/valores, redes sociais).
+- **Adicionar campo novo `tom_de_voz**` (nova coluna `text` em `client_briefings` via migration) e um bloco "Links importantes" (Drive de fotos, logotipo, materiais) — usar o campo `materiais` já existente como "Links importantes / Drive" e o novo `tom_de_voz`.
+- Autosave manual via botão "Salvar alterações" com toast.
+
+**Aba 4 — Projetos Ativos (nova, somente leitura)**
+
+- Seletor de cliente (compartilhado com a aba 3 via state local).
+- Query em `projects` filtrando `client_id`, exibindo em lista: título, status (badge colorido a partir de `workflow_statuses`), responsável, `due_date`.
+- Estado vazio com CTA para ir até `/projects`.
+
+### 3. Migration Supabase
+
+- `ALTER TABLE public.client_briefings ADD COLUMN IF NOT EXISTS tom_de_voz text;`
+
+### 4. Limpeza
+
+- Remover `src/routes/_app/clientes-area.tsx` e qualquer link remanescente para `/clientes-area`.
+- Ajustar `resource` de permissão para reutilizar `clientes_area` (mantém regras existentes de Admin/Gerente/Atendimento).
 
 ## Detalhes técnicos
 
-- Novos queries em `squad.relatorio.tsx` para transitions/comments/attachments/tickets, com `.in("project_id", ...)` limitado aos projetos dos clientes do time filtrado (via `clients.team_id`) para respeitar o filtro.
-- Filtros continuam via `Route.useSearch()`; adicionar `types?: string` (csv) para o sub-filtro de tipos.
-- Sem migração — todas as tabelas já existem e têm RLS que permite leitura por membros/gestores.
-- Estados vazios usam componentes shadcn existentes (`Card` + `Button` + ícones lucide), sem novas libs.
+- Tudo com TanStack Query (`useQuery`/`useMutation`), tratamento de erros via `describeSupabaseError`.
+- Sem alterações em RLS além da nova coluna.
+- Ícones Lucide: `Building2` (menu), `Users`, `KeyRound`, `FileText`, `FolderKanban` nos triggers das abas.
+
+Adicione no cadastro a categoria cliente ativo, inativo e prospecção e crie uma área de CRM para trabalharmos os cliente em prospecção

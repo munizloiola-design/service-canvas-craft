@@ -6,7 +6,7 @@ export const MENU_REGISTRY: { key: string; label: string; group?: string }[] = [
   { key: "/projects", label: "Projetos", group: "Operação" },
   { key: "/tickets", label: "Tickets", group: "Operação" },
   { key: "/calendario", label: "Calendário", group: "Operação" },
-  { key: "/clientes-area", label: "Área do Cliente", group: "Operação" },
+  { key: "/clientes", label: "Clientes", group: "Operação" },
   { key: "/equipamentos", label: "Equipamentos", group: "Operação" },
   { key: "/tempo", label: "Tempo", group: "Operação" },
   { key: "/financeiro", label: "Financeiro", group: "Financeiro" },

@@ -179,6 +179,7 @@ export type Database = {
           swot_forcas: string | null
           swot_fraquezas: string | null
           swot_oportunidades: string | null
+          tom_de_voz: string | null
           updated_at: string
           valores: string | null
           visao: string | null
@@ -204,6 +205,7 @@ export type Database = {
           swot_forcas?: string | null
           swot_fraquezas?: string | null
           swot_oportunidades?: string | null
+          tom_de_voz?: string | null
           updated_at?: string
           valores?: string | null
           visao?: string | null
@@ -229,6 +231,7 @@ export type Database = {
           swot_forcas?: string | null
           swot_fraquezas?: string | null
           swot_oportunidades?: string | null
+          tom_de_voz?: string | null
           updated_at?: string
           valores?: string | null
           visao?: string | null
@@ -340,6 +343,11 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          prospect_next_action: string | null
+          prospect_next_action_at: string | null
+          prospect_stage: string | null
+          prospect_value: number | null
+          status: string
           team_id: string | null
           updated_at: string
         }
@@ -351,6 +359,11 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          prospect_next_action?: string | null
+          prospect_next_action_at?: string | null
+          prospect_stage?: string | null
+          prospect_value?: number | null
+          status?: string
           team_id?: string | null
           updated_at?: string
         }
@@ -362,6 +375,11 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          prospect_next_action?: string | null
+          prospect_next_action_at?: string | null
+          prospect_stage?: string | null
+          prospect_value?: number | null
+          status?: string
           team_id?: string | null
           updated_at?: string
         }
