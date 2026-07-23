@@ -214,7 +214,7 @@ function TempoPage() {
         )}
       </header>
 
-      <Card className="p-4 grid gap-3 md:grid-cols-5">
+      <Card className="p-4 grid gap-3 md:grid-cols-6">
         <div className="space-y-1.5">
           <Label>De</Label>
           <Input type="date" value={from} onChange={(e) => setSearch({ from: e.target.value })} />
@@ -222,6 +222,16 @@ function TempoPage() {
         <div className="space-y-1.5">
           <Label>Até</Label>
           <Input type="date" value={to} onChange={(e) => setSearch({ to: e.target.value })} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Equipe</Label>
+          <Select value={teamFilter || "__all"} onValueChange={(v) => setSearch({ team: v === "__all" ? undefined : v })}>
+            <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todas as equipes</SelectItem>
+              {teams.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <Label>Projeto</Label>
