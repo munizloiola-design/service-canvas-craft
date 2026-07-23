@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { usePermissions, type Resource } from "@/lib/permissions";
 import { useAccess } from "@/lib/access-context";
 import { useBranding } from "@/lib/branding-context";
-import { LayoutDashboard, FolderKanban, Users, Users2, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck, Facebook, Sparkles, Plug, Inbox, Palette, Menu, ChevronDown, Building2, Clock, PanelLeftClose, PanelLeft, BarChart3, ClipboardCheck } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Users, Users2, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck, Facebook, Sparkles, Plug, Inbox, Palette, Menu, ChevronDown, Building2, Clock, PanelLeftClose, PanelLeft, BarChart3, ClipboardCheck, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,9 @@ const navGroups: NavGroup[] = [
       { to: "/clientes-area", label: "Área do Cliente", icon: Building2, resource: "clientes_area" },
       { to: "/equipamentos", label: "Equipamentos", icon: Wrench, resource: "equipamentos" },
       { to: "/tempo", label: "Tempo", icon: Clock, resource: "time_reports" },
+      { to: "/parceiros", label: "Parceiros", icon: Handshake, resource: "parceiros" },
     ],
+
   },
   {
     label: "Financeiro",
