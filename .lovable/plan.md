@@ -1,27 +1,15 @@
-## 1. Calendário: visualização Mês/Semana + arrastar para reagendar
+Mover o botão de recolher/expandir o menu do `<main>` para dentro do cabeçalho do sidebar (a div do logo/título em `src/routes/_app.tsx`).
 
-Arquivo: `src/routes/_app/calendario.tsx`
+### Alterações
 
-- Adicionar um segundo `Tabs` (ou um `ToggleGroup`) para modo de visão: **Mês** e **Semana** (padrão Mês). Mantém o Tabs atual "Prazos / Postagens" — os dois modos operam sobre `due_date` ou `post_date` conforme selecionado.
-- **Visão Semana**: usar `startOfWeek`/`endOfWeek(cursor)` e navegação com `addWeaks`/`subWeeks`. Layout: 7 colunas altas (`min-h-[70vh]`) com título "DD/MM" em cada coluna e cards empilhados no dia. Título passa a mostrar "DD MMM – DD MMM yyyy".
-- **Drag-and-drop nativo (HTML5)**, sem nova dependência:
-  - Cada card recebe `draggable`, `onDragStart` guardando `p.id`.
-  - Cada célula-dia recebe `onDragOver` (com `preventDefault` + destaque via classe) e `onDrop` que dispara mutação.
-- **Mutação `rescheduleProject`** com `useMutation`:
-  - Atualiza `projects.[dateField] = novoDia (YYYY-MM-DD)` via `supabase.from("projects").update(...).eq("id", id)`.
-  - Optimistic update: patch de `["projects-cal"]` antes; rollback em erro; `invalidateQueries` no final.
-  - Toast de sucesso "Reagendado para DD/MM" (sonner).
-  - Se o valor não mudar, ignora.
-- Respeita permissões existentes de update em `projects` (RLS). Se o usuário não tiver acesso, o erro do Supabase é mostrado via toast — sem gate adicional no cliente.
-- Sem mudanças no banco. Não altera clique para abrir detalhe (apenas o drag mexe na data).
+1. **Remover** o botão flutuante atualmente localizado em `src/routes/_app.tsx` dentro do `<main>` (linhas 216-226).
+2. **Adicionar** o botão de recolher/expandir dentro da div do cabeçalho do sidebar (linha 111), ao lado do logo e do nome da marca.
+3. **Ajustar estilos** para que o botão fique alinhado visualmente com o logo e o texto, respeitando o estado colapsado (`desktopCollapsed`).
+4. **Manter comportamentos**:
+   - Persistência do estado no `localStorage`.
+   - Ícone muda entre `PanelLeft` e `PanelLeftClose` conforme estado.
+   - Tooltip/aria-label atualizado.
 
-## 2. Times: busca no diálogo + confirmar edição/exclusão
+### Resultado esperado
 
-Arquivo: `src/routes/_app/squad.tsx`
-
-- Verificado: o seletor de membros já usa `profiles` (apenas usuários cadastrados) e a tela já tem botões de **editar** (lápis) e **excluir** (lixeira com `confirm()`). Nada muda aí.
-- **Adicionar campo de busca** dentro de `TeamDialog` (acima da lista de membros):
-  - `Input` com ícone `Search`, placeholder "Buscar membro…", `value` controlado por `useState("")`.
-  - Filtra `profiles` por `full_name` (case/acento-insensível simples via `.toLowerCase().normalize`) antes do `.map`.
-  - Mostra "Nenhum resultado" quando o filtro não bater; membros já selecionados que não passam no filtro continuam contando em `selected` (mantidos ao salvar).
-- Sem alterações de schema.
+O botão de recolher o menu ficará posicionado dentro do cabeçalho do sidebar, próximo ao logo "DIG.WORKFLOW", em vez de flutuar sobre o conteúdo principal.
