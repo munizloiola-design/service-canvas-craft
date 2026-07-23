@@ -96,7 +96,7 @@ function SquadRelatorioPage() {
 
   const teamsQ = useQuery({
     queryKey: ["rel_client_teams"],
-    queryFn: async () => (await supabase.from("client_teams").select("id, name, client_id").order("name")).data ?? [],
+    queryFn: async () => (await supabase.from("client_teams").select("id, name, client_id, is_default").order("name")).data ?? [],
   });
   const teams = teamsQ.data ?? [];
   const profilesQ = useQuery({
