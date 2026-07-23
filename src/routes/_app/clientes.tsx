@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Plus, Trash2, Save, ExternalLink, Pencil, UserPlus,
-  Users, KeyRound, FileText, FolderKanban, Sparkles, Search,
+  Users, KeyRound, FileText, FolderKanban, Sparkles, Search, MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { inviteClientUser, listClientAccess, removeClientAccess } from "@/lib/client-access.functions";
