@@ -45,29 +45,45 @@ function ClientesAreaPage() {
 }
 
 /* ---------------- Clientes CRUD ---------------- */
-type Client = { id: string; name: string; contact_name: string | null; email: string | null; phone: string | null; notes: string | null };
+type Client = { id: string; name: string; contact_name: string | null; email: string | null; phone: string | null; notes: string | null; team_id: string | null };
+type TeamOpt = { id: string; name: string };
 
 function ClientsCrud() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
+  const [teamId, setTeamId] = useState<string>("");
 
   const { data: rows = [] } = useQuery({
     queryKey: ["clients"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clients").select("*").order("name");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from as any)("clients").select("*").order("name");
       if (error) throw error;
       return (data ?? []) as Client[];
     },
   });
 
+  const { data: teams = [] } = useQuery({
+    queryKey: ["teams"],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from as any)("teams").select("id, name").order("name");
+      return (data ?? []) as TeamOpt[];
+    },
+  });
+
+  const teamName = (id: string | null) => (id ? teams.find((t) => t.id === id)?.name ?? null : null);
+
   const save = useMutation({
     mutationFn: async (payload: Omit<Client, "id">) => {
       if (editing?.id) {
-        const { error } = await supabase.from("clients").update(payload).eq("id", editing.id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase.from as any)("clients").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("clients").insert(payload);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase.from as any)("clients").insert(payload);
         if (error) throw error;
       }
     },
@@ -88,9 +104,18 @@ function ClientsCrud() {
     <Card className="p-4">
       <div className="flex justify-between items-center mb-4">
         <span className="text-sm text-muted-foreground">{rows.length} cliente(s)</span>
-        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
+        <Dialog
+          open={open}
+          onOpenChange={(o) => {
+            setOpen(o);
+            if (!o) setEditing(null);
+            if (o) setTeamId(editing?.team_id ?? "");
+          }}
+        >
           <DialogTrigger asChild>
-            <Button size="sm" onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-1" /> Novo cliente</Button>
+            <Button size="sm" onClick={() => { setEditing(null); setTeamId(""); }}>
+              <Plus className="h-4 w-4 mr-1" /> Novo cliente
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>{editing ? "Editar" : "Novo"} cliente</DialogTitle></DialogHeader>
@@ -105,6 +130,7 @@ function ClientsCrud() {
                   email: (fd.get("email") as string) || null,
                   phone: (fd.get("phone") as string) || null,
                   notes: (fd.get("notes") as string) || null,
+                  team_id: teamId || null,
                 });
               }}
             >
@@ -112,6 +138,17 @@ function ClientsCrud() {
               <div className="space-y-1"><Label>Contato</Label><Input name="contact_name" defaultValue={editing?.contact_name ?? ""} /></div>
               <div className="space-y-1"><Label>E-mail</Label><Input name="email" type="email" defaultValue={editing?.email ?? ""} /></div>
               <div className="space-y-1"><Label>Telefone</Label><Input name="phone" defaultValue={editing?.phone ?? ""} /></div>
+              <div className="space-y-1">
+                <Label>Time responsável</Label>
+                <Select value={teamId || "__none__"} onValueChange={(v) => setTeamId(v === "__none__" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Nenhum —</SelectItem>
+                    {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Os membros deste time serão pré-preenchidos nas novas demandas deste cliente.</p>
+              </div>
               <div className="space-y-1"><Label>Notas</Label><Textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} /></div>
               <DialogFooter><Button type="submit" disabled={save.isPending}>{save.isPending ? "Salvando..." : "Salvar"}</Button></DialogFooter>
             </form>
@@ -121,23 +158,32 @@ function ClientsCrud() {
 
       <div className="border rounded-md divide-y">
         {rows.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">Nenhum cliente</p>}
-        {rows.map((r) => (
-          <div key={r.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{r.name}</p>
-              {r.contact_name && <p className="text-xs text-muted-foreground truncate">{r.contact_name}{r.email ? ` · ${r.email}` : ""}</p>}
+        {rows.map((r) => {
+          const tn = teamName(r.team_id);
+          return (
+            <div key={r.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{r.name}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {r.contact_name}{r.contact_name && r.email ? " · " : ""}{r.email}
+                  {tn && <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary">Time: {tn}</span>}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => { setEditing(r); setTeamId(r.team_id ?? ""); setOpen(true); }}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive"
+                onClick={() => { if (confirm("Remover?")) remove.mutate(r.id); }}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive"
-              onClick={() => { if (confirm("Remover?")) remove.mutate(r.id); }}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Card>
   );
 }
+
 
 /* ---------------- Briefing estratégico ---------------- */
 type Material = { label: string; url: string };
