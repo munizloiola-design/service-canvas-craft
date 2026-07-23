@@ -1,56 +1,47 @@
+## Módulo Banco de Contatos (Parceiros)
 
-## Contexto e diagnóstico atual
+### 1. Banco de dados (migration)
+- `contact_categories`: `id uuid pk`, `name text unique not null`, `created_at timestamptz`.
+- `partner_contacts`: `id uuid pk`, `name text not null`, `profession text`, `phone text`, `email text`, `category_id uuid fk → contact_categories(id) on delete set null`, `notes text`, `created_at timestamptz`, `updated_at timestamptz` + trigger.
+- GRANTs para `authenticated` e `service_role`. RLS habilitado.
+- Políticas:
+  - `contact_categories`: SELECT para qualquer usuário autenticado (agência); INSERT/UPDATE/DELETE apenas para `is_manager(auth.uid())` (admin/admin master/gerente).
+  - `partner_contacts`: SELECT para autenticados não-cliente (`not is_client_user`); INSERT/UPDATE/DELETE para `is_manager` ou membro da agência (autenticado não-cliente). Confirmar preferência abaixo.
 
-Fiz uma auditoria rápida do que mexemos por último e do que cada uma das três telas realmente executa. Até este momento **não há uma causa raiz confirmada** — não vi no console/rede a mensagem exata que aparece quando cada erro acontece. As últimas alterações estruturais foram:
+### 2. Rota e menu
+- Nova rota `src/routes/_app/parceiros.tsx` (protegida pelo layout `_app`).
+- Adicionar item **"Parceiros"** (`Handshake` ou `Contact` icon) na sidebar em `src/routes/_app.tsx`, visível a papéis internos (admin, gerente, membro) — oculto para cliente.
 
-- RLS em `user_roles` restringida a "próprio usuário ou gerente" (via `is_manager`, que é `SECURITY DEFINER` e ignora RLS internamente).
-- RLS em `project_transitions` exigindo manager/assignee.
+### 3. Tela `/parceiros`
+Layout em uma página com TanStack Query + shadcn:
+- **Header** com título e dois botões:
+  - `Gerenciar categorias` (Dialog): lista com CRUD (input + botão Adicionar, editar/excluir inline). Somente admins/gerentes veem o botão.
+  - `Novo contato` (Dialog): form com `name*`, `profession`, `phone`, `email`, `category_id` (Select), `notes` (Textarea). Reaproveitado para edição.
+- **Barra de filtros** (sticky Card):
+  - `Input` de busca por nome (debounce simples via state).
+  - `Select` **Categoria** (lista de `contact_categories` + opção "Todas").
+  - `Select` **Profissão** (distintas de `partner_contacts.profession` + "Todas").
+- **Listagem em Grid de Cards** (responsivo: 1/2/3 colunas). Cada card:
+  - Nome, badge da categoria, profissão, telefone (com `tel:`), email (com `mailto:`), notas truncadas.
+  - Menu de ações (editar/excluir) para admins/gerentes.
+- Estado vazio + skeleton loader.
 
-Nenhuma delas afeta as três funcionalidades reclamadas (schema e políticas conferidas: `clients` aceita insert de manager, `provider_areas/specialties/area_menu_visibility/specialty_field_visibility` idem, a view `time_logs_with_duration` existe). Portanto, sem o texto do erro real, qualquer correção seria chute.
+### 4. Data layer
+- Queries com `useQuery`:
+  - `["contact_categories"]` → SELECT ordenado por nome.
+  - `["partner_contacts", { search, categoryId, profession }]` → SELECT com joins para nome da categoria; filtragem via `.ilike` e `.eq` no Supabase.
+- Mutations com `useMutation` + `invalidateQueries` e `toast` (sucesso/erro usando `describeSupabaseError`).
+- Acesso direto via `@/integrations/supabase/client` (padrão já usado nas telas `_app/*`).
 
-O próprio pedido já autoriza o plano B: **instrumentar as três funções com `try/catch` + `console.error` + `toast.error` mostrando a mensagem real do Supabase (message, code, details, hint)**, publicar, reproduzir, ler o erro e aí sim consertar a causa.
+### Detalhes técnicos
+- Ícone do menu: `Handshake` (lucide).
+- Ordenação padrão: `name asc`.
+- `profession` opcional, mas o filtro só lista valores não-nulos e distintos (derivado no client a partir do resultado).
+- Excluir categoria mantém contatos (`on delete set null`) para não perder registros.
 
-## O que vou fazer
+### Pergunta rápida
+Quem pode **cadastrar/editar contatos**?
+- (A) Somente admins/gerentes.
+- (B) Qualquer usuário interno da agência (admin, gerente, membro) — clientes nunca.
 
-### 1. Cadastro de Cliente — `src/routes/_app/clientes-area.tsx`
-- Envolver a mutation `save` (insert/update em `clients`) em `try/catch`.
-- No `onError`, exibir `toast.error` com `error.message` + `error.details` + `error.hint` + `error.code` (quando existirem, formato PostgREST).
-- Fazer o mesmo no `remove` (delete em `clients`).
-- Logar objeto completo com `console.error("[clients:insert]", error, payload)` para termos payload no console.
-
-### 2. Relatório dos Times — `src/routes/_app/squad.relatorio.tsx`
-- Adicionar tratamento de erro em cada `useQuery` (`teams`, `profiles`, `team_members`, `clients`, `projects`, `time_logs_with_duration`) exibindo `toast.error` com a origem (`"Falha em <tabela>: <mensagem>"`) e `console.error` detalhado.
-- Renderizar um bloco de erro visível no topo do relatório quando qualquer uma dessas queries estiver em estado `error`, listando qual query falhou e a mensagem — hoje o relatório mostra "Carregando…" mesmo quando o `fetch` falha, escondendo o problema.
-
-### 3. Perfis de Acesso — `src/routes/_app/acessos.tsx`
-- Reforçar `onError` de todas as mutations do `HierarchyTab` e do `AssignTab` (`createArea`, `deleteArea`, `createSpec`, `deleteSpec`, `rename`, `MenuVisibilityDialog.toggle`, `FieldVisibilityDialog.upsert`, `AssignTab.toggle`) para mostrar `toast.error` com `message` + `code` + `details` + `hint`.
-- Adicionar `console.error("[acessos:<ação>]", error, variables)` para termos o payload que falhou.
-- Se alguma `useQuery` da tela falhar (áreas/especialidades/perfis/`user_specialties`), exibir um `toast.error` uma única vez em vez de mostrar lista vazia silenciosa.
-
-### Helper compartilhado
-Vou criar `src/lib/supabase-error.ts` exportando `describeSupabaseError(error)` que formata `{ message, code, details, hint }` num texto único, para não repetir a mesma lógica de formatação nas três telas.
-
-## Depois da instrumentação
-
-Assim que você reproduzir cada um dos três erros com a nova build, o `toast` (e o console) vão mostrar exatamente:
-- se é RLS (`code 42501` / "new row violates row-level security policy for table X"),
-- coluna obrigatória faltando (`code 23502` / "null value in column ..."),
-- FK inválida (`code 23503`),
-- tabela/coluna inexistente (`PGRST204` / `42703`),
-- ou outra coisa.
-
-Com essa mensagem em mãos volto e faço o fix cirúrgico (ajuste de política, coluna nova, payload etc.) — sem alterar RLS no escuro.
-
-## Detalhes técnicos
-
-- Nada de mudanças de schema/RLS nesta rodada; só código de UI e um helper.
-- Não vou trocar `useMutation` por chamadas cruas — mantenho a integração com TanStack Query intacta.
-- As `useQuery` continuam com `queryFn` que dá `throw` no erro (o React Query já expõe `error`), então só preciso reagir a esse estado na UI e disparar `toast.error` uma vez via `useEffect` observando `query.error`.
-- Toasts usam o `sonner` já configurado no projeto.
-
-## Arquivos afetados
-
-- `src/lib/supabase-error.ts` (novo)
-- `src/routes/_app/clientes-area.tsx`
-- `src/routes/_app/squad.relatorio.tsx`
-- `src/routes/_app/acessos.tsx`
+Se não responder, sigo com **(B)** e restrinjo o gerenciamento de categorias a admins/gerentes.
