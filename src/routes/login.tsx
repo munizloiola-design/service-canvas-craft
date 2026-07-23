@@ -249,3 +249,56 @@ function ChoiceCard({
     </button>
   );
 }
+
+function ForgotPasswordDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/set-password`,
+      });
+      toast.success("Se o e-mail existir, enviaremos as instruções em instantes.");
+      onOpenChange(false);
+      setEmail("");
+    } catch (err) {
+      console.error("[forgot-password]", err);
+      toast.error("Não foi possível enviar. Tente novamente.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Recuperar senha</DialogTitle></DialogHeader>
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="forgot-email">E-mail cadastrado</Label>
+            <Input
+              id="forgot-email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Enviaremos um link para você criar uma nova senha.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="submit" disabled={busy || !email}>
+              {busy ? "Enviando…" : "Enviar link"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
