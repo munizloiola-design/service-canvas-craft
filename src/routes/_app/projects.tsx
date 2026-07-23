@@ -543,10 +543,16 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
   const save = useMutation({
     mutationFn: async (form: HTMLFormElement) => {
       const fd = new FormData(form);
+      const cleanCards = descCards
+        .map((c, i) => ({ title: c.title || `Card ${String(i + 1).padStart(2, "0")}`, content: c.content.trim() }))
+        .filter((c) => c.content);
+      const concatenated = cleanCards.map((c) => `${c.title}\n${c.content}`).join("\n\n");
       const base = {
         title: String(fd.get("title")),
-        description: String(fd.get("description") || "") || null,
+        description: concatenated || null,
+        description_cards: cleanCards,
         notes: String(fd.get("notes") || "") || null,
+        final_link: (finalLink.trim() || null),
         client_id: (fd.get("client_id") as string) || null,
         media_type_id: (fd.get("media_type_id") as string) || null,
         status_id: (fd.get("status_id") as string) || null,
