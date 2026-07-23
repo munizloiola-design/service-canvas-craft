@@ -537,6 +537,7 @@ function RecurringIncomes() {
       recurrence: i.recurrence ?? "monthly",
       next_due: i.next_due ?? new Date().toISOString().slice(0, 10),
       active: i.active,
+      category_id: i.category_id ?? null,
     });
     setOpen(true);
   };
