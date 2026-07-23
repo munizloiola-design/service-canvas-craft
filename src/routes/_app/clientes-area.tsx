@@ -35,10 +35,12 @@ function ClientesAreaPage() {
         <TabsList>
           <TabsTrigger value="clientes">Clientes</TabsTrigger>
           <TabsTrigger value="briefing">Cadastro estratégico</TabsTrigger>
+          <TabsTrigger value="equipes">Equipes</TabsTrigger>
           <TabsTrigger value="acesso">Acesso ao portal</TabsTrigger>
         </TabsList>
         <TabsContent value="clientes" className="mt-4"><ClientsCrud /></TabsContent>
         <TabsContent value="briefing" className="mt-4"><BriefingPanel /></TabsContent>
+        <TabsContent value="equipes" className="mt-4"><TeamsPanel /></TabsContent>
         <TabsContent value="acesso" className="mt-4"><ClientAccessPanel /></TabsContent>
       </Tabs>
     </div>
