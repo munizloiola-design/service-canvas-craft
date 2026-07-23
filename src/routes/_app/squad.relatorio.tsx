@@ -80,7 +80,7 @@ function SquadRelatorioPage() {
   const memberFilter = search.member ?? "";
   const selectedTypes = useMemo<ActivityType[]>(() => {
     if (!search.types) return ALL_TYPES;
-    const arr = search.types.split(",").filter((t): t is ActivityType => (ALL_TYPES as string[]).includes(t));
+    const arr = search.types.split(",").filter((t: string): t is ActivityType => (ALL_TYPES as string[]).includes(t));
     return arr.length ? arr : ALL_TYPES;
   }, [search.types]);
 
