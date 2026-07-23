@@ -140,7 +140,13 @@ function AppLayout() {
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-2">
         {visibleGroups.map((group, idx) => {
           const renderLink = (item: NavItem, indented = false) => {
-            const active = pathname.startsWith(item.to);
+            const hasChildPrefix = group.items.some(
+              (o) => o.to !== item.to && o.to.startsWith(item.to + "/"),
+            );
+            const active = hasChildPrefix
+              ? pathname === item.to
+              : pathname === item.to || pathname.startsWith(item.to + "/");
+
             const Icon = item.icon;
             return (
               <Link
