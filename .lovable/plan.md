@@ -1,15 +1,22 @@
-## Problema
 
-No menu lateral (`src/routes/_app.tsx`), a marcação de item ativo usa `pathname.startsWith(item.to)`. Como o item "Times" aponta para `/squad` e "Relatório" para `/squad/relatorio`, ao acessar `/squad/relatorio` ambos ficam destacados — "Times" continua marcado porque `/squad/relatorio` começa com `/squad`.
+## O que será feito
 
-## Correção
+### 1. Menu lateral: seção exclusiva "Cliente"
+Em `src/routes/_app.tsx`, remover o item **Clientes** de dentro do grupo **Operação** e criar um novo grupo dedicado no menu chamado **Cliente**, contendo o link `/clientes` (ícone `Building2`). O grupo ficará posicionado logo após **Operação**, seguindo o mesmo padrão visual dos demais (Collapsible com label em caixa alta).
 
-Ajustar a lógica de `active` na linha 143 de `src/routes/_app.tsx` para casar exatamente quando o item tem submenus/rota base, ou usar correspondência por segmento:
+### 2. Drag-and-drop entre fases no CRM de prospecção
+Em `src/routes/_app/clientes.tsx` (aba CRM Prospecção, componente `CrmTab` / `ProspectCard`), habilitar arrastar cards entre as colunas de estágio (Novo lead → Qualificação → Proposta enviada → Negociação → Ganho → Perdido) usando HTML5 drag-and-drop nativo (sem novas dependências).
 
-- Substituir `pathname.startsWith(item.to)` por:
-  - `pathname === item.to || pathname.startsWith(item.to + "/")` para itens sem filhos no mesmo grupo, **e**
-  - Para itens cuja rota é prefixo de outro item do mesmo grupo (ex.: `/squad` vs `/squad/relatorio`), usar apenas igualdade exata (`pathname === item.to`).
+- Cada `ProspectCard` recebe `draggable`, `onDragStart` que carrega o `client.id`.
+- Cada coluna de estágio recebe `onDragOver` (preventDefault + destaque visual) e `onDrop` que dispara a mesma mutation `update` já existente, atualizando `prospect_stage` (e também `status` para `ativo`/`inativo` quando cair em "Ganho"/"Perdido", mantendo a lógica atual dos botões).
+- Feedback visual leve: opacidade no card arrastado e borda destacada na coluna alvo.
 
-Implementação: para cada item, verificar se existe outro item no mesmo grupo com `to` que começa com `item.to + "/"`. Se sim, ativo apenas quando `pathname === item.to`. Caso contrário, ativo quando `pathname === item.to || pathname.startsWith(item.to + "/")`.
+### 3. Botão WhatsApp no card do prospect
+No `ProspectCard`, adicionar um botão de ícone (lucide `MessageCircle`, cor verde) ao lado do botão de editar, exibido apenas quando `client.phone` existir. Ao clicar, abre `https://wa.me/<numero>` em nova aba, sanitizando o telefone (remove tudo que não for dígito) e prefixando `55` se não vier com DDI.
 
-Sem outras mudanças; comportamento de `groupActive` na linha 167 continua correto.
+## Detalhes técnicos
+
+- Sem migração de banco — reaproveita `clients.prospect_stage`, `status` e `phone`.
+- Sem novas dependências — drag-and-drop com API nativa do browser.
+- Nenhuma alteração em RLS ou lógica de permissão; a mutation `update` já usa a policy existente de `clients`.
+- Nenhuma alteração no portal do cliente ou em outras rotas.

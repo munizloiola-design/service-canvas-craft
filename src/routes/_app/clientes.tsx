@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Plus, Trash2, Save, ExternalLink, Pencil, UserPlus,
-  Users, KeyRound, FileText, FolderKanban, Sparkles, Search,
+  Users, KeyRound, FileText, FolderKanban, Sparkles, Search, MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { inviteClientUser, listClientAccess, removeClientAccess } from "@/lib/client-access.functions";
@@ -814,31 +814,77 @@ function CrmTab() {
       {total > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {STAGES.map((stage) => (
-            <Card key={stage} className="p-4 bg-card/95 backdrop-blur">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold">{stage}</h3>
-                <Badge variant="secondary">{byStage[stage].length}</Badge>
-              </div>
-              <div className="space-y-2">
-                {byStage[stage].length === 0 && (
-                  <p className="text-xs text-muted-foreground italic">Vazio</p>
-                )}
-                {byStage[stage].map((p) => (
-                  <ProspectCard
-                    key={p.id}
-                    client={p}
-                    onChange={(patch) => update.mutate({ id: p.id, ...patch })}
-                    onWin={() => update.mutate({ id: p.id, status: "ativo", prospect_stage: "Ganho" })}
-                    onLose={() => update.mutate({ id: p.id, status: "inativo", prospect_stage: "Perdido" })}
-                  />
-                ))}
-              </div>
-            </Card>
+            <StageColumn
+              key={stage}
+              stage={stage}
+              items={byStage[stage]}
+              onDropClient={(clientId) => {
+                const current = prospects.find((p) => p.id === clientId);
+                if (!current || current.prospect_stage === stage) return;
+                if (stage === "Ganho") {
+                  update.mutate({ id: clientId, status: "ativo", prospect_stage: "Ganho" });
+                } else if (stage === "Perdido") {
+                  update.mutate({ id: clientId, status: "inativo", prospect_stage: "Perdido" });
+                } else {
+                  update.mutate({ id: clientId, prospect_stage: stage });
+                }
+              }}
+              renderCard={(p) => (
+                <ProspectCard
+                  key={p.id}
+                  client={p}
+                  onChange={(patch) => update.mutate({ id: p.id, ...patch })}
+                  onWin={() => update.mutate({ id: p.id, status: "ativo", prospect_stage: "Ganho" })}
+                  onLose={() => update.mutate({ id: p.id, status: "inativo", prospect_stage: "Perdido" })}
+                />
+              )}
+            />
           ))}
         </div>
       )}
     </div>
   );
+}
+
+function StageColumn({
+  stage, items, onDropClient, renderCard,
+}: {
+  stage: Stage;
+  items: Client[];
+  onDropClient: (clientId: string) => void;
+  renderCard: (c: Client) => React.ReactNode;
+}) {
+  const [over, setOver] = useState(false);
+  return (
+    <Card
+      className={`p-4 bg-card/95 backdrop-blur transition-colors ${over ? "ring-2 ring-primary/60" : ""}`}
+      onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setOver(false);
+        const id = e.dataTransfer.getData("text/plain");
+        if (id) onDropClient(id);
+      }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold">{stage}</h3>
+        <Badge variant="secondary">{items.length}</Badge>
+      </div>
+      <div className="space-y-2 min-h-[40px]">
+        {items.length === 0 && (
+          <p className="text-xs text-muted-foreground italic">Arraste um card para cá</p>
+        )}
+        {items.map((p) => renderCard(p))}
+      </div>
+    </Card>
+  );
+}
+
+function buildWhatsAppUrl(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const withDdi = digits.startsWith("55") ? digits : `55${digits}`;
+  return `https://wa.me/${withDdi}`;
 }
 
 function ProspectCard({
@@ -850,8 +896,18 @@ function ProspectCard({
   onLose: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [dragging, setDragging] = useState(false);
   return (
-    <div className="rounded-md border bg-background p-3 space-y-1">
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", client.id);
+        e.dataTransfer.effectAllowed = "move";
+        setDragging(true);
+      }}
+      onDragEnd={() => setDragging(false)}
+      className={`rounded-md border bg-background p-3 space-y-1 cursor-grab active:cursor-grabbing transition-opacity ${dragging ? "opacity-40" : ""}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">{client.name}</p>
@@ -859,9 +915,25 @@ function ProspectCard({
             {client.contact_name || client.email || "—"}
           </p>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(true)}>
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-1 shrink-0">
+          {client.phone && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+              title="Enviar WhatsApp"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(buildWhatsAppUrl(client.phone!), "_blank", "noopener,noreferrer");
+              }}
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(true)}>
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
       {client.prospect_value != null && (
         <p className="text-xs">
