@@ -284,6 +284,51 @@ function PersonalizacaoPage() {
             <Input id="ws" value={welcomeSubtitle} onChange={(e) => setWelcomeSubtitle(e.target.value)} maxLength={140} />
           </div>
         </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Rótulo do cartão "Cliente"</Label>
+            <Input value={clientLabel} onChange={(e) => setClientLabel(e.target.value)} maxLength={40} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Descrição do cartão "Cliente"</Label>
+            <Input value={clientDesc} onChange={(e) => setClientDesc(e.target.value)} maxLength={120} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Rótulo do cartão "Agência"</Label>
+            <Input value={agencyLabel} onChange={(e) => setAgencyLabel(e.target.value)} maxLength={40} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Descrição do cartão "Agência"</Label>
+            <Input value={agencyDesc} onChange={(e) => setAgencyDesc(e.target.value)} maxLength={120} />
+          </div>
+        </div>
+
+        {/* Live preview */}
+        <div className="rounded-xl border p-4 bg-muted/30">
+          <p className="text-xs text-muted-foreground mb-3">Prévia da tela de login</p>
+          <div className="text-center space-y-1 mb-3">
+            <p className="text-lg font-semibold">{welcomeTitle}</p>
+            <p className="text-xs text-muted-foreground">{welcomeSubtitle}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border p-3 bg-card">
+              <p className="text-sm font-medium">{clientLabel}</p>
+              <p className="text-xs text-muted-foreground">{clientDesc}</p>
+            </div>
+            <div className="rounded-lg border p-3 bg-card">
+              <p className="text-sm font-medium">{agencyLabel}</p>
+              <p className="text-xs text-muted-foreground">{agencyDesc}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="mt-3 w-full rounded-md text-white text-sm py-2"
+            style={{ background: buttonColor }}
+          >
+            Entrar
+          </button>
+        </div>
       </Card>
 
       {/* Observações de marca */}
