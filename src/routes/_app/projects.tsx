@@ -47,6 +47,7 @@ type Status = { id: string; name: string; color: string; sort_order: number };
 type Priority = { id: string; name: string; color: string; level: number };
 type Role = { id: string; name: string };
 type Profile = { id: string; full_name: string };
+type Team = { id: string; name: string };
 type Assignee = { id: string; project_id: string; user_id: string; role_id: string | null };
 
 const ALL_COLUMNS = [
@@ -113,6 +114,15 @@ function ProjectsPage() {
   });
   const { data: allAssignees = [] } = useQuery({
     queryKey: ["project_assignees"], queryFn: async () => (await supabase.from("project_assignees").select("*")).data as Assignee[] ?? [],
+  });
+  const { data: teams = [] } = useQuery({
+    queryKey: ["teams"],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from as any)("teams").select("id, name").order("name");
+      if (error) throw error;
+      return (data ?? []) as Team[];
+    },
   });
 
   const maps = useMemo(() => ({
@@ -218,7 +228,7 @@ function ProjectsPage() {
                 editProject={editingProject}
                 onClose={() => { setOpen(false); setEditingProject(null); }}
                 clients={clients} mediaTypes={mediaTypes} statuses={statuses} priorities={priorities}
-                roles={roles} members={members}
+                roles={roles} members={members} teams={teams}
                 existingAssignees={editingProject ? (assigneesByProject.get(editingProject.id) ?? []) : []}
               />
             </Dialog>
@@ -500,10 +510,10 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
 }
 
 
-function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, roles, members, editProject, existingAssignees }: {
+function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, roles, members, teams, editProject, existingAssignees }: {
   onClose: () => void;
   clients: Client[]; mediaTypes: MediaType[]; statuses: Status[]; priorities: Priority[];
-  roles: Role[]; members: Profile[];
+  roles: Role[]; members: Profile[]; teams: Team[];
   editProject?: Project | null;
   existingAssignees?: Assignee[];
 }) {
@@ -521,6 +531,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
   );
   const [clientId, setClientId] = useState<string>(editProject?.client_id ?? "");
   const [lastAutoFilledClient, setLastAutoFilledClient] = useState<string>(editProject?.client_id ?? "");
+  const [teamId, setTeamId] = useState<string>(editProject?.team_id ?? "");
 
   // Load the default team assigned to the selected client (client_teams)
   const { data: clientTeamId } = useQuery({
@@ -600,7 +611,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         notes: String(fd.get("notes") || "") || null,
         final_link: (finalLink.trim() || null),
         client_id: clientId || null,
-        team_id: null,
+        team_id: teamId || null,
         media_type_id: (fd.get("media_type_id") as string) || null,
         status_id: (fd.get("status_id") as string) || null,
         priority_id: (fd.get("priority_id") as string) || null,
@@ -684,6 +695,12 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
               <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
+          <Field label="Equipe responsável">
+            <Select value={teamId} onValueChange={(v) => setTeamId(v)}>
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>{teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
           <Field label="Tipo de mídia"><Select name="media_type_id" defaultValue={editProject?.media_type_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{mediaTypes.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></Field>
           <Field label="Etapa"><Select name="status_id" defaultValue={editProject?.status_id ?? statuses[0]?.id}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></Field>
           <Field label="Prioridade"><Select name="priority_id" defaultValue={editProject?.priority_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field>
@@ -726,6 +743,9 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
               </Button>
             </div>
           ))}
+          <p className="text-xs text-muted-foreground">
+            Membros da equipe selecionada e usuários com funções correspondentes também terão visibilidade desta demanda.
+          </p>
         </div>
 
         <div className="space-y-2">
