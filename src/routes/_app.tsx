@@ -49,7 +49,7 @@ const navGroups: NavGroup[] = [
     label: "Squad",
     items: [
       { to: "/team", label: "Equipe", icon: Users, resource: "team" },
-      { to: "/squad", label: "Squad", icon: Users2, resource: "clientes_area" },
+      { to: "/squad", label: "Times", icon: Users2, resource: "clientes_area" },
       { to: "/acessos", label: "Perfis e Acessos", icon: ShieldCheck, resource: "cadastros", masterOnly: true },
     ],
   },
