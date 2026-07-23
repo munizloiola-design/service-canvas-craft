@@ -12,7 +12,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Settings, Trash2, Pencil } from "lucide-react";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel as SelSelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Settings, Trash2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { describeSupabaseError } from "@/lib/supabase-error";
 
