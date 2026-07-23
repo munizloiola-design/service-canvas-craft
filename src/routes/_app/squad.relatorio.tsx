@@ -130,6 +130,11 @@ function SquadRelatorioPage() {
   const projectMap = useMemo(() => new Map(projects.map((p: any) => [p.id, p])), [projects]);
   const clientMap = useMemo(() => new Map(clients.map((c: any) => [c.id, c])), [clients]);
   const teamClientId = useMemo(() => new Map(teams.map((t: any) => [t.id, t.client_id])), [teams]);
+  const clientToDefaultTeam = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of teams as any[]) if (t.is_default) m.set(t.client_id, t.id);
+    return m;
+  }, [teams]);
   const statusMap = useMemo(() => new Map(statuses.map((s: any) => [s.id, s.name])), [statuses]);
 
   const teamUserIds = useMemo(() => {
