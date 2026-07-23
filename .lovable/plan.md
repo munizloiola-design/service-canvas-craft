@@ -1,31 +1,15 @@
-Atualmente, um usuário `membro` só enxerga uma demanda se estiver diretamente atribuído (owner ou `project_assignees`). Gestores veem tudo. Vamos adicionar duas exceções de visibilidade para membros comuns: por **equipe** e por **função**.
+## Problema
 
-### O que será alterado
+No menu lateral (`src/routes/_app.tsx`), a marcação de item ativo usa `pathname.startsWith(item.to)`. Como o item "Times" aponta para `/squad` e "Relatório" para `/squad/relatorio`, ao acessar `/squad/relatorio` ambos ficam destacados — "Times" continua marcado porque `/squad/relatorio` começa com `/squad`.
 
-#### 1. Banco de dados
-- Criar função `public.can_view_project(_uid uuid, _project_id uuid)` como `SECURITY DEFINER` que retorna `true` quando:
-  - O usuário é gestor (`admin` / `gerente` / `admin_master`); ou
-  - O usuário é o responsável principal (`assigned_to`); ou
-  - O usuário está em `project_assignees`; ou
-  - O usuário pertence ao time (`team_members`) vinculado ao projeto (`projects.team_id`); ou
-  - O usuário possui uma função (`user_functions`) que coincide com alguma função/papel (`project_assignees.role_id`) exigida pelo projeto.
-- Substituir a política `projects_select_scoped` por `can_view_project(auth.uid(), projects.id)`.
+## Correção
 
-#### 2. Frontend
-- No formulário de criação/edição de projetos (`src/routes/_app/projects.tsx`), adicionar um campo **Equipe responsável** (`team_id`) que atualmente é sempre enviado como `null`.
-- No diálogo de atribuição de responsáveis, exibir um hint indicando que membros do time e usuários com a função correspondente também terão visibilidade da demanda.
-- Atualizar o `Project` type para garantir que `team_id` seja manipulado corretamente.
+Ajustar a lógica de `active` na linha 143 de `src/routes/_app.tsx` para casar exatamente quando o item tem submenus/rota base, ou usar correspondência por segmento:
 
-#### 3. Validação
-- Criar um projeto, vincular a uma equipe e atribuir uma função; verificar que um membro da equipe e um usuário com a função correspondente visualizam a demanda sem estar no `project_assignees`.
+- Substituir `pathname.startsWith(item.to)` por:
+  - `pathname === item.to || pathname.startsWith(item.to + "/")` para itens sem filhos no mesmo grupo, **e**
+  - Para itens cuja rota é prefixo de outro item do mesmo grupo (ex.: `/squad` vs `/squad/relatorio`), usar apenas igualdade exata (`pathname === item.to`).
 
-### Regras de acesso finais
+Implementação: para cada item, verificar se existe outro item no mesmo grupo com `to` que começa com `item.to + "/"`. Se sim, ativo apenas quando `pathname === item.to`. Caso contrário, ativo quando `pathname === item.to || pathname.startsWith(item.to + "/")`.
 
-| Tipo de usuário | O que consegue ver |
-|-----------------|-------------------|
-| Gestor | Todas as demandas |
-| Cliente | Demandas do seu cliente |
-| Membro atribuído | Demandas onde é owner ou está em `project_assignees` |
-| Membro de equipe | Demandas cujo `team_id` pertence ao time dele |
-| Membro com função | Demandas que usem essa função em `project_assignees` |
-
+Sem outras mudanças; comportamento de `groupActive` na linha 167 continua correto.
