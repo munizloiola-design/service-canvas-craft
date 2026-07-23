@@ -27,6 +27,7 @@ import { Route as CadastroClienteRouteImport } from './routes/cadastro.cliente'
 import { Route as AppTicketsRouteImport } from './routes/_app/tickets'
 import { Route as AppTempoRouteImport } from './routes/_app/tempo'
 import { Route as AppTeamRouteImport } from './routes/_app/team'
+import { Route as AppSquadRouteImport } from './routes/_app/squad'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
 import { Route as AppPersonalizacaoRouteImport } from './routes/_app/personalizacao'
 import { Route as AppPermissoesRouteImport } from './routes/_app/permissoes'
@@ -141,6 +142,11 @@ const AppTeamRoute = AppTeamRouteImport.update({
   path: '/team',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSquadRoute = AppSquadRouteImport.update({
+  id: '/squad',
+  path: '/squad',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProjectsRoute = AppProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
@@ -222,9 +228,9 @@ const AppAcessosRoute = AppAcessosRouteImport.update({
   getParentRoute: () => AppRoute,
 } as any)
 const AppSquadIndexRoute = AppSquadIndexRouteImport.update({
-  id: '/squad/',
-  path: '/squad/',
-  getParentRoute: () => AppRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppSquadRoute,
 } as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
@@ -232,9 +238,9 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppSquadRelatorioRoute = AppSquadRelatorioRouteImport.update({
-  id: '/squad/relatorio',
-  path: '/squad/relatorio',
-  getParentRoute: () => AppRoute,
+  id: '/relatorio',
+  path: '/relatorio',
+  getParentRoute: () => AppSquadRoute,
 } as any)
 const LovableEmailTransactionalSendRoute =
   LovableEmailTransactionalSendRouteImport.update({
@@ -287,6 +293,7 @@ export interface FileRoutesByFullPath {
   '/permissoes': typeof AppPermissoesRoute
   '/personalizacao': typeof AppPersonalizacaoRoute
   '/projects': typeof AppProjectsRoute
+  '/squad': typeof AppSquadRouteWithChildren
   '/team': typeof AppTeamRoute
   '/tempo': typeof AppTempoRoute
   '/tickets': typeof AppTicketsRoute
@@ -374,6 +381,7 @@ export interface FileRoutesById {
   '/_app/permissoes': typeof AppPermissoesRoute
   '/_app/personalizacao': typeof AppPersonalizacaoRoute
   '/_app/projects': typeof AppProjectsRoute
+  '/_app/squad': typeof AppSquadRouteWithChildren
   '/_app/team': typeof AppTeamRoute
   '/_app/tempo': typeof AppTempoRoute
   '/_app/tickets': typeof AppTicketsRoute
@@ -419,6 +427,7 @@ export interface FileRouteTypes {
     | '/permissoes'
     | '/personalizacao'
     | '/projects'
+    | '/squad'
     | '/team'
     | '/tempo'
     | '/tickets'
@@ -505,6 +514,7 @@ export interface FileRouteTypes {
     | '/_app/permissoes'
     | '/_app/personalizacao'
     | '/_app/projects'
+    | '/_app/squad'
     | '/_app/team'
     | '/_app/tempo'
     | '/_app/tickets'
@@ -674,6 +684,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTeamRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/squad': {
+      id: '/_app/squad'
+      path: '/squad'
+      fullPath: '/squad'
+      preLoaderRoute: typeof AppSquadRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/projects': {
       id: '/_app/projects'
       path: '/projects'
@@ -788,10 +805,10 @@ declare module '@tanstack/react-router' {
     }
     '/_app/squad/': {
       id: '/_app/squad/'
-      path: '/squad'
+      path: '/'
       fullPath: '/squad/'
       preLoaderRoute: typeof AppSquadIndexRouteImport
-      parentRoute: typeof AppRoute
+      parentRoute: typeof AppSquadRoute
     }
     '/lovable/email/suppression': {
       id: '/lovable/email/suppression'
@@ -802,10 +819,10 @@ declare module '@tanstack/react-router' {
     }
     '/_app/squad/relatorio': {
       id: '/_app/squad/relatorio'
-      path: '/squad/relatorio'
+      path: '/relatorio'
       fullPath: '/squad/relatorio'
       preLoaderRoute: typeof AppSquadRelatorioRouteImport
-      parentRoute: typeof AppRoute
+      parentRoute: typeof AppSquadRoute
     }
     '/lovable/email/transactional/send': {
       id: '/lovable/email/transactional/send'
@@ -845,6 +862,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppSquadRouteChildren {
+  AppSquadRelatorioRoute: typeof AppSquadRelatorioRoute
+  AppSquadIndexRoute: typeof AppSquadIndexRoute
+}
+
+const AppSquadRouteChildren: AppSquadRouteChildren = {
+  AppSquadRelatorioRoute: AppSquadRelatorioRoute,
+  AppSquadIndexRoute: AppSquadIndexRoute,
+}
+
+const AppSquadRouteWithChildren = AppSquadRoute._addFileChildren(
+  AppSquadRouteChildren,
+)
+
 interface AppRouteChildren {
   AppAcessosRoute: typeof AppAcessosRoute
   AppAprovacoesRoute: typeof AppAprovacoesRoute
@@ -862,11 +893,10 @@ interface AppRouteChildren {
   AppPermissoesRoute: typeof AppPermissoesRoute
   AppPersonalizacaoRoute: typeof AppPersonalizacaoRoute
   AppProjectsRoute: typeof AppProjectsRoute
+  AppSquadRoute: typeof AppSquadRouteWithChildren
   AppTeamRoute: typeof AppTeamRoute
   AppTempoRoute: typeof AppTempoRoute
   AppTicketsRoute: typeof AppTicketsRoute
-  AppSquadRelatorioRoute: typeof AppSquadRelatorioRoute
-  AppSquadIndexRoute: typeof AppSquadIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -886,11 +916,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppPermissoesRoute: AppPermissoesRoute,
   AppPersonalizacaoRoute: AppPersonalizacaoRoute,
   AppProjectsRoute: AppProjectsRoute,
+  AppSquadRoute: AppSquadRouteWithChildren,
   AppTeamRoute: AppTeamRoute,
   AppTempoRoute: AppTempoRoute,
   AppTicketsRoute: AppTicketsRoute,
-  AppSquadRelatorioRoute: AppSquadRelatorioRoute,
-  AppSquadIndexRoute: AppSquadIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
