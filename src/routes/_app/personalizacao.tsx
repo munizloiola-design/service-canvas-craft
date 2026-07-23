@@ -120,14 +120,19 @@ function PersonalizacaoPage() {
         primary_color: primary,
         accent_color: accent,
         sidebar_color: sidebar || null,
+        button_color: buttonColor || null,
         background_image: bgImage || null,
         login_box_position: boxPos,
         welcome_title: welcomeTitle.trim() || "Como deseja entrar?",
         welcome_subtitle: welcomeSubtitle.trim() || "Escolha o tipo de acesso.",
+        login_client_label: clientLabel.trim() || "Cliente",
+        login_client_desc: clientDesc.trim() || "Acesso ao portal de aprovações",
+        login_agency_label: agencyLabel.trim() || "Agência",
+        login_agency_desc: agencyDesc.trim() || "Colaboradores e gestores",
         suggestions: suggestions || null,
         theme_json: theme,
         updated_at: new Date().toISOString(),
-      });
+      } as any);
       if (error) throw error;
       await refresh();
       toast.success("Personalização salva");
