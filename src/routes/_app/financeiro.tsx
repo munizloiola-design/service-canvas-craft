@@ -439,7 +439,16 @@ function FixedCosts() {
           <div className="space-y-3">
             <div><Label>Nome</Label><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Categoria</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></div>
+              <div>
+                <Label>Categoria</Label>
+                <Select value={f.category || "__none__"} onValueChange={(v) => setF({ ...f, category: v === "__none__" ? "" : v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— sem categoria —</SelectItem>
+                    {expenseCats.map((c) => <SelectItem key={c.id} value={c.name}>{c.name}{c.is_fixed ? " (fixo)" : ""}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
               <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={f.amount} onChange={(e) => setF({ ...f, amount: Number(e.target.value) })} /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
