@@ -215,7 +215,8 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
               </TableRow>
             )}
             {filtered.map((r) => {
-              const tn = r.teams?.name ?? null;
+              const tn = defaultTeams?.get(r.id) ?? null;
+              const meta = STATUS_META[r.status] ?? STATUS_META.inativo;
               return (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.name}</TableCell>
@@ -224,8 +225,8 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
                   <TableCell className="text-muted-foreground">{r.email || "—"}</TableCell>
                   <TableCell>{tn ? <Badge variant="secondary">{tn}</Badge> : <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={STATUS_META[r.status].className}>
-                      {STATUS_META[r.status].label}
+                    <Badge variant="outline" className={meta.className}>
+                      {meta.label}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
