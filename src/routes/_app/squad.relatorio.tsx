@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Users2, Download, Clock, FolderKanban } from "lucide-react";
+import { Users, Users2, Download, Clock, FolderKanban, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
+import { describeSupabaseError } from "@/lib/supabase-error";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from "recharts";
@@ -58,26 +60,51 @@ function SquadRelatorioPage() {
   const setSearch = (patch: Partial<SearchParams>) =>
     navigate({ to: "/squad/relatorio", search: (prev: SearchParams) => ({ ...prev, ...patch }) });
 
-  const { data: teams = [] } = useQuery({
+  const teamsQ = useQuery({
     queryKey: ["rel_teams"],
-    queryFn: async () => (await supabase.from("teams").select("id, name").order("name")).data ?? [],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("teams").select("id, name").order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
-  const { data: profiles = [] } = useQuery({
+  const teams = teamsQ.data ?? [];
+  const profilesQ = useQuery({
     queryKey: ["rel_profiles"],
-    queryFn: async () => (await supabase.from("profiles").select("id, full_name").order("full_name")).data ?? [],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, full_name").order("full_name");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
-  const { data: memberships = [] } = useQuery({
+  const profiles = profilesQ.data ?? [];
+  const membershipsQ = useQuery({
     queryKey: ["rel_team_members"],
-    queryFn: async () => (await supabase.from("team_members").select("team_id, user_id")).data ?? [],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("team_members").select("team_id, user_id");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
-  const { data: clients = [] } = useQuery({
+  const memberships = membershipsQ.data ?? [];
+  const clientsQ = useQuery({
     queryKey: ["rel_clients"],
-    queryFn: async () => (await supabase.from("clients").select("id, name, team_id")).data ?? [],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clients").select("id, name, team_id");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
-  const { data: projects = [] } = useQuery({
+  const clients = clientsQ.data ?? [];
+  const projectsQ = useQuery({
     queryKey: ["rel_projects_min"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, client_id").order("title")).data ?? [],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projects").select("id, title, client_id").order("title");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
+  const projects = projectsQ.data ?? [];
 
   const teamMap = useMemo(() => new Map(teams.map((t: any) => [t.id, t.name])), [teams]);
   const userMap = useMemo(() => new Map(profiles.map((p: any) => [p.id, p.full_name || "Sem nome"])), [profiles]);
@@ -96,7 +123,7 @@ function SquadRelatorioPage() {
     return Array.from(new Set(ids)).map((id) => ({ id, name: userMap.get(id) ?? "—" }));
   }, [memberships, profiles, teamFilter, userMap]);
 
-  const { data: logs = [], isLoading } = useQuery({
+  const logsQ = useQuery({
     queryKey: ["squad_report_logs", from, to, teamFilter, memberFilter, teamUserIds?.join(",")],
     queryFn: async () => {
       if (teamFilter && teamUserIds && teamUserIds.length === 0) return [] as Row[];
@@ -113,6 +140,26 @@ function SquadRelatorioPage() {
       return (data ?? []) as Row[];
     },
   });
+  const logs = logsQ.data ?? [];
+  const isLoading = logsQ.isLoading;
+
+  const queryErrors = useMemo(() => {
+    const list: { label: string; error: unknown }[] = [];
+    if (teamsQ.error) list.push({ label: "teams", error: teamsQ.error });
+    if (profilesQ.error) list.push({ label: "profiles", error: profilesQ.error });
+    if (membershipsQ.error) list.push({ label: "team_members", error: membershipsQ.error });
+    if (clientsQ.error) list.push({ label: "clients", error: clientsQ.error });
+    if (projectsQ.error) list.push({ label: "projects", error: projectsQ.error });
+    if (logsQ.error) list.push({ label: "time_logs_with_duration", error: logsQ.error });
+    return list;
+  }, [teamsQ.error, profilesQ.error, membershipsQ.error, clientsQ.error, projectsQ.error, logsQ.error]);
+
+  useEffect(() => {
+    for (const { label, error } of queryErrors) {
+      console.error(`[squad-relatorio:${label}]`, error);
+      toast.error(`Falha em ${label}: ${describeSupabaseError(error)}`);
+    }
+  }, [queryErrors]);
 
   const closed = useMemo(() => logs.filter((l) => l.ended_at && (l.duration_seconds ?? 0) > 0), [logs]);
 
