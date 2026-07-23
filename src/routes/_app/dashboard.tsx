@@ -215,7 +215,7 @@ function StatsOverview() {
   });
   const { data: teamCount = 0 } = useQuery({
     queryKey: ["team-count"],
-    queryFn: async () => (await supabase.from("profiles").select("id", { count: "exact", head: true })).count ?? 0,
+    queryFn: async () => (await supabase.from("internal_profiles").select("id", { count: "exact", head: true })).count ?? 0,
   });
 
   const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));
@@ -450,7 +450,7 @@ function TeamLoad() {
   });
   const { data: members = [] } = useQuery({
     queryKey: ["profiles"],
-    queryFn: async () => (await supabase.from("profiles").select("id, full_name")).data ?? [],
+    queryFn: async () => (await supabase.from("internal_profiles").select("id, full_name")).data ?? [],
   });
 
   const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));
@@ -459,7 +459,7 @@ function TeamLoad() {
   for (const a of assignees) {
     if (openProjectIds.has(a.project_id)) counts.set(a.user_id, (counts.get(a.user_id) ?? 0) + 1);
   }
-  const list = members.map((m) => ({ name: m.full_name, count: counts.get(m.id) ?? 0 }))
+  const list = members.map((m) => ({ name: m.full_name, count: counts.get(m.id ?? "") ?? 0 }))
     .filter((m) => m.count > 0).sort((a, b) => b.count - a.count).slice(0, 6);
 
   return (
