@@ -39,6 +39,7 @@ type Project = {
   budget: number | null; deliverable_path: string | null;
   client_token: string | null; client_decision: string | null; client_feedback: string | null;
   created_at: string;
+  team_id?: string | null;
 };
 type Client = { id: string; name: string };
 type MediaType = { id: string; name: string };
