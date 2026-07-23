@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
-  startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, format, isSameMonth, isSameDay, addMonths, subMonths,
+  startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, format, isSameMonth, isSameDay,
+  addMonths, subMonths, addWeeks, subWeeks,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/calendario")({ component: CalendarioPage });
 
@@ -20,11 +22,15 @@ type Project = {
 };
 type Status = { id: string; name: string; color: string };
 type Client = { id: string; name: string };
+type DateField = "due_date" | "post_date";
 
 function CalendarioPage() {
   const [tab, setTab] = useState<"due" | "post">("due");
+  const [view, setView] = useState<"month" | "week">("month");
   const [cursor, setCursor] = useState(new Date());
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-cal"],
@@ -46,7 +52,7 @@ function CalendarioPage() {
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
   const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
 
-  const dateField = tab === "due" ? "due_date" : "post_date";
+  const dateField: DateField = tab === "due" ? "due_date" : "post_date";
 
   const eventsByDate = useMemo(() => {
     const m = new Map<string, Project[]>();
@@ -60,40 +66,132 @@ function CalendarioPage() {
     return m;
   }, [projects, dateField]);
 
-  const monthStart = startOfMonth(cursor);
-  const monthEnd = endOfMonth(cursor);
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-  const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+  const reschedule = useMutation({
+    mutationFn: async ({ id, newDate }: { id: string; newDate: string }) => {
+      const patch = (dateField === "due_date" ? { due_date: newDate } : { post_date: newDate });
+      const { error } = await supabase.from("projects").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onMutate: async ({ id, newDate }) => {
+      await qc.cancelQueries({ queryKey: ["projects-cal"] });
+      const prev = qc.getQueryData<Project[]>(["projects-cal"]);
+      qc.setQueryData<Project[]>(["projects-cal"], (old) =>
+        (old ?? []).map((p) => (p.id === id ? { ...p, [dateField]: newDate } : p))
+      );
+      return { prev };
+    },
+    onError: (e: Error, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["projects-cal"], ctx.prev);
+      toast.error(e.message || "Falha ao reagendar");
+    },
+    onSuccess: (_d, { newDate }) => {
+      toast.success(`Reagendado para ${format(new Date(newDate + "T00:00:00"), "dd/MM")}`);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["projects-cal"] }),
+  });
 
-  const days: Date[] = [];
-  for (let d = gridStart; d <= gridEnd; d = addDays(d, 1)) days.push(d);
+  const days: Date[] = useMemo(() => {
+    if (view === "month") {
+      const monthStart = startOfMonth(cursor);
+      const monthEnd = endOfMonth(cursor);
+      const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+      const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+      const arr: Date[] = [];
+      for (let d = gridStart; d <= gridEnd; d = addDays(d, 1)) arr.push(d);
+      return arr;
+    }
+    const wkStart = startOfWeek(cursor, { weekStartsOn: 0 });
+    return Array.from({ length: 7 }, (_, i) => addDays(wkStart, i));
+  }, [cursor, view]);
+
+  const rangeLabel = useMemo(() => {
+    if (view === "month") return format(cursor, "MMMM yyyy", { locale: ptBR });
+    const s = startOfWeek(cursor, { weekStartsOn: 0 });
+    const e = endOfWeek(cursor, { weekStartsOn: 0 });
+    return `${format(s, "dd MMM", { locale: ptBR })} – ${format(e, "dd MMM yyyy", { locale: ptBR })}`;
+  }, [cursor, view]);
+
+  const handleDrop = (dayKey: string, projectId: string | null) => {
+    setDragOverKey(null);
+    if (!projectId) return;
+    const p = projects.find((x) => x.id === projectId);
+    if (!p) return;
+    const current = (p[dateField] ?? "").slice(0, 10);
+    if (current === dayKey) return;
+    reschedule.mutate({ id: projectId, newDate: dayKey });
+  };
+
+  const renderCard = (p: Project) => {
+    const st = p.status_id ? statusMap.get(p.status_id) : null;
+    return (
+      <div
+        key={p.id}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData("text/project-id", p.id);
+          e.dataTransfer.effectAllowed = "move";
+        }}
+        onClick={() => navigate({ to: "/projects", search: { detail: p.id } })}
+        className="w-full text-left text-[11px] px-1.5 py-1 rounded truncate cursor-grab active:cursor-grabbing hover:opacity-80"
+        style={st ? { background: `${st.color}25`, color: st.color } : { background: "var(--muted)" }}
+        title={`${p.title}${p.client_id ? ` — ${clientMap.get(p.client_id) ?? ""}` : ""}`}
+      >
+        {p.title}
+      </div>
+    );
+  };
+
+  const cellCommon = (dayKey: string) =>
+    `bg-card p-1.5 flex flex-col gap-1 transition-colors ${
+      dragOverKey === dayKey ? "ring-2 ring-primary ring-inset bg-primary/5" : ""
+    }`;
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <header className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Calendário</h1>
-          <p className="text-muted-foreground mt-1">Visão dos prazos e datas de postagem das demandas.</p>
+          <p className="text-muted-foreground mt-1">
+            Arraste uma demanda para outro dia para reagendar {tab === "due" ? "o prazo" : "a postagem"}.
+          </p>
         </div>
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "due" | "post")}>
-          <TabsList>
-            <TabsTrigger value="due">Prazos</TabsTrigger>
-            <TabsTrigger value="post">Postagens</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex gap-2 flex-wrap">
+          <Tabs value={view} onValueChange={(v) => setView(v as "month" | "week")}>
+            <TabsList>
+              <TabsTrigger value="month">Mês</TabsTrigger>
+              <TabsTrigger value="week">Semana</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "due" | "post")}>
+            <TabsList>
+              <TabsTrigger value="due">Prazos</TabsTrigger>
+              <TabsTrigger value="post">Postagens</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </header>
 
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <Button variant="outline" size="sm" onClick={() => setCursor((c) => subMonths(c, 1))}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setCursor((c) => (view === "month" ? subMonths(c, 1) : subWeeks(c, 1)))
+            }
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <h2 className="text-lg font-semibold capitalize">
-            {format(cursor, "MMMM yyyy", { locale: ptBR })}
-          </h2>
+          <h2 className="text-lg font-semibold capitalize">{rangeLabel}</h2>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setCursor(new Date())}>Hoje</Button>
-            <Button variant="outline" size="sm" onClick={() => setCursor((c) => addMonths(c, 1))}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setCursor((c) => (view === "month" ? addMonths(c, 1) : addWeeks(c, 1)))
+              }
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -106,28 +204,31 @@ function CalendarioPage() {
           {days.map((day) => {
             const key = format(day, "yyyy-MM-dd");
             const items = eventsByDate.get(key) ?? [];
-            const inMonth = isSameMonth(day, cursor);
+            const inMonth = view === "week" || isSameMonth(day, cursor);
             const isToday = isSameDay(day, new Date());
+            const maxVisible = view === "week" ? 20 : 3;
+            const minH = view === "week" ? "min-h-[60vh]" : "min-h-[100px]";
             return (
-              <div key={key} className={`bg-card min-h-[100px] p-1.5 flex flex-col gap-1 ${inMonth ? "" : "opacity-40"}`}>
-                <span className={`text-xs font-medium ${isToday ? "bg-primary text-primary-foreground rounded-full h-5 w-5 flex items-center justify-center" : ""}`}>
-                  {format(day, "d")}
-                </span>
-                <div className="flex-1 space-y-0.5 overflow-hidden">
-                  {items.slice(0, 3).map((p) => {
-                    const st = p.status_id ? statusMap.get(p.status_id) : null;
-                    return (
-                      <button key={p.id}
-                        onClick={() => navigate({ to: "/projects", search: { detail: p.id } })}
-                        className="w-full text-left text-[10px] px-1 py-0.5 rounded truncate hover:opacity-80"
-                        style={st ? { background: `${st.color}25`, color: st.color } : { background: "var(--muted)" }}
-                        title={`${p.title}${p.client_id ? ` — ${clientMap.get(p.client_id) ?? ""}` : ""}`}>
-                        {p.title}
-                      </button>
-                    );
-                  })}
-                  {items.length > 3 && (
-                    <Badge variant="secondary" className="text-[9px] h-4">+{items.length - 3}</Badge>
+              <div
+                key={key}
+                className={`${cellCommon(key)} ${minH} ${inMonth ? "" : "opacity-40"}`}
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dragOverKey !== key) setDragOverKey(key); }}
+                onDragLeave={() => { if (dragOverKey === key) setDragOverKey(null); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const id = e.dataTransfer.getData("text/project-id");
+                  handleDrop(key, id || null);
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-medium ${isToday ? "bg-primary text-primary-foreground rounded-full h-5 w-5 flex items-center justify-center" : ""}`}>
+                    {format(day, view === "week" ? "d/MM" : "d")}
+                  </span>
+                </div>
+                <div className="flex-1 space-y-1 overflow-y-auto">
+                  {items.slice(0, maxVisible).map(renderCard)}
+                  {items.length > maxVisible && (
+                    <Badge variant="secondary" className="text-[9px] h-4">+{items.length - maxVisible}</Badge>
                   )}
                 </div>
               </div>

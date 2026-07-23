@@ -1,23 +1,27 @@
-## 1. Botão hambúrguer para esconder o menu (desktop)
+## 1. Calendário: visualização Mês/Semana + arrastar para reagendar
 
-Arquivo: `src/routes/_app.tsx`
+Arquivo: `src/routes/_app/calendario.tsx`
 
-- Adicionar estado `desktopCollapsed` (persistido em `localStorage` como `sidebar:collapsed`) para lembrar a preferência do usuário entre sessões.
-- Envolver o `<aside>` desktop com classes condicionais: quando recolhido, `w-0 -ml-64` (ou `hidden`) para sumir com o menu; quando expandido, `w-64`. Usar `transition-all duration-200` para animação suave.
-- Adicionar um botão flutuante/fixo no topo do `<main>` (visível apenas em `md:` para cima) com o ícone `Menu` (lucide-react) que alterna `desktopCollapsed`. Quando o menu está aberto o botão vira `PanelLeftClose`; quando recolhido, `PanelLeft`, para deixar claro o estado.
-- No mobile nada muda — o botão hambúrguer já existe no topbar.
+- Adicionar um segundo `Tabs` (ou um `ToggleGroup`) para modo de visão: **Mês** e **Semana** (padrão Mês). Mantém o Tabs atual "Prazos / Postagens" — os dois modos operam sobre `due_date` ou `post_date` conforme selecionado.
+- **Visão Semana**: usar `startOfWeek`/`endOfWeek(cursor)` e navegação com `addWeaks`/`subWeeks`. Layout: 7 colunas altas (`min-h-[70vh]`) com título "DD/MM" em cada coluna e cards empilhados no dia. Título passa a mostrar "DD MMM – DD MMM yyyy".
+- **Drag-and-drop nativo (HTML5)**, sem nova dependência:
+  - Cada card recebe `draggable`, `onDragStart` guardando `p.id`.
+  - Cada célula-dia recebe `onDragOver` (com `preventDefault` + destaque via classe) e `onDrop` que dispara mutação.
+- **Mutação `rescheduleProject`** com `useMutation`:
+  - Atualiza `projects.[dateField] = novoDia (YYYY-MM-DD)` via `supabase.from("projects").update(...).eq("id", id)`.
+  - Optimistic update: patch de `["projects-cal"]` antes; rollback em erro; `invalidateQueries` no final.
+  - Toast de sucesso "Reagendado para DD/MM" (sonner).
+  - Se o valor não mudar, ignora.
+- Respeita permissões existentes de update em `projects` (RLS). Se o usuário não tiver acesso, o erro do Supabase é mostrado via toast — sem gate adicional no cliente.
+- Sem mudanças no banco. Não altera clique para abrir detalhe (apenas o drag mexe na data).
 
-## 2. Filtro por equipe no Relatório de Tempo
+## 2. Times: busca no diálogo + confirmar edição/exclusão
 
-Arquivo: `src/routes/_app/tempo.tsx`
+Arquivo: `src/routes/_app/squad.tsx`
 
-- Estender `SearchParams` com `team?: string` e adicionar `teamFilter` lido de `Route.useSearch()`.
-- Nova query `useQuery(["all_teams_min"])` buscando `teams(id, name)` ordenado por nome.
-- Nova query `useQuery(["team_members", teamFilter])` — quando houver `teamFilter`, buscar `team_members.user_id where team_id = teamFilter` e guardar em `teamUserIds: string[]`.
-- Adicionar um `<Select>` "Equipe" na barra de filtros (grid passa de `md:grid-cols-5` para `md:grid-cols-6`), com opção "Todas as equipes".
-- Na query principal `time_logs_report`:
-  - Incluir `teamFilter` na `queryKey`.
-  - Se `teamFilter` estiver definido e `teamUserIds` carregado, aplicar `.in("user_id", teamUserIds)`. Se a equipe não tiver membros, retornar `[]` sem consultar.
-- O filtro se combina com os filtros existentes de Projeto e Usuário (AND). Todos os KPIs, gráficos, tabelas e export CSV consomem `logs`/`closed` derivados dessa query, então já respeitam o novo filtro automaticamente.
-
-Nenhuma mudança de banco de dados; usa as tabelas `teams`/`team_members` já criadas.
+- Verificado: o seletor de membros já usa `profiles` (apenas usuários cadastrados) e a tela já tem botões de **editar** (lápis) e **excluir** (lixeira com `confirm()`). Nada muda aí.
+- **Adicionar campo de busca** dentro de `TeamDialog` (acima da lista de membros):
+  - `Input` com ícone `Search`, placeholder "Buscar membro…", `value` controlado por `useState("")`.
+  - Filtra `profiles` por `full_name` (case/acento-insensível simples via `.toLowerCase().normalize`) antes do `.map`.
+  - Mostra "Nenhum resultado" quando o filtro não bater; membros já selecionados que não passam no filtro continuam contando em `selected` (mantidos ao salvar).
+- Sem alterações de schema.

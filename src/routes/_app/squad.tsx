@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil, Users } from "lucide-react";
+import { Plus, Trash2, Pencil, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/squad")({ component: SquadPage });
@@ -199,6 +199,12 @@ function TeamDialog({
 }) {
   const [name, setName] = useState(editing?.name ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set(initialMembers));
+  const [query, setQuery] = useState("");
+
+  const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const filtered = query.trim()
+    ? profiles.filter((p) => norm(p.full_name ?? "").includes(norm(query.trim())))
+    : profiles;
 
   const toggle = (id: string) => {
     setSelected((cur) => {
@@ -225,9 +231,21 @@ function TeamDialog({
         </div>
         <div className="space-y-1">
           <Label>Membros</Label>
-          <div className="max-h-72 overflow-y-auto border rounded-md p-2 space-y-1">
+          <div className="relative">
+            <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar membro..."
+              className="pl-8"
+            />
+          </div>
+          <div className="max-h-72 overflow-y-auto border rounded-md p-2 space-y-1 mt-2">
             {profiles.length === 0 && <p className="text-xs text-muted-foreground p-2">Nenhum perfil disponível.</p>}
-            {profiles.map((p) => (
+            {profiles.length > 0 && filtered.length === 0 && (
+              <p className="text-xs text-muted-foreground p-2">Nenhum resultado.</p>
+            )}
+            {filtered.map((p) => (
               <label key={p.id} className="flex items-center gap-2 text-sm py-1 px-2 rounded hover:bg-muted/40 cursor-pointer">
                 <Checkbox checked={selected.has(p.id)} onCheckedChange={() => toggle(p.id)} />
                 <span className="truncate">{p.full_name || "(sem nome)"}</span>
