@@ -1,53 +1,43 @@
 ## Objetivo
+Reorganizar a navegação criando o grupo **Squad** no menu com três itens (Perfis e Acesso, Equipe, Squad), remover itens redundantes de Cadastros/Configurações e verificar erros.
 
-Adicionar gestão de **Equipes** vinculadas a clientes, permitindo pré-preenchimento automático dos membros ao criar uma demanda (com opção de ajustar).
+## 1. Novo grupo de menu "Squad" (`src/routes/_app.tsx`)
 
-## Estrutura no banco
+Adicionar um novo `NavGroup` com label **"Squad"** contendo:
+- **Equipe** → `/team` (rota já existente, `resource: "team"`) — atual item avulso será movido para dentro deste grupo.
+- **Perfis e Acessos** → `/acessos` (rota já existente, `masterOnly`) — movida do grupo Configurações.
+- **Squad** → `/squad` (rota nova) — CRUD de equipes por cliente, migrado da aba "Equipes" de `/clientes-area`.
 
-Nova tabela `client_teams`:
-- `client_id` (FK clients)
-- `name`
-- `is_default` (equipe padrão do cliente)
+Remover:
+- Item avulso "Equipe" atual (linha 48).
+- "Perfis e Acessos" do grupo Configurações (linha 55).
+- "Permissões" do grupo Configurações (linha 56) — a página `/permissoes` continua existindo, apenas sai do menu.
 
-Nova tabela `client_team_members`:
-- `team_id` (FK client_teams)
-- `user_id` (FK auth.users)
-- `role_hint` (opcional, texto — ex: "Designer responsável")
+## 2. Nova rota `/squad`
 
-Alteração em `projects`:
-- `team_id` (FK client_teams, nullable) — registra qual equipe originou os assignees do projeto.
+Criar `src/routes/_app/squad.tsx`:
+- Reaproveita o componente `TeamsPanel` que hoje vive dentro de `src/routes/_app/clientes-area.tsx` (aba "equipes").
+- Mesma UX: seletor de cliente → CRUD de equipes daquele cliente → membros + marcação de equipe padrão.
+- `resource: "clientes_area"` (mesma permissão já usada pelo painel), gate `isManager`.
 
-GRANTs + RLS: leitura/edição para admin/gerente; membros leem equipes das quais participam; cliente lê apenas as próprias.
+## 3. Ajustes em rotas existentes
 
-## Interface de gestão (Admin/Gerente)
+- **`src/routes/_app/clientes-area.tsx`**: remover a aba "Equipes" (`TabsTrigger` + `TabsContent`) e extrair o componente `TeamsPanel` para um módulo compartilhado (`src/components/squad/TeamsPanel.tsx`) importado por `/squad`. A automação de auto-preenchimento em `projects.tsx` não muda (continua lendo `client_teams`/`client_team_members`).
+- **`src/routes/_app/cadastros.tsx`**: remover as abas **"Funções"** (`project_roles`) e **"Subfunções (visibilidade)"** (`collaborator_functions`) do array `TABLES` (linhas 49–65). A gestão dessas entidades passa a viver em **Perfis e Acessos** (`/acessos`), que já cobre áreas/especialidades dinâmicas.
 
-Nova aba **"Equipes"** dentro de `/clientes-area` (ao lado de Clientes / Cadastro estratégico / Acesso ao portal):
-- Lista de equipes por cliente selecionado.
-- CRUD de equipes (nome, marcar como padrão).
-- Dentro de cada equipe: adicionar/remover membros da agência (busca em `profiles`), definir uma como padrão do cliente.
+## 4. Verificação de erros
 
-## Integração na criação de demanda
+Passadas rápidas para conferir:
+- Nenhum `<Link to="/permissoes">` ou `to="/cadastros" tab=funcoes` quebrado após remover itens do menu (a rota `/permissoes` permanece acessível por URL direta para master).
+- `TeamsPanel` extraído mantém imports de `supabase`, `useAuth`, `Checkbox`, `Star`, `Users`.
+- Rodar após build: checar console/rede na preview para confirmar que `/squad` carrega e que o auto-preenchimento de equipe em nova demanda continua funcionando.
 
-Em `src/routes/_app/projects.tsx` (formulário de nova demanda):
-1. Ao selecionar o **cliente**, buscar as equipes daquele cliente.
-2. Mostrar um seletor **"Equipe"** logo abaixo do cliente:
-   - Se houver equipe padrão → pré-selecionada.
-   - Se houver só uma → pré-selecionada.
-   - Opção "Sem equipe / personalizado".
-3. Ao selecionar uma equipe, preencher automaticamente a lista de **assignees** (`project_assignees`) com os membros da equipe.
-4. O usuário pode **adicionar ou remover** membros manualmente antes de salvar (a alteração não modifica a equipe original).
-5. Salvar `team_id` no projeto para referência.
-
-Edição de demanda: mesmo comportamento — trocar equipe repropõe membros (com confirmação), manter manual permite ajuste livre.
+Correções sugeridas (aplicadas no mesmo passo se confirmadas na inspeção):
+- Se `cadastros.tsx` referenciar `TABLES[0].key` como default e ele mudar, garantir que o estado inicial `useState(TABLES[0].key)` continue válido.
+- Se algum componente ainda importar `TeamsPanel` de `clientes-area.tsx`, atualizar o import path.
 
 ## Detalhes técnicos
-
-- Migração única com as 2 novas tabelas + coluna `team_id` em `projects` + GRANTs + RLS + trigger `updated_at`.
-- Server fns em `src/lib/client-teams.functions.ts`: `listTeamsByClient`, `createTeam`, `updateTeam`, `deleteTeam`, `setTeamMembers`, `setDefaultTeam`.
-- Reaproveitar componente de multi-seleção de usuários já usado em assignees.
-- Sem mudanças em permissões existentes; adicionar `equipes_cliente` como recurso opcional só se necessário (por padrão herda de `clientes_area`).
-
-## Fora do escopo
-
-- Não altera fluxo de portal do cliente (equipes são gestão interna).
-- Não envia notificações automáticas aos membros da equipe.
+- Sem migração de banco: `client_teams`/`client_team_members` já existem.
+- Ícone sugerido para "Squad": `Users2` (lucide) para diferenciar de "Equipe" (`Users`).
+- Ordem dentro do grupo Squad: Equipe → Squad → Perfis e Acessos.
+- `menuAllowed("/squad")` — adicionar chave no `access-registry.ts` se o filtro por área a exigir (verificar durante a implementação e cadastrar como visível por padrão para admins/gerentes).
