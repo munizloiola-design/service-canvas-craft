@@ -86,7 +86,7 @@ function OrcamentoPage() {
   const addPro = () => {
     const remaining = profiles.find((p: any) => !pros.some((x) => x.user_id === p.id));
     if (!remaining) return;
-    setPros([...pros, { user_id: remaining.id, name: remaining.full_name, hourly_cost: Number(remaining.hourly_cost ?? 0), hours: 0 }]);
+    setPros([...pros, { user_id: remaining.id ?? "", name: remaining.full_name ?? "", hourly_cost: Number(remaining.hourly_cost ?? 0), hours: 0 }]);
   };
 
   const save = useMutation({

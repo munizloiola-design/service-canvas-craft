@@ -459,7 +459,7 @@ function TeamLoad() {
   for (const a of assignees) {
     if (openProjectIds.has(a.project_id)) counts.set(a.user_id, (counts.get(a.user_id) ?? 0) + 1);
   }
-  const list = members.map((m) => ({ name: m.full_name, count: counts.get(m.id) ?? 0 }))
+  const list = members.map((m) => ({ name: m.full_name, count: counts.get(m.id ?? "") ?? 0 }))
     .filter((m) => m.count > 0).sort((a, b) => b.count - a.count).slice(0, 6);
 
   return (
