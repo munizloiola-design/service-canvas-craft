@@ -77,14 +77,12 @@ type Client = {
   email: string | null;
   phone: string | null;
   notes: string | null;
-  team_id: string | null;
   status: ClientStatus;
   prospect_stage: string | null;
   prospect_value: number | null;
   prospect_next_action: string | null;
   prospect_next_action_at: string | null;
 };
-type TeamOpt = { id: string; name: string };
 
 const STATUS_META: Record<ClientStatus, { label: string; className: string }> = {
   ativo:      { label: "Ativo",      className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" },
@@ -104,13 +102,17 @@ function useClients() {
   });
 }
 
-function useTeams() {
+function useDefaultClientTeams() {
   return useQuery({
-    queryKey: ["teams"],
+    queryKey: ["client_teams_default"],
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase.from as any)("teams").select("id, name").order("name");
-      return (data ?? []) as TeamOpt[];
+      const { data } = await (supabase.from as any)("client_teams").select("client_id, name, is_default");
+      const map = new Map<string, string>();
+      for (const r of (data ?? []) as Array<{ client_id: string; name: string; is_default: boolean }>) {
+        if (r.is_default) map.set(r.client_id, r.name);
+      }
+      return map;
     },
   });
 }
