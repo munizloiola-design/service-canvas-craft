@@ -16,7 +16,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, Legend,
 } from "recharts";
 
-type SearchParams = { from?: string; to?: string; project?: string; user?: string };
+type SearchParams = { from?: string; to?: string; project?: string; user?: string; team?: string };
 
 function isoDay(d: Date) { return d.toISOString().slice(0, 10); }
 function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return isoDay(d); }
@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_app/tempo")({
     to: typeof s.to === "string" ? s.to : undefined,
     project: typeof s.project === "string" ? s.project : undefined,
     user: typeof s.user === "string" ? s.user : undefined,
+    team: typeof s.team === "string" ? s.team : undefined,
   }),
   head: () => ({
     meta: [
@@ -57,14 +58,32 @@ function TempoPage() {
   const to = search.to ?? isoDay(new Date());
   const projectFilter = search.project ?? "";
   const userFilter = search.user ?? "";
+  const teamFilter = search.team ?? "";
 
   const setSearch = (patch: Partial<SearchParams>) => {
     navigate({ to: "/tempo", search: (prev: SearchParams) => ({ ...prev, ...patch }) });
   };
 
-  const { data: logs = [], isLoading } = useQuery({
-    queryKey: ["time_logs_report", from, to, projectFilter, userFilter],
+  const { data: teams = [] } = useQuery({
+    queryKey: ["all_teams_min"],
+    queryFn: async () => (await supabase.from("teams").select("id, name").order("name")).data ?? [],
+  });
+
+  const { data: teamUserIds = null } = useQuery({
+    queryKey: ["team_members_ids", teamFilter],
+    enabled: !!teamFilter,
     queryFn: async () => {
+      const { data, error } = await supabase.from("team_members").select("user_id").eq("team_id", teamFilter);
+      if (error) throw error;
+      return (data ?? []).map((r: any) => r.user_id as string);
+    },
+  });
+
+  const { data: logs = [], isLoading } = useQuery({
+    queryKey: ["time_logs_report", from, to, projectFilter, userFilter, teamFilter, teamUserIds],
+    enabled: !teamFilter || teamUserIds !== null,
+    queryFn: async () => {
+      if (teamFilter && (!teamUserIds || teamUserIds.length === 0)) return [] as Row[];
       let q = supabase
         .from("time_logs_with_duration")
         .select("id, project_id, user_id, status_id, started_at, ended_at, duration_seconds")
@@ -73,6 +92,7 @@ function TempoPage() {
         .order("started_at", { ascending: false });
       if (projectFilter) q = q.eq("project_id", projectFilter);
       if (userFilter) q = q.eq("user_id", userFilter);
+      if (teamFilter && teamUserIds && teamUserIds.length > 0) q = q.in("user_id", teamUserIds);
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as Row[];
@@ -194,7 +214,7 @@ function TempoPage() {
         )}
       </header>
 
-      <Card className="p-4 grid gap-3 md:grid-cols-5">
+      <Card className="p-4 grid gap-3 md:grid-cols-6">
         <div className="space-y-1.5">
           <Label>De</Label>
           <Input type="date" value={from} onChange={(e) => setSearch({ from: e.target.value })} />
@@ -202,6 +222,16 @@ function TempoPage() {
         <div className="space-y-1.5">
           <Label>Até</Label>
           <Input type="date" value={to} onChange={(e) => setSearch({ to: e.target.value })} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Equipe</Label>
+          <Select value={teamFilter || "__all"} onValueChange={(v) => setSearch({ team: v === "__all" ? undefined : v })}>
+            <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todas as equipes</SelectItem>
+              {teams.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <Label>Projeto</Label>
