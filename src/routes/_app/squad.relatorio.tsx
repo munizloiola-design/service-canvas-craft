@@ -301,12 +301,19 @@ function SquadRelatorioPage() {
 
   const roster = useMemo(() => {
     const teamsList = teamFilter ? teams.filter((t: any) => t.id === teamFilter) : teams;
-    return teamsList.map((t: any) => ({
-      id: t.id, name: t.name,
-      members: memberships.filter((m: any) => m.team_id === t.id).map((m: any) => userMap.get(m.user_id) ?? "—"),
-      clients: clients.filter((c: any) => c.id === t.client_id).map((c: any) => c.name),
-    }));
-  }, [teams, memberships, clients, teamFilter, userMap]);
+    return teamsList.map((t: any) => {
+      const teamProjects = projects.filter((p: any) => p.team_id === t.id);
+      const clientIds = Array.from(new Set(teamProjects.map((p: any) => p.client_id).filter(Boolean)));
+      return {
+        id: t.id,
+        name: t.name,
+        members: memberships.filter((m: any) => m.team_id === t.id).map((m: any) => userMap.get(m.user_id) ?? "—"),
+        projects: teamProjects.map((p: any) => p.title as string),
+        clients: clientIds.map((cid: any) => clientMap.get(cid)?.name ?? "—"),
+      };
+    });
+  }, [teams, memberships, projects, teamFilter, userMap, clientMap]);
+
 
   // ==== Activities timeline ====
   const activities = useMemo<ActivityEvent[]>(() => {
