@@ -43,7 +43,7 @@ function TeamsCrud() {
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-team-picker"],
     queryFn: async () =>
-      (await supabase.from("internal_profiles" as any).select("id, full_name").order("full_name")).data as
+      (await supabase.from("internal_profiles").select("id, full_name").order("full_name")).data as
         | { id: string; full_name: string | null }[]
         | null ?? [],
   });

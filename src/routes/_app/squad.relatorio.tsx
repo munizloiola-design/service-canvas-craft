@@ -72,7 +72,7 @@ function SquadRelatorioPage() {
   const profilesQ = useQuery({
     queryKey: ["rel_profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("internal_profiles" as any).select("id, full_name").order("full_name");
+      const { data, error } = await supabase.from("internal_profiles").select("id, full_name").order("full_name");
       if (error) throw error;
       return data ?? [];
     },

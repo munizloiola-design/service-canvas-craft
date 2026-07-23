@@ -215,7 +215,7 @@ function StatsOverview() {
   });
   const { data: teamCount = 0 } = useQuery({
     queryKey: ["team-count"],
-    queryFn: async () => (await supabase.from("internal_profiles" as any).select("id", { count: "exact", head: true })).count ?? 0,
+    queryFn: async () => (await supabase.from("internal_profiles").select("id", { count: "exact", head: true })).count ?? 0,
   });
 
   const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));
@@ -450,7 +450,7 @@ function TeamLoad() {
   });
   const { data: members = [] } = useQuery({
     queryKey: ["profiles"],
-    queryFn: async () => (await supabase.from("internal_profiles" as any).select("id, full_name")).data ?? [],
+    queryFn: async () => (await supabase.from("internal_profiles").select("id, full_name")).data ?? [],
   });
 
   const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));

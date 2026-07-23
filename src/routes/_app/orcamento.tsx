@@ -21,7 +21,7 @@ function OrcamentoPage() {
   const qc = useQueryClient();
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-budget"],
-    queryFn: async () => (await supabase.from("internal_profiles" as any).select("id, full_name, hourly_cost").order("full_name")).data ?? [],
+    queryFn: async () => (await supabase.from("internal_profiles").select("id, full_name, hourly_cost").order("full_name")).data ?? [],
   });
   const { data: settings } = useQuery({
     queryKey: ["financial_settings"],

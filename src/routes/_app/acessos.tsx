@@ -379,7 +379,7 @@ function AssignTab() {
   const membersQ = useQuery<MemberProfile[]>({
     queryKey: ["team-members-for-assign"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("internal_profiles" as any).select("id, full_name").order("full_name");
+      const { data, error } = await supabase.from("internal_profiles").select("id, full_name").order("full_name");
       if (error) throw error;
       return (data ?? []) as MemberProfile[];
     },

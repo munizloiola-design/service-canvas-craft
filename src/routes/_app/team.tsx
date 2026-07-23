@@ -104,7 +104,7 @@ function TeamPage() {
     queryKey: ["team-overview"],
     queryFn: async () => {
       const [profilesRes, rolesRes, projectsRes, assigneesRes, statusesRes, transitionsRes, fnsRes, userFnsRes] = await Promise.all([
-        supabase.from("internal_profiles" as any).select("*").order("full_name"),
+        supabase.from("internal_profiles").select("*").order("full_name"),
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("projects").select("id, assigned_to, status_id, due_date, created_at"),
         supabase.from("project_assignees").select("project_id, user_id"),
