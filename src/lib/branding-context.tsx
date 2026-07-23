@@ -106,6 +106,11 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     } else {
       root.style.removeProperty("--brand-sidebar");
     }
+    if (branding.button_color) {
+      root.style.setProperty("--brand-button", hexToRgb(branding.button_color));
+    } else {
+      root.style.removeProperty("--brand-button");
+    }
 
     const t = branding.theme_json ?? {};
     const setVar = (k: string, v?: string) => { if (v) root.style.setProperty(k, v); };
