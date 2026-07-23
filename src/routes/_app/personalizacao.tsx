@@ -48,10 +48,15 @@ function PersonalizacaoPage() {
   const [primary, setPrimary] = useState(branding.primary_color);
   const [accent, setAccent] = useState(branding.accent_color);
   const [sidebar, setSidebar] = useState(branding.sidebar_color ?? branding.primary_color);
+  const [buttonColor, setButtonColor] = useState(branding.button_color ?? branding.primary_color);
   const [bgImage, setBgImage] = useState(branding.background_image ?? "");
   const [boxPos, setBoxPos] = useState<LoginBoxPosition>(branding.login_box_position);
   const [welcomeTitle, setWelcomeTitle] = useState(branding.welcome_title);
   const [welcomeSubtitle, setWelcomeSubtitle] = useState(branding.welcome_subtitle);
+  const [clientLabel, setClientLabel] = useState(branding.login_client_label);
+  const [clientDesc, setClientDesc] = useState(branding.login_client_desc);
+  const [agencyLabel, setAgencyLabel] = useState(branding.login_agency_label);
+  const [agencyDesc, setAgencyDesc] = useState(branding.login_agency_desc);
   const [suggestions, setSuggestions] = useState(branding.suggestions ?? "");
   const [theme, setTheme] = useState<Record<string, string>>({
     ...INVOME_PRESET,
