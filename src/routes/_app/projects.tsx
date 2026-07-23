@@ -522,24 +522,28 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
   const [clientId, setClientId] = useState<string>(editProject?.client_id ?? "");
   const [lastAutoFilledClient, setLastAutoFilledClient] = useState<string>(editProject?.client_id ?? "");
 
-  // Load the team assigned to the selected client
+  // Load the default team assigned to the selected client (client_teams)
   const { data: clientTeamId } = useQuery({
-    queryKey: ["client_team_id", clientId],
+    queryKey: ["client_default_team_id", clientId],
     enabled: !!clientId,
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase.from as any)("clients").select("team_id").eq("id", clientId).maybeSingle();
-      return (data?.team_id as string | null) ?? null;
+      const { data } = await (supabase.from as any)("client_teams")
+        .select("id")
+        .eq("client_id", clientId)
+        .eq("is_default", true)
+        .maybeSingle();
+      return (data?.id as string | null) ?? null;
     },
   });
 
-  // Load members of that team
+  // Load members of that client_team
   const { data: teamMemberIds = [] } = useQuery({
-    queryKey: ["team_members_for_team", clientTeamId],
+    queryKey: ["client_team_members_for_team", clientTeamId],
     enabled: !!clientTeamId,
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase.from as any)("team_members").select("user_id").eq("team_id", clientTeamId);
+      const { data } = await (supabase.from as any)("client_team_members").select("user_id").eq("team_id", clientTeamId);
       return ((data ?? []) as { user_id: string }[]).map((x) => x.user_id);
     },
   });
