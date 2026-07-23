@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, Navigate, Link, useRouterState, useNavigate } 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { usePermissions, type Resource } from "@/lib/permissions";
+import { useAccess } from "@/lib/access-context";
 import { useBranding } from "@/lib/branding-context";
 import { LayoutDashboard, FolderKanban, Users, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck, Facebook, Sparkles, Plug, Inbox, Palette, Menu, ChevronDown, Building2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ const navGroups: NavGroup[] = [
       { to: "/cadastros", label: "Cadastros", icon: Settings, resource: "cadastros" },
       { to: "/integracoes", label: "Integrações", icon: Plug, resource: "integracoes" },
       { to: "/personalizacao", label: "Personalização", icon: Palette, resource: "branding" },
+      { to: "/acessos", label: "Perfis e Acessos", icon: ShieldCheck, resource: "cadastros", masterOnly: true },
       { to: "/permissoes", label: "Permissões", icon: ShieldCheck, resource: "cadastros", masterOnly: true },
     ],
   },
