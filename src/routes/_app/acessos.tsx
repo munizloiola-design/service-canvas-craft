@@ -146,12 +146,32 @@ function HierarchyTab() {
       <Card>
         <CardHeader><CardTitle className="text-base">Áreas de Atuação</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex gap-2">
-            <Input placeholder="Ex.: Arte" value={newAreaName} onChange={(e) => setNewAreaName(e.target.value)} />
-            <Button onClick={() => newAreaName.trim() && createArea.mutate(newAreaName.trim())} disabled={createArea.isPending}>
-              <Plus className="h-4 w-4 mr-1" /> Nova
-            </Button>
-          </div>
+          <Dialog open={newAreaOpen} onOpenChange={setNewAreaOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full"><Plus className="h-4 w-4 mr-1" /> Nova área</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Nova área de atuação</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <Input
+                  autoFocus
+                  placeholder="Ex.: Arte"
+                  value={newAreaName}
+                  onChange={(e) => setNewAreaName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && newAreaName.trim()) createArea.mutate(newAreaName.trim()); }}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setNewAreaOpen(false)}>Cancelar</Button>
+                  <Button
+                    onClick={() => newAreaName.trim() && createArea.mutate(newAreaName.trim())}
+                    disabled={!newAreaName.trim() || createArea.isPending}
+                  >
+                    {createArea.isPending ? "Salvando..." : "Criar"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
           <div className="space-y-1">
             {areas.map((a) => {
               const active = a.id === activeArea;
