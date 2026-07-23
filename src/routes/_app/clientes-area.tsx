@@ -13,8 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Save, ExternalLink, Pencil, UserPlus, Users, Star } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Trash2, Save, ExternalLink, Pencil, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { inviteClientUser, listClientAccess, removeClientAccess } from "@/lib/client-access.functions";
 
