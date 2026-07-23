@@ -506,7 +506,8 @@ function RecurringIncomes() {
   const [editing, setEditing] = useState<any | null>(null);
   const { data: items = [] } = useQuery({ queryKey: ["recurring_incomes"], queryFn: async () => (await supabase.from("recurring_incomes").select("*, clients(name)").order("description")).data ?? [] });
   const { data: clients = [] } = useQuery({ queryKey: ["clients-mini"], queryFn: async () => (await supabase.from("clients").select("id, name").order("name")).data ?? [] });
-  const empty = { client_id: null as string | null, description: "", amount: 0, commission_pct: 0, recurrence: "monthly", next_due: new Date().toISOString().slice(0, 10), active: true };
+  const { data: incomeCats = [] } = useFinancialCategories("income");
+  const empty = { client_id: null as string | null, description: "", amount: 0, commission_pct: 0, recurrence: "monthly", next_due: new Date().toISOString().slice(0, 10), active: true, category_id: null as string | null };
   const [f, setF] = useState<any>(empty);
 
   const save = useMutation({
