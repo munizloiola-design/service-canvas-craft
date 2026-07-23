@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_app/tempo")({
     to: typeof s.to === "string" ? s.to : undefined,
     project: typeof s.project === "string" ? s.project : undefined,
     user: typeof s.user === "string" ? s.user : undefined,
+    team: typeof s.team === "string" ? s.team : undefined,
   }),
   head: () => ({
     meta: [
