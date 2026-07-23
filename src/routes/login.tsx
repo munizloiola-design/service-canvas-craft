@@ -193,7 +193,17 @@ function LoginPage() {
                       {busy ? "Entrando..." : "Entrar"}
                     </Button>
                   </div>
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                      onClick={() => setForgotOpen(true)}
+                    >
+                      Esqueci minha senha
+                    </button>
+                  </div>
                 </form>
+                <ForgotPasswordDialog open={forgotOpen} onOpenChange={setForgotOpen} />
                 <div className="mt-6 pt-4 border-t text-center text-xs text-muted-foreground">
                   Sem cadastro?{" "}
                   <Link to={kind === "cliente" ? "/cadastro/cliente" : "/cadastro/usuario"} className="text-primary hover:underline">
