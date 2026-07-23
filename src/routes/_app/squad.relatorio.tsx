@@ -95,8 +95,8 @@ function SquadRelatorioPage() {
   };
 
   const teamsQ = useQuery({
-    queryKey: ["rel_teams"],
-    queryFn: async () => (await supabase.from("teams").select("id, name").order("name")).data ?? [],
+    queryKey: ["rel_client_teams"],
+    queryFn: async () => (await supabase.from("client_teams").select("id, name, client_id").order("name")).data ?? [],
   });
   const teams = teamsQ.data ?? [];
   const profilesQ = useQuery({
@@ -105,13 +105,13 @@ function SquadRelatorioPage() {
   });
   const profiles = profilesQ.data ?? [];
   const membershipsQ = useQuery({
-    queryKey: ["rel_team_members"],
-    queryFn: async () => (await supabase.from("team_members").select("team_id, user_id")).data ?? [],
+    queryKey: ["rel_client_team_members"],
+    queryFn: async () => (await supabase.from("client_team_members").select("team_id, user_id")).data ?? [],
   });
   const memberships = membershipsQ.data ?? [];
   const clientsQ = useQuery({
     queryKey: ["rel_clients"],
-    queryFn: async () => (await supabase.from("clients").select("id, name, team_id")).data ?? [],
+    queryFn: async () => (await supabase.from("clients").select("id, name")).data ?? [],
   });
   const clients = clientsQ.data ?? [];
   const projectsQ = useQuery({
