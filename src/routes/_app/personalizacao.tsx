@@ -74,10 +74,15 @@ function PersonalizacaoPage() {
     setPrimary(branding.primary_color);
     setAccent(branding.accent_color);
     setSidebar(branding.sidebar_color ?? branding.primary_color);
+    setButtonColor(branding.button_color ?? branding.primary_color);
     setBgImage(branding.background_image ?? "");
     setBoxPos(branding.login_box_position);
     setWelcomeTitle(branding.welcome_title);
     setWelcomeSubtitle(branding.welcome_subtitle);
+    setClientLabel(branding.login_client_label);
+    setClientDesc(branding.login_client_desc);
+    setAgencyLabel(branding.login_agency_label);
+    setAgencyDesc(branding.login_agency_desc);
     setSuggestions(branding.suggestions ?? "");
     setTheme({ ...INVOME_PRESET, ...(branding.theme_json ?? {}) });
   }, [branding]);
