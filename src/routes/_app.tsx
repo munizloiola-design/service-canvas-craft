@@ -108,15 +108,27 @@ function AppLayout() {
 
   const SidebarContent = (
     <>
-      <div className="px-6 py-5 flex items-center gap-2 border-b border-sidebar-border">
-        {branding.logo_url ? (
-          <img src={branding.logo_url} alt="logo" className="h-8 w-8 rounded-md object-contain" />
-        ) : (
-          <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
-            <Briefcase className="h-4 w-4" />
-          </div>
-        )}
-        <span className="font-semibold truncate">{branding.brand_name}</span>
+      <div className="px-4 py-5 flex items-center justify-between border-b border-sidebar-border">
+        <div className="flex items-center gap-2 min-w-0">
+          {branding.logo_url ? (
+            <img src={branding.logo_url} alt="logo" className="h-8 w-8 rounded-md object-contain" />
+          ) : (
+            <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
+              <Briefcase className="h-4 w-4" />
+            </div>
+          )}
+          <span className="font-semibold truncate">{branding.brand_name}</span>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setDesktopCollapsed((v) => !v)}
+          className="hidden md:inline-flex h-8 w-8 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/60"
+          aria-label={desktopCollapsed ? "Mostrar menu" : "Esconder menu"}
+          title={desktopCollapsed ? "Mostrar menu" : "Esconder menu"}
+        >
+          {desktopCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </Button>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-2">
