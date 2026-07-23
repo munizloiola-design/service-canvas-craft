@@ -19,11 +19,16 @@ export type Database = {
           accent_color: string
           background_image: string | null
           brand_name: string
+          button_color: string | null
           contact_email: string | null
           contact_phone: string | null
           favicon_url: string | null
           id: boolean
+          login_agency_desc: string | null
+          login_agency_label: string | null
           login_box_position: string | null
+          login_client_desc: string | null
+          login_client_label: string | null
           logo_url: string | null
           primary_color: string
           sidebar_color: string | null
@@ -38,11 +43,16 @@ export type Database = {
           accent_color?: string
           background_image?: string | null
           brand_name?: string
+          button_color?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           favicon_url?: string | null
           id?: boolean
+          login_agency_desc?: string | null
+          login_agency_label?: string | null
           login_box_position?: string | null
+          login_client_desc?: string | null
+          login_client_label?: string | null
           logo_url?: string | null
           primary_color?: string
           sidebar_color?: string | null
@@ -57,11 +67,16 @@ export type Database = {
           accent_color?: string
           background_image?: string | null
           brand_name?: string
+          button_color?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           favicon_url?: string | null
           id?: boolean
+          login_agency_desc?: string | null
+          login_agency_label?: string | null
           login_box_position?: string | null
+          login_client_desc?: string | null
+          login_client_label?: string | null
           logo_url?: string | null
           primary_color?: string
           sidebar_color?: string | null
@@ -579,11 +594,13 @@ export type Database = {
           created_at: string
           created_by: string | null
           depreciation_pct_year: number
+          depreciation_per_use: number | null
           id: string
           name: string
           notes: string | null
           type: string | null
           updated_at: string
+          useful_life_months: number | null
         }
         Insert: {
           acquisition_date?: string
@@ -593,11 +610,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           depreciation_pct_year?: number
+          depreciation_per_use?: number | null
           id?: string
           name: string
           notes?: string | null
           type?: string | null
           updated_at?: string
+          useful_life_months?: number | null
         }
         Update: {
           acquisition_date?: string
@@ -607,11 +626,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           depreciation_pct_year?: number
+          depreciation_per_use?: number | null
           id?: string
           name?: string
           notes?: string | null
           type?: string | null
           updated_at?: string
+          useful_life_months?: number | null
         }
         Relationships: []
       }
@@ -639,10 +660,41 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_fixed: boolean
+          kind: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_fixed?: boolean
+          kind: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_fixed?: boolean
+          kind?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       financial_entries: {
         Row: {
           amount: number
           category: string | null
+          category_id: string | null
           client_id: string | null
           created_at: string
           created_by: string | null
@@ -659,6 +711,7 @@ export type Database = {
         Insert: {
           amount?: number
           category?: string | null
+          category_id?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -675,6 +728,7 @@ export type Database = {
         Update: {
           amount?: number
           category?: string | null
+          category_id?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -689,6 +743,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "financial_entries_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "financial_entries_client_id_fkey"
             columns: ["client_id"]
@@ -734,6 +795,7 @@ export type Database = {
           active: boolean
           amount: number
           category: string | null
+          category_id: string | null
           commission_pct: number
           created_at: string
           due_day: number | null
@@ -747,6 +809,7 @@ export type Database = {
           active?: boolean
           amount?: number
           category?: string | null
+          category_id?: string | null
           commission_pct?: number
           created_at?: string
           due_day?: number | null
@@ -760,6 +823,7 @@ export type Database = {
           active?: boolean
           amount?: number
           category?: string | null
+          category_id?: string | null
           commission_pct?: number
           created_at?: string
           due_day?: number | null
@@ -769,7 +833,15 @@ export type Database = {
           recurrence?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fixed_costs_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       function_field_visibility: {
         Row: {
@@ -911,6 +983,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          notes: string | null
           phone: string | null
           rejection_reason: string | null
           requested_role: Database["public"]["Enums"]["app_role"] | null
@@ -925,6 +998,7 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          notes?: string | null
           phone?: string | null
           rejection_reason?: string | null
           requested_role?: Database["public"]["Enums"]["app_role"] | null
@@ -939,6 +1013,7 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          notes?: string | null
           phone?: string | null
           rejection_reason?: string | null
           requested_role?: Database["public"]["Enums"]["app_role"] | null
@@ -1411,6 +1486,7 @@ export type Database = {
         Row: {
           active: boolean
           amount: number
+          category_id: string | null
           client_id: string | null
           commission_pct: number
           created_at: string
@@ -1424,6 +1500,7 @@ export type Database = {
         Insert: {
           active?: boolean
           amount?: number
+          category_id?: string | null
           client_id?: string | null
           commission_pct?: number
           created_at?: string
@@ -1437,6 +1514,7 @@ export type Database = {
         Update: {
           active?: boolean
           amount?: number
+          category_id?: string | null
           client_id?: string | null
           commission_pct?: number
           created_at?: string
@@ -1448,6 +1526,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "recurring_incomes_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recurring_incomes_client_id_fkey"
             columns: ["client_id"]
