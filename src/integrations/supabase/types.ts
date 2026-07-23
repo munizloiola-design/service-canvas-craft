@@ -2109,6 +2109,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_view_project: {
+        Args: { _project_id: string; _uid: string }
+        Returns: boolean
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
