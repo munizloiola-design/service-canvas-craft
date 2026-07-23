@@ -814,31 +814,77 @@ function CrmTab() {
       {total > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {STAGES.map((stage) => (
-            <Card key={stage} className="p-4 bg-card/95 backdrop-blur">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold">{stage}</h3>
-                <Badge variant="secondary">{byStage[stage].length}</Badge>
-              </div>
-              <div className="space-y-2">
-                {byStage[stage].length === 0 && (
-                  <p className="text-xs text-muted-foreground italic">Vazio</p>
-                )}
-                {byStage[stage].map((p) => (
-                  <ProspectCard
-                    key={p.id}
-                    client={p}
-                    onChange={(patch) => update.mutate({ id: p.id, ...patch })}
-                    onWin={() => update.mutate({ id: p.id, status: "ativo", prospect_stage: "Ganho" })}
-                    onLose={() => update.mutate({ id: p.id, status: "inativo", prospect_stage: "Perdido" })}
-                  />
-                ))}
-              </div>
-            </Card>
+            <StageColumn
+              key={stage}
+              stage={stage}
+              items={byStage[stage]}
+              onDropClient={(clientId) => {
+                const current = prospects.find((p) => p.id === clientId);
+                if (!current || current.prospect_stage === stage) return;
+                if (stage === "Ganho") {
+                  update.mutate({ id: clientId, status: "ativo", prospect_stage: "Ganho" });
+                } else if (stage === "Perdido") {
+                  update.mutate({ id: clientId, status: "inativo", prospect_stage: "Perdido" });
+                } else {
+                  update.mutate({ id: clientId, prospect_stage: stage });
+                }
+              }}
+              renderCard={(p) => (
+                <ProspectCard
+                  key={p.id}
+                  client={p}
+                  onChange={(patch) => update.mutate({ id: p.id, ...patch })}
+                  onWin={() => update.mutate({ id: p.id, status: "ativo", prospect_stage: "Ganho" })}
+                  onLose={() => update.mutate({ id: p.id, status: "inativo", prospect_stage: "Perdido" })}
+                />
+              )}
+            />
           ))}
         </div>
       )}
     </div>
   );
+}
+
+function StageColumn({
+  stage, items, onDropClient, renderCard,
+}: {
+  stage: Stage;
+  items: Client[];
+  onDropClient: (clientId: string) => void;
+  renderCard: (c: Client) => React.ReactNode;
+}) {
+  const [over, setOver] = useState(false);
+  return (
+    <Card
+      className={`p-4 bg-card/95 backdrop-blur transition-colors ${over ? "ring-2 ring-primary/60" : ""}`}
+      onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setOver(false);
+        const id = e.dataTransfer.getData("text/plain");
+        if (id) onDropClient(id);
+      }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold">{stage}</h3>
+        <Badge variant="secondary">{items.length}</Badge>
+      </div>
+      <div className="space-y-2 min-h-[40px]">
+        {items.length === 0 && (
+          <p className="text-xs text-muted-foreground italic">Arraste um card para cá</p>
+        )}
+        {items.map((p) => renderCard(p))}
+      </div>
+    </Card>
+  );
+}
+
+function buildWhatsAppUrl(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const withDdi = digits.startsWith("55") ? digits : `55${digits}`;
+  return `https://wa.me/${withDdi}`;
 }
 
 function ProspectCard({
