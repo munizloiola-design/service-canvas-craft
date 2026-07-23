@@ -23,10 +23,15 @@ export type Branding = {
   primary_color: string;
   accent_color: string;
   sidebar_color: string | null;
+  button_color: string | null;
   background_image: string | null;
   login_box_position: LoginBoxPosition;
   welcome_title: string;
   welcome_subtitle: string;
+  login_client_label: string;
+  login_client_desc: string;
+  login_agency_label: string;
+  login_agency_desc: string;
   suggestions: string | null;
   theme_json: ThemeJson | null;
 };
@@ -38,10 +43,15 @@ const DEFAULT: Branding = {
   primary_color: "#1a936f",
   accent_color: "#0f766e",
   sidebar_color: null,
+  button_color: null,
   background_image: null,
   login_box_position: "right",
   welcome_title: "Como deseja entrar?",
   welcome_subtitle: "Escolha o tipo de acesso.",
+  login_client_label: "Cliente",
+  login_client_desc: "Acesso ao portal de aprovações",
+  login_agency_label: "Agência",
+  login_agency_desc: "Colaboradores e gestores",
   suggestions: null,
   theme_json: null,
 };
