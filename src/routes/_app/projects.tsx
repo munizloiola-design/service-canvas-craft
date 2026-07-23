@@ -531,6 +531,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
   );
   const [clientId, setClientId] = useState<string>(editProject?.client_id ?? "");
   const [lastAutoFilledClient, setLastAutoFilledClient] = useState<string>(editProject?.client_id ?? "");
+  const [teamId, setTeamId] = useState<string>(editProject?.team_id ?? "");
 
   // Load the default team assigned to the selected client (client_teams)
   const { data: clientTeamId } = useQuery({
