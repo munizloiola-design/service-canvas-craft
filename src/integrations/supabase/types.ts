@@ -196,6 +196,73 @@ export type Database = {
         }
         Relationships: []
       }
+      client_team_members: {
+        Row: {
+          created_at: string
+          id: string
+          role_hint: string | null
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role_hint?: string | null
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role_hint?: string | null
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "client_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_teams: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_teams_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_users: {
         Row: {
           client_id: string
@@ -1025,6 +1092,7 @@ export type Database = {
           start_date: string | null
           status: Database["public"]["Enums"]["project_status"]
           status_id: string | null
+          team_id: string | null
           title: string
           updated_at: string
         }
@@ -1057,6 +1125,7 @@ export type Database = {
           start_date?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           status_id?: string | null
+          team_id?: string | null
           title: string
           updated_at?: string
         }
@@ -1089,6 +1158,7 @@ export type Database = {
           start_date?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           status_id?: string | null
+          team_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -1119,6 +1189,13 @@ export type Database = {
             columns: ["status_id"]
             isOneToOne: false
             referencedRelation: "workflow_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "client_teams"
             referencedColumns: ["id"]
           },
         ]
