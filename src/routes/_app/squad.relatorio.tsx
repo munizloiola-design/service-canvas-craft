@@ -689,18 +689,32 @@ function SquadRelatorioPage() {
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Clientes atribuídos</p>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Projetos do time</p>
                       <div className="flex flex-wrap gap-1">
-                        {t.clients.length === 0 ? <span className="text-sm text-muted-foreground">—</span> :
-                          t.clients.map((n: string, i: number) => (
+                        {t.projects.length === 0 ? <span className="text-sm text-muted-foreground">Nenhuma demanda vinculada.</span> :
+                          t.projects.slice(0, 12).map((n: string, i: number) => (
                             <span key={i} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-md">{n}</span>
                           ))}
+                        {t.projects.length > 12 && (
+                          <span className="text-xs text-muted-foreground">+{t.projects.length - 12}</span>
+                        )}
                       </div>
                     </div>
+                    {t.clients.length > 0 && (
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Clientes atendidos</p>
+                        <div className="flex flex-wrap gap-1">
+                          {t.clients.map((n: string, i: number) => (
+                            <span key={i} className="text-xs bg-muted px-2 py-0.5 rounded-md">{n}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </Card>
                 ))}
               </div>
             </TabsContent>
+
           </Tabs>
         </>
       )}
