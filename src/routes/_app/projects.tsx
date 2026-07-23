@@ -47,6 +47,7 @@ type Status = { id: string; name: string; color: string; sort_order: number };
 type Priority = { id: string; name: string; color: string; level: number };
 type Role = { id: string; name: string };
 type Profile = { id: string; full_name: string };
+type Team = { id: string; name: string };
 type Assignee = { id: string; project_id: string; user_id: string; role_id: string | null };
 
 const ALL_COLUMNS = [
@@ -113,6 +114,15 @@ function ProjectsPage() {
   });
   const { data: allAssignees = [] } = useQuery({
     queryKey: ["project_assignees"], queryFn: async () => (await supabase.from("project_assignees").select("*")).data as Assignee[] ?? [],
+  });
+  const { data: teams = [] } = useQuery({
+    queryKey: ["teams"],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from as any)("teams").select("id, name").order("name");
+      if (error) throw error;
+      return (data ?? []) as Team[];
+    },
   });
 
   const maps = useMemo(() => ({
