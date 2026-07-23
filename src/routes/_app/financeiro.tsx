@@ -24,6 +24,20 @@ export const Route = createFileRoute("/_app/financeiro")({ component: Financeiro
 
 const fmtBRL = (n: number) => (Number(n) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+type FinCat = { id: string; name: string; kind: "expense" | "income"; is_fixed: boolean };
+
+function useFinancialCategories(kind?: "expense" | "income") {
+  return useQuery({
+    queryKey: ["financial_categories", kind ?? "all"],
+    queryFn: async () => {
+      let q = supabase.from("financial_categories").select("id, name, kind, is_fixed").order("name");
+      if (kind) q = q.eq("kind", kind);
+      const { data } = await q;
+      return (data ?? []) as FinCat[];
+    },
+  });
+}
+
 function FinanceiroPage() {
   return (
     <div className="p-4 md:p-8 space-y-6">
