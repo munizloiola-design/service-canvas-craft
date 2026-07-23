@@ -78,12 +78,16 @@ function CadastrosPage() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex-wrap h-auto">
           {TABLES.map((t) => <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>)}
+          <TabsTrigger value="__emails__">Modelos de e-mail</TabsTrigger>
         </TabsList>
         {TABLES.map((t) => (
           <TabsContent key={t.key} value={t.key} className="mt-4">
             <CrudTable table={t} />
           </TabsContent>
         ))}
+        <TabsContent value="__emails__" className="mt-4">
+          <EmailTemplatesTab />
+        </TabsContent>
       </Tabs>
     </div>
   );
