@@ -1,27 +1,31 @@
-## Objetivo
+Atualmente, um usuário `membro` só enxerga uma demanda se estiver diretamente atribuído (owner ou `project_assignees`). Gestores veem tudo. Vamos adicionar duas exceções de visibilidade para membros comuns: por **equipe** e por **função**.
 
-Permitir editar o nome dos times no menu **Squad → Times**.
+### O que será alterado
 
-## Situação atual
+#### 1. Banco de dados
+- Criar função `public.can_view_project(_uid uuid, _project_id uuid)` como `SECURITY DEFINER` que retorna `true` quando:
+  - O usuário é gestor (`admin` / `gerente` / `admin_master`); ou
+  - O usuário é o responsável principal (`assigned_to`); ou
+  - O usuário está em `project_assignees`; ou
+  - O usuário pertence ao time (`team_members`) vinculado ao projeto (`projects.team_id`); ou
+  - O usuário possui uma função (`user_functions`) que coincide com alguma função/papel (`project_assignees.role_id`) exigida pelo projeto.
+- Substituir a política `projects_select_scoped` por `can_view_project(auth.uid(), projects.id)`.
 
-Em `src/routes/_app/squad.tsx`, o diálogo de time (`TeamDialog`) não expõe um campo para o nome:
+#### 2. Frontend
+- No formulário de criação/edição de projetos (`src/routes/_app/projects.tsx`), adicionar um campo **Equipe responsável** (`team_id`) que atualmente é sempre enviado como `null`.
+- No diálogo de atribuição de responsáveis, exibir um hint indicando que membros do time e usuários com a função correspondente também terão visibilidade da demanda.
+- Atualizar o `Project` type para garantir que `team_id` seja manipulado corretamente.
 
-- Linha 200: `teamName` é uma constante derivada de `editing?.name` ou de um timestamp para novos times.
-- O formulário salva sempre esse valor fixo, então não é possível renomear um time existente nem escolher o nome de um novo time.
+#### 3. Validação
+- Criar um projeto, vincular a uma equipe e atribuir uma função; verificar que um membro da equipe e um usuário com a função correspondente visualizam a demanda sem estar no `project_assignees`.
 
-O backend já suporta: a mutação em `onSubmit` faz `teams.update({ name })` quando `editing` existe, e `teams.insert({ name })` quando é novo. Falta apenas a UI.
+### Regras de acesso finais
 
-## Mudanças
+| Tipo de usuário | O que consegue ver |
+|-----------------|-------------------|
+| Gestor | Todas as demandas |
+| Cliente | Demandas do seu cliente |
+| Membro atribuído | Demandas onde é owner ou está em `project_assignees` |
+| Membro de equipe | Demandas cujo `team_id` pertence ao time dele |
+| Membro com função | Demandas que usem essa função em `project_assignees` |
 
-Arquivo único: `src/routes/_app/squad.tsx`
-
-1. Trocar a constante `teamName` por um `useState<string>` inicializado com `editing?.name ?? ""` (ou com o timestamp padrão só como placeholder do input).
-2. Adicionar um campo `<Label>Nome do time</Label><Input value={teamName} onChange=... />` no topo do formulário do `TeamDialog`.
-3. Validar no submit: se `teamName.trim()` estiver vazio, mostrar `toast.error("Informe o nome do time")` e não chamar `onSubmit`.
-4. Garantir que ao reabrir o diálogo (troca de `editing`) o estado do nome seja reiniciado — usar `key={editing?.id ?? "new"}` no `TeamDialog` no ponto de uso, ou um `useEffect` que ressincroniza quando `editing?.id` muda.
-
-Sem alterações de schema, RLS ou outros arquivos.
-
-&nbsp;
-
-Verifique porque o relatório de times ainda não está funcionando
