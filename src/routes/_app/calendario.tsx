@@ -68,7 +68,8 @@ function CalendarioPage() {
 
   const reschedule = useMutation({
     mutationFn: async ({ id, newDate }: { id: string; newDate: string }) => {
-      const { error } = await supabase.from("projects").update({ [dateField]: newDate }).eq("id", id);
+      const patch = (dateField === "due_date" ? { due_date: newDate } : { post_date: newDate });
+      const { error } = await supabase.from("projects").update(patch).eq("id", id);
       if (error) throw error;
     },
     onMutate: async ({ id, newDate }) => {
