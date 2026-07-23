@@ -266,6 +266,7 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
                 email: (fd.get("email") as string) || null,
                 phone: (fd.get("phone") as string) || null,
                 notes: (fd.get("notes") as string) || null,
+                team_id: teamId === "none" ? null : teamId,
                 status,
               });
             }}
@@ -275,6 +276,18 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
               <div className="space-y-1"><Label>Contato</Label><Input name="contact_name" defaultValue={editing?.contact_name ?? ""} /></div>
               <div className="space-y-1"><Label>Telefone</Label><Input name="phone" defaultValue={editing?.phone ?? ""} /></div>
               <div className="col-span-2 space-y-1"><Label>E-mail</Label><Input name="email" type="email" defaultValue={editing?.email ?? ""} /></div>
+              <div className="col-span-2 space-y-1">
+                <Label>Time responsável</Label>
+                <Select value={teamId} onValueChange={setTeamId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione um time" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem time</SelectItem>
+                    {teams.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1">
                 <Label>Status</Label>
                 <Select value={status} onValueChange={(v) => setStatus(v as ClientStatus)}>
@@ -289,7 +302,7 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
               <div className="col-span-2 space-y-1"><Label>Notas</Label><Textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} /></div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Times do cliente são gerenciados em <strong>Squad → Times de Cliente</strong>.
+              O time responsável determina quais membros enxergam este cliente e suas demandas.
             </p>
             <DialogFooter><Button type="submit" disabled={save.isPending}>{save.isPending ? "Salvando..." : "Salvar"}</Button></DialogFooter>
           </form>
