@@ -114,7 +114,7 @@ function HierarchyTab() {
       const { error } = await supabase.from("provider_specialties").insert({ area_id: areaId, name });
       if (error) throw error;
     },
-    onSuccess: () => { setNewSpecName(""); qc.invalidateQueries({ queryKey: ["provider_specialties"] }); toast.success("Especialidade criada"); },
+    onSuccess: () => { setNewSpecName(""); setNewSpecOpen(false); qc.invalidateQueries({ queryKey: ["provider_specialties"] }); toast.success("Especialidade criada"); },
     onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
