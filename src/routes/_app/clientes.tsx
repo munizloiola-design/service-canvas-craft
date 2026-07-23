@@ -82,6 +82,8 @@ type Client = {
   prospect_value: number | null;
   prospect_next_action: string | null;
   prospect_next_action_at: string | null;
+  team_id?: string | null;
+  teams?: { name: string } | null;
 };
 
 const STATUS_META: Record<ClientStatus, { label: string; className: string }> = {
@@ -95,24 +97,22 @@ function useClients() {
     queryKey: ["clients"],
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.from as any)("clients").select("*").order("name");
+      const { data, error } = await (supabase.from as any)("clients")
+        .select("*, teams(name)")
+        .order("name");
       if (error) throw error;
       return (data ?? []) as Client[];
     },
   });
 }
 
-function useDefaultClientTeams() {
+function useTeams() {
   return useQuery({
-    queryKey: ["client_teams_default"],
+    queryKey: ["teams", "options"],
     queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase.from as any)("client_teams").select("client_id, name, is_default");
-      const map = new Map<string, string>();
-      for (const r of (data ?? []) as Array<{ client_id: string; name: string; is_default: boolean }>) {
-        if (r.is_default) map.set(r.client_id, r.name);
-      }
-      return map;
+      const { data, error } = await supabase.from("teams").select("id, name").order("name");
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; name: string }>;
     },
   });
 }
@@ -120,11 +120,12 @@ function useDefaultClientTeams() {
 function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void }) {
   const qc = useQueryClient();
   const { data: rows = [] } = useClients();
-  const { data: teamNameByClient = new Map<string, string>() } = useDefaultClientTeams();
+  const { data: teams = [] } = useTeams();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
   const [status, setStatus] = useState<ClientStatus>("ativo");
+  const [teamId, setTeamId] = useState<string>("none");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ClientStatus | "all">("all");
 
@@ -166,8 +167,8 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
     onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
-  const openNew = () => { setEditing(null); setStatus("ativo"); setOpen(true); };
-  const openEdit = (c: Client) => { setEditing(c); setStatus(c.status); setOpen(true); };
+  const openNew = () => { setEditing(null); setStatus("ativo"); setTeamId("none"); setOpen(true); };
+  const openEdit = (c: Client) => { setEditing(c); setStatus(c.status); setTeamId(c.team_id ?? "none"); setOpen(true); };
 
   return (
     <Card className="p-4 md:p-6 bg-card/95 backdrop-blur">
@@ -215,7 +216,7 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
               </TableRow>
             )}
             {filtered.map((r) => {
-              const tn = teamNameByClient.get(r.id) ?? null;
+              const tn = r.teams?.name ?? null;
               return (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.name}</TableCell>
@@ -265,6 +266,7 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
                 email: (fd.get("email") as string) || null,
                 phone: (fd.get("phone") as string) || null,
                 notes: (fd.get("notes") as string) || null,
+                team_id: teamId === "none" ? null : teamId,
                 status,
               });
             }}
@@ -274,6 +276,18 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
               <div className="space-y-1"><Label>Contato</Label><Input name="contact_name" defaultValue={editing?.contact_name ?? ""} /></div>
               <div className="space-y-1"><Label>Telefone</Label><Input name="phone" defaultValue={editing?.phone ?? ""} /></div>
               <div className="col-span-2 space-y-1"><Label>E-mail</Label><Input name="email" type="email" defaultValue={editing?.email ?? ""} /></div>
+              <div className="col-span-2 space-y-1">
+                <Label>Time responsável</Label>
+                <Select value={teamId} onValueChange={setTeamId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione um time" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem time</SelectItem>
+                    {teams.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1">
                 <Label>Status</Label>
                 <Select value={status} onValueChange={(v) => setStatus(v as ClientStatus)}>
@@ -288,7 +302,7 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
               <div className="col-span-2 space-y-1"><Label>Notas</Label><Textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} /></div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Times do cliente são gerenciados em <strong>Squad → Times de Cliente</strong>.
+              O time responsável determina quais membros enxergam este cliente e suas demandas.
             </p>
             <DialogFooter><Button type="submit" disabled={save.isPending}>{save.isPending ? "Salvando..." : "Salvar"}</Button></DialogFooter>
           </form>
