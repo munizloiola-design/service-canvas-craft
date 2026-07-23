@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Briefcase, Building2, ArrowLeft } from "lucide-react";
 
@@ -20,6 +21,7 @@ function LoginPage() {
   const [kind, setKind] = useState<Kind | null>(null);
   const [busy, setBusy] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   if (!loading && user) return <Navigate to={isClient ? "/portal" : "/dashboard"} />;
 
