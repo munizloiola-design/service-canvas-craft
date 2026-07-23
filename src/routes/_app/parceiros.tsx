@@ -122,7 +122,7 @@ function ParceirosPage() {
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
+          <h1 className="text-2xl font-semibold flex items-center gap-2 text-gradient">
             <Handshake className="h-6 w-6" /> Parceiros
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Banco de contatos dos parceiros da agência.</p>

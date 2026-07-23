@@ -228,7 +228,7 @@ function SquadRelatorioPage() {
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold flex items-center gap-2">
+        <h1 className="text-2xl font-semibold flex items-center gap-2 text-gradient">
           <Users2 className="h-6 w-6" /> Relatório de Squad
         </h1>
         <p className="text-muted-foreground text-sm mt-1">Desempenho por equipe (usuários) e por time (agrupamento de clientes).</p>
