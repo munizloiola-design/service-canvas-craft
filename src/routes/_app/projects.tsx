@@ -27,8 +27,11 @@ export const Route = createFileRoute("/_app/projects")({
   }),
 });
 
+type DescriptionCard = { title: string; content: string };
 type Project = {
   id: string; title: string; description: string | null; notes: string | null;
+  description_cards: DescriptionCard[] | null;
+  final_link: string | null;
   client_id: string | null; client_name: string | null;
   media_type_id: string | null; status_id: string | null; priority_id: string | null;
   start_date: string | null; due_date: string | null; post_date: string | null;
