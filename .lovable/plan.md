@@ -1,48 +1,42 @@
-## Objetivo
-Criar um painel de análise de tempo alimentado pela view `public.time_logs_with_duration`, com gráficos e tabelas agregadas por projeto e por usuário, filtráveis por período.
+## Situação atual
 
-## Acesso
-- Somente Gerentes / Administradores (a view/RLS já limita o SELECT via `is_manager`/`is_master`).
-- Novo recurso de permissão `time_reports` (view) adicionado ao tipo `Resource` em `src/lib/permissions.tsx` e ao seed via migração em `role_permissions` para `admin` e `gerente`.
+Verificado no código:
+- **Aprovação de ticket** (`src/routes/_app/tickets.tsx`, linha 141-152): cria o projeto sem definir `status_id`, então cai no status padrão do banco — não vai para "Atendimento".
+- **Formulário de demandas** (`src/routes/_app/projects.tsx`, linha 672): ainda mostra "Observações internas" como `Textarea` simples, abaixo da Descrição. Não existe `description_cards` nem `final_link`, e o anexo ainda se chama "Anexo de referência".
 
-## Navegação
-- Adicionar item "Tempo" (ícone `Clock`) no grupo **Operação** de `src/routes/_app.tsx`, apontando para `/tempo`, visível apenas quando `can("time_reports","view")`.
+Ou seja, **nenhuma das 4 mudanças foi aplicada ainda**.
 
-## Rota
-Novo arquivo `src/routes/_app/tempo.tsx` (`createFileRoute("/_app/tempo")`), com `head()` próprio ("Relatório de tempo").
+## Plano
 
-Filtros no topo:
-- Período (data início / data fim) — padrão: últimos 30 dias. Estado sincronizado na URL via `validateSearch` (`from`, `to`).
-- Seletor de projeto (opcional) e de usuário (opcional).
-- Botão "Exportar CSV" das linhas agregadas visíveis.
+### 1. Ticket aprovado vai para "Atendimento" no Kanban
+Na mutation `approve` de `tickets.tsx`, buscar o `id` do `workflow_statuses` cujo nome seja "Atendimento" (fallback: primeiro status por `sort_order` caso não exista) e passar no `insert` do projeto como `status_id`.
 
-## Consulta de dados
-- Um único `useQuery` server-side que lê `time_logs_with_duration` filtrando `started_at >= from` e `ended_at <= to` (ou `ended_at IS NOT NULL`), trazendo `project_id`, `user_id`, `status_id`, `duration_seconds`, `started_at`, `ended_at`.
-- Consultas auxiliares em paralelo para nomes: `projects(id,title)`, `profiles(id,full_name)`, `workflow_statuses(id,name,color)`.
-- Agregações feitas no cliente em `useMemo` (volume esperado modesto): totais por projeto, por usuário, por dia, por etapa.
+### 2. Descrição em múltiplos cards
+- Migration: adicionar coluna `description_cards jsonb` em `public.projects` (array de `{ title, content }`).
+- No form (`projects.tsx`), substituir o `Textarea` único de Descrição por um componente dinâmico:
+  - Card 01 (título fixo incremental), campo de texto, botão "Adicionar novo card" abaixo do último.
+  - Cada clique adiciona "Card 02", "Card 03"… sempre com o botão logo abaixo do último card.
+  - Botão de remover em cada card (exceto o primeiro).
+- Salvar como `description_cards`. Manter `description` como concatenação dos cards para compatibilidade com views/kanban/portal atuais.
+- Ao editar um projeto existente sem `description_cards`, inicializar com um Card 01 contendo a `description` atual.
 
-## Layout do painel
-1. **KPIs (4 cards)**: Horas totais no período, Nº de sessões, Projetos ativos, Colaboradores ativos.
-2. **Gráfico de linha — Horas por dia** (Recharts `LineChart`) usando token `--chart-1`.
-3. **Gráfico de barras — Top 10 projetos por horas** (`BarChart` horizontal), token `--chart-2`.
-4. **Gráfico de barras — Horas por usuário** (`BarChart`), token `--chart-3`.
-5. **Gráfico donut — Distribuição por etapa** (`PieChart`) usando cores das `workflow_statuses`.
-6. **Tabela "Por projeto"**: Projeto · Sessões · Horas · Última atividade · Colaboradores distintos. Ordenável por horas.
-7. **Tabela "Por usuário"**: Usuário · Sessões · Horas · Projetos distintos · Média por sessão. Ordenável por horas.
-8. **Tabela detalhada (colapsável)**: uma linha por sessão (`started_at`, `ended_at`, projeto, usuário, etapa, duração).
+### 3. "Observações internas" → "Direção de arte", acima da Descrição
+- No form, renomear o label do campo `notes` para "Direção de arte" e mover o `Field` para **antes** do bloco de Descrição.
+- Ajustar labels correspondentes em qualquer visualização que exiba "Observações internas" (Kanban card, detalhe do projeto, portal do cliente) para "Direção de arte".
 
-Todas as tabelas respeitam os filtros do topo. Exportação CSV usa a agregação exibida (uma função utilitária local).
+### 4. "Anexo de referência" → "Arquivo ou link finalizado" + campo de link
+- Migration: adicionar coluna `final_link text` em `public.projects`.
+- No form, renomear a seção de upload de "Anexo de referência" para "Arquivo ou link finalizado" e adicionar um `Input` de URL (`final_link`) logo acima/abaixo do upload.
+- Salvar o link no `insert`/`update` do projeto.
+- Exibir o link (quando preenchido) no detalhe do projeto e no portal do cliente junto dos anexos.
 
 ## Detalhes técnicos
-- Formatação de duração: helper local `formatHours(seconds)` → `"12h 30m"` e `secondsToHours(seconds)` para valores numéricos nos gráficos.
-- Recharts usa as CSS variables `--chart-1..6` já existentes no tema, mantendo consistência com Dashboard/Financeiro.
-- Sessões em aberto (`ended_at IS NULL`) são excluídas das agregações mas contadas como "Sessões em andamento" em um pequeno badge.
-- Consulta com `.select("... ")` tipada como `string` via helper `sel()` para evitar o custo de parsing do tipo do Supabase (padrão do projeto).
-- Nenhuma alteração de schema além do seed de `role_permissions` para o novo recurso `time_reports`.
 
-## Passos de implementação
-1. Migração: `INSERT INTO role_permissions (role, resource, action)` para `('admin','time_reports','view')` e `('gerente','time_reports','view')` (idempotente com `ON CONFLICT DO NOTHING`).
-2. Atualizar `Resource` em `src/lib/permissions.tsx`.
-3. Adicionar item de menu em `src/routes/_app.tsx`.
-4. Criar `src/routes/_app/tempo.tsx` com filtros, KPIs, gráficos (LineChart, BarChart x2, PieChart) e tabelas descritas.
-5. Verificar build/typecheck.
+- **Migration** (uma única, aprovada antes das mudanças de código):
+  ```sql
+  ALTER TABLE public.projects
+    ADD COLUMN IF NOT EXISTS description_cards jsonb NOT NULL DEFAULT '[]'::jsonb,
+    ADD COLUMN IF NOT EXISTS final_link text;
+  ```
+- Arquivos alterados: `src/routes/_app/tickets.tsx`, `src/routes/_app/projects.tsx` (form + card do Kanban se exibir "Observações internas"), possivelmente `src/routes/portal/*` se exibir esses campos.
+- Sem mudanças em permissões nem em RLS.

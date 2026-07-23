@@ -983,7 +983,9 @@ export type Database = {
           created_by: string | null
           deliverable_path: string | null
           description: string | null
+          description_cards: Json
           due_date: string | null
+          final_link: string | null
           has_reference: boolean
           id: string
           media_type: Database["public"]["Enums"]["media_type"] | null
@@ -1013,7 +1015,9 @@ export type Database = {
           created_by?: string | null
           deliverable_path?: string | null
           description?: string | null
+          description_cards?: Json
           due_date?: string | null
+          final_link?: string | null
           has_reference?: boolean
           id?: string
           media_type?: Database["public"]["Enums"]["media_type"] | null
@@ -1043,7 +1047,9 @@ export type Database = {
           created_by?: string | null
           deliverable_path?: string | null
           description?: string | null
+          description_cards?: Json
           due_date?: string | null
+          final_link?: string | null
           has_reference?: boolean
           id?: string
           media_type?: Database["public"]["Enums"]["media_type"] | null

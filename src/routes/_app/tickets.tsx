@@ -138,6 +138,11 @@ function TicketsPage() {
   const approve = useMutation({
     mutationFn: async (t: TicketRequest) => {
       const clientToken = crypto.randomUUID().replace(/-/g, "");
+      const { data: atendimento } = await supabase
+        .from("workflow_statuses")
+        .select("id")
+        .ilike("name", "atendimento")
+        .maybeSingle();
       const { data: proj, error: pErr } = await supabase
         .from("projects").insert({
           title: t.title,
@@ -149,6 +154,7 @@ function TicketsPage() {
           has_reference: (t.reference_links?.length ?? 0) > 0,
           client_token: clientToken,
           created_by: user?.id,
+          status_id: atendimento?.id ?? null,
         }).select("id").single();
       if (pErr) throw pErr;
 

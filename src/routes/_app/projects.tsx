@@ -27,8 +27,11 @@ export const Route = createFileRoute("/_app/projects")({
   }),
 });
 
+type DescriptionCard = { title: string; content: string };
 type Project = {
   id: string; title: string; description: string | null; notes: string | null;
+  description_cards: DescriptionCard[] | null;
+  final_link: string | null;
   client_id: string | null; client_name: string | null;
   media_type_id: string | null; status_id: string | null; priority_id: string | null;
   start_date: string | null; due_date: string | null; post_date: string | null;
@@ -516,6 +519,20 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
       : [{ user_id: "", role_id: "" }]
   );
   const [hasRef, setHasRef] = useState(!!editProject?.has_reference);
+  const [descCards, setDescCards] = useState<DescriptionCard[]>(() => {
+    const existing = editProject?.description_cards;
+    if (Array.isArray(existing) && existing.length) return existing.map((c) => ({ title: c.title || "", content: c.content || "" }));
+    if (editProject?.description) return [{ title: "Card 01", content: editProject.description }];
+    return [{ title: "Card 01", content: "" }];
+  });
+  const [finalLink, setFinalLink] = useState<string>(editProject?.final_link ?? "");
+
+  const addCard = () =>
+    setDescCards((cur) => [...cur, { title: `Card ${String(cur.length + 1).padStart(2, "0")}`, content: "" }]);
+  const removeCard = (i: number) =>
+    setDescCards((cur) => cur.filter((_, j) => j !== i).map((c, k) => ({ ...c, title: `Card ${String(k + 1).padStart(2, "0")}` })));
+  const updateCard = (i: number, content: string) =>
+    setDescCards((cur) => cur.map((c, j) => (j === i ? { ...c, content } : c)));
 
   const { data: existingAttachments = [] } = useQuery({
     queryKey: ["attachments", editProject?.id, "edit"],
@@ -526,10 +543,16 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
   const save = useMutation({
     mutationFn: async (form: HTMLFormElement) => {
       const fd = new FormData(form);
+      const cleanCards = descCards
+        .map((c, i) => ({ title: c.title || `Card ${String(i + 1).padStart(2, "0")}`, content: c.content.trim() }))
+        .filter((c) => c.content);
+      const concatenated = cleanCards.map((c) => `${c.title}\n${c.content}`).join("\n\n");
       const base = {
         title: String(fd.get("title")),
-        description: String(fd.get("description") || "") || null,
+        description: concatenated || null,
+        description_cards: cleanCards,
         notes: String(fd.get("notes") || "") || null,
+        final_link: (finalLink.trim() || null),
         client_id: (fd.get("client_id") as string) || null,
         media_type_id: (fd.get("media_type_id") as string) || null,
         status_id: (fd.get("status_id") as string) || null,
@@ -668,8 +691,34 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
           ))}
         </div>
 
-        <Field label="Briefing / Descrição"><Textarea name="description" rows={3} defaultValue={editProject?.description ?? ""} /></Field>
-        <Field label="Observações internas"><Textarea name="notes" rows={2} defaultValue={editProject?.notes ?? ""} /></Field>
+        <Field label="Direção de arte"><Textarea name="notes" rows={2} defaultValue={editProject?.notes ?? ""} /></Field>
+
+        <div className="space-y-2">
+          <Label>Briefing / Descrição</Label>
+          <div className="space-y-3">
+            {descCards.map((card, i) => (
+              <div key={i} className="rounded-md border p-3 space-y-2 bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-muted-foreground">{card.title}</span>
+                  {descCards.length > 1 && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeCard(i)}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+                <Textarea
+                  rows={3}
+                  value={card.content}
+                  onChange={(e) => updateCard(i, e.target.value)}
+                  placeholder={`Descrição do ${card.title.toLowerCase()}...`}
+                />
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={addCard}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar novo card
+            </Button>
+          </div>
+        </div>
 
         {isEdit && existingAttachments.length > 0 && (
           <div className="space-y-2">
@@ -688,7 +737,13 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         )}
 
         <div className="space-y-2">
-          <Label>{isEdit ? "Adicionar novos anexos" : "Anexos de referência"}</Label>
+          <Label>{isEdit ? "Adicionar arquivo ou link finalizado" : "Arquivo ou link finalizado"}</Label>
+          <Input
+            type="url"
+            placeholder="https://... (link do arquivo finalizado)"
+            value={finalLink}
+            onChange={(e) => setFinalLink(e.target.value)}
+          />
           <Input type="file" multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
           {files.length > 0 && (
             <ul className="text-xs text-muted-foreground space-y-0.5">
@@ -696,6 +751,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
             </ul>
           )}
         </div>
+
 
         <DialogFooter>
           <Button type="submit" disabled={save.isPending}>{save.isPending ? "Salvando..." : (isEdit ? "Salvar alterações" : "Criar demanda")}</Button>
@@ -808,8 +864,30 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
             )}
           </div>
 
-          {project.description && canSee("description") && <div><Label className="text-xs text-muted-foreground">Descrição</Label><p className="mt-1 whitespace-pre-wrap">{project.description}</p></div>}
-          {project.notes && canSee("notes") && <div><Label className="text-xs text-muted-foreground">Observações</Label><p className="mt-1 whitespace-pre-wrap">{project.notes}</p></div>}
+          {project.notes && canSee("notes") && <div><Label className="text-xs text-muted-foreground">Direção de arte</Label><p className="mt-1 whitespace-pre-wrap">{project.notes}</p></div>}
+          {canSee("description") && (
+            (project.description_cards && project.description_cards.length > 0) ? (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Descrição</Label>
+                {project.description_cards.map((c, i) => (
+                  <div key={i} className="rounded-md border p-3 bg-muted/20">
+                    <div className="text-xs font-semibold text-muted-foreground mb-1">{c.title}</div>
+                    <p className="whitespace-pre-wrap text-sm">{c.content}</p>
+                  </div>
+                ))}
+              </div>
+            ) : project.description ? (
+              <div><Label className="text-xs text-muted-foreground">Descrição</Label><p className="mt-1 whitespace-pre-wrap">{project.description}</p></div>
+            ) : null
+          )}
+          {project.final_link && (
+            <div>
+              <Label className="text-xs text-muted-foreground">Arquivo ou link finalizado</Label>
+              <a href={project.final_link} target="_blank" rel="noreferrer" className="mt-1 text-info hover:underline inline-flex items-center gap-1 break-all">
+                <LinkIcon className="h-3 w-3" /> {project.final_link}
+              </a>
+            </div>
+          )}
 
           {project.reference_links?.length > 0 && canSee("reference_links") && (
             <div>
