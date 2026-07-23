@@ -1315,6 +1315,51 @@ export type Database = {
           },
         ]
       }
+      time_logs: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          project_id: string
+          started_at: string
+          status_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          project_id: string
+          started_at?: string
+          status_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          project_id?: string
+          started_at?: string
+          status_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_logs_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_functions: {
         Row: {
           created_at: string
@@ -1400,7 +1445,54 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      time_logs_with_duration: {
+        Row: {
+          created_at: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string | null
+          project_id: string | null
+          started_at: string | null
+          status_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          duration_seconds?: never
+          ended_at?: string | null
+          id?: string | null
+          project_id?: string | null
+          started_at?: string | null
+          status_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          duration_seconds?: never
+          ended_at?: string | null
+          id?: string | null
+          project_id?: string | null
+          started_at?: string | null
+          status_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_logs_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_manage_user_role: {
