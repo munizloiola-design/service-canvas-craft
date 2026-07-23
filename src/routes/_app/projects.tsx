@@ -675,7 +675,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Empresa / Cliente">
-            <Select value={clientId} onValueChange={(v) => { setClientId(v); setTeamId(""); }}>
+            <Select value={clientId} onValueChange={(v) => setClientId(v)}>
               <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
