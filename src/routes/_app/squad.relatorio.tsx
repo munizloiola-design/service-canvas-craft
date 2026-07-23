@@ -129,7 +129,7 @@ function SquadRelatorioPage() {
   const userMap = useMemo(() => new Map(profiles.map((p: any) => [p.id, p.full_name || "Sem nome"])), [profiles]);
   const projectMap = useMemo(() => new Map(projects.map((p: any) => [p.id, p])), [projects]);
   const clientMap = useMemo(() => new Map(clients.map((c: any) => [c.id, c])), [clients]);
-  const clientToTeam = useMemo(() => new Map(clients.map((c: any) => [c.id, c.team_id])), [clients]);
+  const teamClientId = useMemo(() => new Map(teams.map((t: any) => [t.id, t.client_id])), [teams]);
   const statusMap = useMemo(() => new Map(statuses.map((s: any) => [s.id, s.name])), [statuses]);
 
   const teamUserIds = useMemo(() => {
@@ -139,9 +139,10 @@ function SquadRelatorioPage() {
 
   const teamProjectIds = useMemo(() => {
     if (!teamFilter) return null;
-    const teamClientIds = new Set(clients.filter((c: any) => c.team_id === teamFilter).map((c: any) => c.id));
-    return projects.filter((p: any) => teamClientIds.has(p.client_id)).map((p: any) => p.id);
-  }, [clients, projects, teamFilter]);
+    const cid = teamClientId.get(teamFilter);
+    if (!cid) return [];
+    return projects.filter((p: any) => p.client_id === cid).map((p: any) => p.id);
+  }, [projects, teamFilter, teamClientId]);
 
   const teamMembersOptions = useMemo(() => {
     const ids = teamFilter
