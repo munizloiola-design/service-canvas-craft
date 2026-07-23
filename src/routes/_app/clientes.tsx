@@ -896,8 +896,18 @@ function ProspectCard({
   onLose: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [dragging, setDragging] = useState(false);
   return (
-    <div className="rounded-md border bg-background p-3 space-y-1">
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", client.id);
+        e.dataTransfer.effectAllowed = "move";
+        setDragging(true);
+      }}
+      onDragEnd={() => setDragging(false)}
+      className={`rounded-md border bg-background p-3 space-y-1 cursor-grab active:cursor-grabbing transition-opacity ${dragging ? "opacity-40" : ""}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">{client.name}</p>
@@ -905,9 +915,25 @@ function ProspectCard({
             {client.contact_name || client.email || "—"}
           </p>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(true)}>
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-1 shrink-0">
+          {client.phone && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+              title="Enviar WhatsApp"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(buildWhatsAppUrl(client.phone!), "_blank", "noopener,noreferrer");
+              }}
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(true)}>
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
       {client.prospect_value != null && (
         <p className="text-xs">
