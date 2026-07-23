@@ -96,7 +96,7 @@ function HierarchyTab() {
       const { error } = await supabase.from("provider_areas").insert({ name });
       if (error) throw error;
     },
-    onSuccess: () => { setNewAreaName(""); qc.invalidateQueries({ queryKey: ["provider_areas"] }); toast.success("Área criada"); },
+    onSuccess: () => { setNewAreaName(""); setNewAreaOpen(false); qc.invalidateQueries({ queryKey: ["provider_areas"] }); toast.success("Área criada"); },
     onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
