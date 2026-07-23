@@ -167,8 +167,8 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
     onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
-  const openNew = () => { setEditing(null); setStatus("ativo"); setOpen(true); };
-  const openEdit = (c: Client) => { setEditing(c); setStatus(c.status); setOpen(true); };
+  const openNew = () => { setEditing(null); setStatus("ativo"); setTeamId("none"); setOpen(true); };
+  const openEdit = (c: Client) => { setEditing(c); setStatus(c.status); setTeamId(c.team_id ?? "none"); setOpen(true); };
 
   return (
     <Card className="p-4 md:p-6 bg-card/95 backdrop-blur">
