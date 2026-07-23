@@ -197,7 +197,7 @@ function TeamDialog({
   onSubmit: (payload: { name: string; memberIds: string[] }) => void;
   saving: boolean;
 }) {
-  const teamName = editing?.name ?? `Novo time ${new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`;
+  const [teamName, setTeamName] = useState<string>(editing?.name ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set(initialMembers));
   const [query, setQuery] = useState("");
 
@@ -221,9 +221,21 @@ function TeamDialog({
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
-          onSubmit({ name: teamName.trim(), memberIds: [...selected] });
+          const name = teamName.trim();
+          if (!name) { toast.error("Informe o nome do time"); return; }
+          onSubmit({ name, memberIds: [...selected] });
         }}
       >
+        <div className="space-y-1">
+          <Label>Nome do time</Label>
+          <Input
+            value={teamName}
+            onChange={(e) => setTeamName(e.target.value)}
+            placeholder="Ex.: Squad Alpha"
+            autoFocus
+          />
+        </div>
+
         <div className="space-y-1">
           <Label>Membros</Label>
           <div className="relative">
