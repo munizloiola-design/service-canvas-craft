@@ -118,7 +118,7 @@
   --gradient-primary: linear-gradient(
     135deg,
     var(--primary),
-    color-mix(in oklab, var(--primary) 70%, var(--accent))
+    oklch(0.62 0.14 200)
   );
   --gradient-text: linear-gradient(90deg, var(--primary), oklch(0.62 0.14 210));
   --gradient-mesh:
