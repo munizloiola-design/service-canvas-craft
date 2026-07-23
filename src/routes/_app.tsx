@@ -193,9 +193,14 @@ function AppLayout() {
     </>
   );
 
+  const sidebarStyle = branding.sidebar_color
+    ? ({ backgroundColor: branding.sidebar_color } as React.CSSProperties)
+    : undefined;
+
   return (
     <div className="min-h-screen flex bg-background">
       <aside
+        style={sidebarStyle}
         className={`hidden md:flex shrink-0 border-r bg-sidebar text-sidebar-foreground flex-col overflow-hidden transition-[width] duration-200 ${
           desktopCollapsed ? "w-0 border-r-0" : "w-64"
         }`}
@@ -204,7 +209,10 @@ function AppLayout() {
       </aside>
 
       {/* Mobile topbar */}
-      <header className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-sidebar text-sidebar-foreground border-b border-sidebar-border flex items-center justify-between px-3">
+      <header
+        style={sidebarStyle}
+        className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-sidebar text-sidebar-foreground border-b border-sidebar-border flex items-center justify-between px-3"
+      >
         <div className="flex items-center gap-2">
           {branding.logo_url ? (
             <img src={branding.logo_url} alt="logo" className="h-7 w-7 rounded-md object-contain" />
@@ -219,7 +227,7 @@ function AppLayout() {
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="h-9 w-9"><Menu className="h-5 w-5" /></Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-72 bg-sidebar text-sidebar-foreground flex flex-col">
+          <SheetContent side="left" style={sidebarStyle} className="p-0 w-72 bg-sidebar text-sidebar-foreground flex flex-col">
             <SheetTitle className="sr-only">Menu</SheetTitle>
             {SidebarContent}
           </SheetContent>
