@@ -1,51 +1,39 @@
+## Situação atual (verificada)
 
-## Contexto
+Reli `src/routes/_app/acessos.tsx` e `src/routes/_app/permissoes.tsx` e consultei o banco. A tela `acessos.tsx` já está majoritariamente alinhada à nova hierarquia:
 
-O relatório em `src/routes/_app/squad.relatorio.tsx` hoje usa a estrutura antiga baseada em `client_teams` (times amarrados a 1 cliente) e `client_team_members`. A nova estrutura já existente no banco é:
+- Lê `provider_areas` e `provider_specialties` via TanStack Query.
+- Cria subfunção enviando `area_id` para `provider_specialties`.
+- Grava vínculo em `user_specialties` (`user_id`, `specialty_id`).
+- Mutations já têm `onError` com `console.error` + `toast.error(describeSupabaseError(...))`.
 
-- `teams` (id, name) — times standalone da agência
-- `team_members` (team_id, user_id) — vínculo com usuários
-- `projects.team_id` — demanda pertence diretamente a um time
+Ainda assim há pontos que causam "quebras silenciosas" e itens do pedido que faltam. Não confirmei qual erro exato aparece hoje (não há logs) — a 1ª etapa do plano é reproduzir e capturar o erro antes de mexer.
 
-Observação importante sobre a instrução do pedido: a coluna `clients.team_id` **não existe** (verificado no schema). O vínculo time↔demanda é direto por `projects.team_id`, sem passar por `clients`. Vou seguir esse caminho, que é o correto e cobre a intenção da instrução ("demandas do time").
+## O que fazer
 
-`src/lib/team.functions.ts` só contém utilitários de admin (delete/ban de usuários) — não tem nada relacionado ao relatório. Não precisa ser alterado.
+### 1. Reproduzir e diagnosticar (antes de refatorar)
+- Abrir `/acessos`, capturar console + network e identificar a query/mutation que quebra. Provável suspeito: aba "Atribuição de usuários" carrega `internal_profiles` (view) — se a view tiver mudado de schema, o `select("id, full_name")` falha em silêncio.
 
-## Mudanças em `src/routes/_app/squad.relatorio.tsx`
+### 2. Ajustes em `src/routes/_app/acessos.tsx`
+- **Dropdown agrupado por Área**: hoje a "Atribuição" usa checkboxes livres. Trocar por um `Select` agrupado por Área (usando `SelectGroup`/`SelectLabel`) listando as `provider_specialties`, mantendo os badges das já atribuídas e um botão "Remover" por badge. Mantém a semântica multi-select, mas com UX de "escolher cargo" pedida.
+- **Fallback de membros**: se `internal_profiles` falhar, cair para `profiles` filtrando por `has_role != 'cliente'` e logar o motivo.
+- **Toaster de erro nas queries**: já existe via `useEffect`; garantir que também dispare quando `data` volta vazio por permissão (checar `error?.code === '42501'`).
+- **Empty states amigáveis** quando não há áreas ou não há especialidades na área ativa (já existe texto simples — trocar por card com CTA "Criar primeira área/subfunção").
 
-1. **Fetch dos times e membros**
-   - `teamsQ`: `supabase.from("teams").select("id, name").order("name")`.
-   - `membershipsQ`: `supabase.from("team_members").select("team_id, user_id, profiles:internal_profiles(id, full_name, avatar_url)")` para já trazer nome/avatar em um join. Se a FK não estiver definida para o join implícito, cai para dois queries e monta o Map em memória.
-   - Remove `clientsQ` como dependência do agrupamento por time (mantém só para exibir nome do cliente em atividades).
+### 3. Ajustes em `src/routes/_app/permissoes.tsx`
+- Envolver as duas mutations (`toggle`, `toggleVisibility`) com `console.error` + `describeSupabaseError` (hoje só mostram `e.message` cru).
+- Trocar a fonte da aba "Visibilidade por função" de `collaborator_functions` para `provider_specialties` agrupadas por `provider_areas`, gravando em `specialty_field_visibility` — assim as duas telas passam a operar sobre a mesma hierarquia nova (hoje `permissoes.tsx` ainda usa a tabela legada `collaborator_functions` + `function_field_visibility`).
 
-2. **Projetos do time**
-   - `projectsQ` passa a selecionar também `team_id`: `select("id, title, client_id, team_id")`.
-   - Novo `teamProjectIds` = `projects.filter(p => p.team_id === teamFilter).map(p => p.id)` quando há filtro de time.
-   - `byTeam` agrupa `time_logs` pelo `team_id` da demanda (via `projectMap.get(l.project_id).team_id`), com bucket `"__none"` para logs de projetos sem time.
+### 4. Sem migrações de banco
+Nenhuma alteração de schema/RLS é necessária — as tabelas e políticas já existem e estão corretas para os fluxos acima.
 
-3. **Roster (aba "Times")**
-   - Para cada time, lista membros via `team_members` (nome + avatar + role_hint quando existir) e projetos ativos via `projects.team_id`, em vez de clientes.
-   - Substitui as células "Clientes" por "Projetos" (ou mostra ambos: nº de projetos e clientes distintos derivados de `projects.client_id`).
+## Detalhes técnicos
 
-4. **Filtros derivados**
-   - `teamUserIds` continua vindo de `team_members` filtrado pelo `teamFilter`.
-   - `teamMembersOptions` idem, agora com `full_name` do join.
-   - Filtros dos queries de logs/transitions/comments/attachments seguem usando `teamUserIds` e `teamProjectIds` — só muda a fonte deles.
-
-5. **Fallbacks / empty states**
-   - Bloco de onboarding já existe (`showOnboarding`). Vou reforçar:
-     - Card "Sem times cadastrados" com CTA para `/squad` quando `teams.length === 0`.
-     - Card "Time sem membros" quando um `teamFilter` está selecionado e `teamUserIds.length === 0`.
-     - Card "Time sem demandas" quando `teamProjectIds.length === 0`.
-     - Mensagem "Sem sessões / atividades no período" nas tabelas quando arrays finais estão vazios, em vez de tabela vazia.
-   - Todo `.map`/`.filter` sobre `teams`, `memberships`, `projects` fica protegido por `?? []`.
-
-6. **Limpeza**
-   - Remove `teamClientId` e `clientToDefaultTeam` (não fazem mais sentido).
-   - Ajusta `queryKey`s (`rel_teams`, `rel_team_members`) e a lista `queryErrors`.
-   - Mantém `internal_profiles` como fonte de nomes (já estava correto).
+- `Select` agrupado: `Select` do shadcn com `SelectGroup` + `SelectLabel` por área; opções = specialties dessa área.
+- Grid da aba assign continua rederizando um card por usuário (`internal_profiles`), mas o input principal vira o Select; checkbox grid fica como fallback avançado num `<details>` "Ver todas as especialidades".
+- Todos os `mutation.onError` seguem o padrão: `console.error("[acessos:<ctx>]", e); toast.error(describeSupabaseError(e));`.
+- Nenhum arquivo novo; apenas edições em `acessos.tsx` e `permissoes.tsx`.
 
 ## Fora de escopo
-
-- `src/lib/team.functions.ts`: sem alteração.
-- Outras telas que ainda usam `client_teams` (ex.: `/clientes`) permanecem como estão — este refactor é isolado ao relatório.
+- Alterações em `access-registry.ts`, `field-visibility.ts` ou nas RLS.
+- Remover a tabela legada `collaborator_functions` (usada por outras telas de cadastro).

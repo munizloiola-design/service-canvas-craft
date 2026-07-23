@@ -12,7 +12,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Settings, Trash2, Pencil } from "lucide-react";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel as SelSelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Settings, Trash2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { describeSupabaseError } from "@/lib/supabase-error";
 
@@ -376,33 +377,40 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
 
 function AssignTab() {
   const qc = useQueryClient();
+
   const membersQ = useQuery<MemberProfile[]>({
     queryKey: ["team-members-for-assign"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("internal_profiles").select("id, full_name").order("full_name");
-      if (error) throw error;
-      return (data ?? []) as MemberProfile[];
+      const primary = await supabase.from("internal_profiles").select("id, full_name").order("full_name");
+      if (!primary.error) return (primary.data ?? []) as MemberProfile[];
+      console.error("[acessos:assign:internal_profiles fallback]", primary.error);
+      const fb = await supabase.from("profiles").select("id, full_name").order("full_name");
+      if (fb.error) throw fb.error;
+      return (fb.data ?? []) as MemberProfile[];
     },
   });
   const members = membersQ.data ?? [];
+
   const areasQ = useQuery<Area[]>({
     queryKey: ["provider_areas"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("provider_areas").select("*").order("name");
+      const { data, error } = await supabase.from("provider_areas").select("*").order("sort_order").order("name");
       if (error) throw error;
       return (data ?? []) as Area[];
     },
   });
   const areas = areasQ.data ?? [];
+
   const specsQ = useQuery<Specialty[]>({
     queryKey: ["provider_specialties"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("provider_specialties").select("*").order("name");
+      const { data, error } = await supabase.from("provider_specialties").select("*").order("sort_order").order("name");
       if (error) throw error;
       return (data ?? []) as Specialty[];
     },
   });
   const specs = specsQ.data ?? [];
+
   const userSpecsQ = useQuery({
     queryKey: ["all_user_specialties"],
     queryFn: async () => {
@@ -422,54 +430,124 @@ function AssignTab() {
     }
   }, [membersQ.error, areasQ.error, specsQ.error, userSpecsQ.error]);
 
-  const toggle = useMutation({
-    mutationFn: async ({ userId, specId, on }: { userId: string; specId: string; on: boolean }) => {
-      if (on) {
+  const assign = useMutation({
+    mutationFn: async ({ userId, specId }: { userId: string; specId: string }) => {
+      try {
         const { error } = await supabase.from("user_specialties").insert({ user_id: userId, specialty_id: specId });
         if (error && !String(error.message).includes("duplicate")) throw error;
-      } else {
-        const { error } = await supabase.from("user_specialties").delete().eq("user_id", userId).eq("specialty_id", specId);
-        if (error) throw error;
+      } catch (e) {
+        console.error("[acessos:assign:insert]", e);
+        throw e;
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["all_user_specialties"] }),
-    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["all_user_specialties"] }); toast.success("Cargo atribuído"); },
+    onError: (e: unknown) => { console.error("[acessos:assign:onError]", e); toast.error(describeSupabaseError(e)); },
   });
 
-  const areaNameOf = (specId: string) => {
+  const unassign = useMutation({
+    mutationFn: async ({ userId, specId }: { userId: string; specId: string }) => {
+      try {
+        const { error } = await supabase.from("user_specialties").delete().eq("user_id", userId).eq("specialty_id", specId);
+        if (error) throw error;
+      } catch (e) {
+        console.error("[acessos:assign:delete]", e);
+        throw e;
+      }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["all_user_specialties"] }); toast.success("Cargo removido"); },
+    onError: (e: unknown) => { console.error("[acessos:assign:onError]", e); toast.error(describeSupabaseError(e)); },
+  });
+
+  const areaOf = (specId: string) => {
     const s = specs.find((x) => x.id === specId);
-    return areas.find((a) => a.id === s?.area_id)?.name ?? "";
+    return areas.find((a) => a.id === s?.area_id);
   };
+
+  const specsByArea = areas.map((a) => ({ area: a, specs: specs.filter((s) => s.area_id === a.id) }));
+
+  if (membersQ.isLoading || areasQ.isLoading || specsQ.isLoading) {
+    return <Card><CardContent className="p-6 text-sm text-muted-foreground">Carregando…</CardContent></Card>;
+  }
+
+  if (areas.length === 0 || specs.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center space-y-2">
+          <p className="text-sm text-muted-foreground">
+            {areas.length === 0
+              ? "Nenhuma Área cadastrada. Crie uma Área na aba anterior antes de atribuir cargos."
+              : "Nenhuma Subfunção cadastrada. Crie uma Subfunção dentro de uma Área."}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (members.length === 0) {
+    return <Card><CardContent className="p-6 text-sm text-muted-foreground">Nenhum membro interno encontrado.</CardContent></Card>;
+  }
 
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">Atribuir especialidades aos usuários</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">Atribuir cargos aos usuários</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         {members.map((m) => {
           const mine = userSpecs.filter((u) => u.user_id === m.id).map((u) => u.specialty_id);
+          const mineSet = new Set(mine);
           return (
-            <div key={m.id} className="border rounded-md p-3">
-              <div className="flex items-center justify-between mb-2">
+            <div key={m.id} className="border rounded-md p-3 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <p className="font-medium">{m.full_name ?? m.id}</p>
                 <div className="flex gap-1 flex-wrap">
+                  {mine.length === 0 && <span className="text-xs text-muted-foreground">Sem cargos atribuídos</span>}
                   {mine.map((sid) => {
                     const s = specs.find((x) => x.id === sid);
-                    return s ? <Badge key={sid} variant="secondary">{areaNameOf(sid)} · {s.name}</Badge> : null;
+                    if (!s) return null;
+                    const a = areaOf(sid);
+                    return (
+                      <Badge key={sid} variant="secondary" className="gap-1">
+                        {a?.name ? `${a.name} · ` : ""}{s.name}
+                        <button
+                          type="button"
+                          className="ml-1 opacity-70 hover:opacity-100"
+                          onClick={() => unassign.mutate({ userId: m.id, specId: sid })}
+                          title="Remover cargo"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    );
                   })}
                 </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {specs.map((s) => (
-                  <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox checked={mine.includes(s.id)} onCheckedChange={(v) => toggle.mutate({ userId: m.id, specId: s.id, on: !!v })} />
-                    <span className="truncate"><span className="text-muted-foreground">{areaNameOf(s.id)} ·</span> {s.name}</span>
-                  </label>
-                ))}
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground whitespace-nowrap">Adicionar cargo:</Label>
+                <Select
+                  value=""
+                  onValueChange={(val) => { if (val) assign.mutate({ userId: m.id, specId: val }); }}
+                >
+                  <SelectTrigger className="max-w-sm">
+                    <SelectValue placeholder="Selecionar subfunção…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {specsByArea.map(({ area, specs: aSpecs }) => {
+                      const available = aSpecs.filter((s) => !mineSet.has(s.id));
+                      if (available.length === 0) return null;
+                      return (
+                        <SelectGroup key={area.id}>
+                          <SelSelectLabel>{area.name}</SelSelectLabel>
+                          {available.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                          ))}
+                        </SelectGroup>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           );
         })}
-        {members.length === 0 && <p className="text-sm text-muted-foreground">Nenhum membro encontrado.</p>}
       </CardContent>
     </Card>
   );
