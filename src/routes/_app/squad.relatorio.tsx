@@ -234,6 +234,23 @@ function SquadRelatorioPage() {
         <p className="text-muted-foreground text-sm mt-1">Desempenho por equipe (usuários) e por time (agrupamento de clientes).</p>
       </header>
 
+      {queryErrors.length > 0 && (
+        <Card className="p-4 border-destructive/50 bg-destructive/5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="space-y-1 text-sm">
+              <p className="font-semibold text-destructive">Falha ao carregar dados do relatório</p>
+              <ul className="list-disc pl-4 text-destructive/90 space-y-0.5">
+                {queryErrors.map((q) => (
+                  <li key={q.label}><span className="font-mono">{q.label}</span>: {describeSupabaseError(q.error)}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </Card>
+      )}
+
+
       <Card className="p-4 grid gap-3 md:grid-cols-5">
         <div className="space-y-1.5">
           <Label>De</Label>
