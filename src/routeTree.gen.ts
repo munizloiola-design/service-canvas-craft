@@ -47,6 +47,7 @@ import { Route as AppAcessosRouteImport } from './routes/_app/acessos'
 import { Route as AppSquadIndexRouteImport } from './routes/_app/squad.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AppSquadRelatorioRouteImport } from './routes/_app/squad.relatorio'
+import { Route as AppClientesCrmRouteImport } from './routes/_app/clientes.crm'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
@@ -242,6 +243,11 @@ const AppSquadRelatorioRoute = AppSquadRelatorioRouteImport.update({
   path: '/relatorio',
   getParentRoute: () => AppSquadRoute,
 } as any)
+const AppClientesCrmRoute = AppClientesCrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
+  getParentRoute: () => AppClientesRoute,
+} as any)
 const LovableEmailTransactionalSendRoute =
   LovableEmailTransactionalSendRouteImport.update({
     id: '/lovable/email/transactional/send',
@@ -281,7 +287,7 @@ export interface FileRoutesByFullPath {
   '/aprovacoes': typeof AppAprovacoesRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
-  '/clientes': typeof AppClientesRoute
+  '/clientes': typeof AppClientesRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/diguinho': typeof AppDiguinhoRoute
   '/equipamentos': typeof AppEquipamentosRoute
@@ -306,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
   '/portal/': typeof PortalIndexRoute
+  '/clientes/crm': typeof AppClientesCrmRoute
   '/squad/relatorio': typeof AppSquadRelatorioRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/squad/': typeof AppSquadIndexRoute
@@ -324,7 +331,7 @@ export interface FileRoutesByTo {
   '/aprovacoes': typeof AppAprovacoesRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
-  '/clientes': typeof AppClientesRoute
+  '/clientes': typeof AppClientesRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/diguinho': typeof AppDiguinhoRoute
   '/equipamentos': typeof AppEquipamentosRoute
@@ -348,6 +355,7 @@ export interface FileRoutesByTo {
   '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
   '/portal': typeof PortalIndexRoute
+  '/clientes/crm': typeof AppClientesCrmRoute
   '/squad/relatorio': typeof AppSquadRelatorioRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/squad': typeof AppSquadIndexRoute
@@ -369,7 +377,7 @@ export interface FileRoutesById {
   '/_app/aprovacoes': typeof AppAprovacoesRoute
   '/_app/cadastros': typeof AppCadastrosRoute
   '/_app/calendario': typeof AppCalendarioRoute
-  '/_app/clientes': typeof AppClientesRoute
+  '/_app/clientes': typeof AppClientesRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/diguinho': typeof AppDiguinhoRoute
   '/_app/equipamentos': typeof AppEquipamentosRoute
@@ -394,6 +402,7 @@ export interface FileRoutesById {
   '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
   '/portal/': typeof PortalIndexRoute
+  '/_app/clientes/crm': typeof AppClientesCrmRoute
   '/_app/squad/relatorio': typeof AppSquadRelatorioRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_app/squad/': typeof AppSquadIndexRoute
@@ -440,6 +449,7 @@ export interface FileRouteTypes {
     | '/portal/pendentes'
     | '/v/$token'
     | '/portal/'
+    | '/clientes/crm'
     | '/squad/relatorio'
     | '/lovable/email/suppression'
     | '/squad/'
@@ -482,6 +492,7 @@ export interface FileRouteTypes {
     | '/portal/pendentes'
     | '/v/$token'
     | '/portal'
+    | '/clientes/crm'
     | '/squad/relatorio'
     | '/lovable/email/suppression'
     | '/squad'
@@ -527,6 +538,7 @@ export interface FileRouteTypes {
     | '/portal/pendentes'
     | '/v/$token'
     | '/portal/'
+    | '/_app/clientes/crm'
     | '/_app/squad/relatorio'
     | '/lovable/email/suppression'
     | '/_app/squad/'
@@ -824,6 +836,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSquadRelatorioRouteImport
       parentRoute: typeof AppSquadRoute
     }
+    '/_app/clientes/crm': {
+      id: '/_app/clientes/crm'
+      path: '/crm'
+      fullPath: '/clientes/crm'
+      preLoaderRoute: typeof AppClientesCrmRouteImport
+      parentRoute: typeof AppClientesRoute
+    }
     '/lovable/email/transactional/send': {
       id: '/lovable/email/transactional/send'
       path: '/lovable/email/transactional/send'
@@ -862,6 +881,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppClientesRouteChildren {
+  AppClientesCrmRoute: typeof AppClientesCrmRoute
+}
+
+const AppClientesRouteChildren: AppClientesRouteChildren = {
+  AppClientesCrmRoute: AppClientesCrmRoute,
+}
+
+const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
+  AppClientesRouteChildren,
+)
+
 interface AppSquadRouteChildren {
   AppSquadRelatorioRoute: typeof AppSquadRelatorioRoute
   AppSquadIndexRoute: typeof AppSquadIndexRoute
@@ -881,7 +912,7 @@ interface AppRouteChildren {
   AppAprovacoesRoute: typeof AppAprovacoesRoute
   AppCadastrosRoute: typeof AppCadastrosRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
-  AppClientesRoute: typeof AppClientesRoute
+  AppClientesRoute: typeof AppClientesRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
   AppDiguinhoRoute: typeof AppDiguinhoRoute
   AppEquipamentosRoute: typeof AppEquipamentosRoute
@@ -904,7 +935,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAprovacoesRoute: AppAprovacoesRoute,
   AppCadastrosRoute: AppCadastrosRoute,
   AppCalendarioRoute: AppCalendarioRoute,
-  AppClientesRoute: AppClientesRoute,
+  AppClientesRoute: AppClientesRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
   AppDiguinhoRoute: AppDiguinhoRoute,
   AppEquipamentosRoute: AppEquipamentosRoute,

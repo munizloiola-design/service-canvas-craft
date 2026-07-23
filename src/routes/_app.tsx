@@ -37,6 +37,7 @@ const navGroups: NavGroup[] = [
     label: "Cliente",
     items: [
       { to: "/clientes", label: "Clientes", icon: Building2, resource: "clientes_area" },
+      { to: "/clientes/crm", label: "CRM Prospecção", icon: Sparkles, resource: "clientes_area" },
     ],
   },
   {
