@@ -5,6 +5,8 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/lib/auth-context";
 import { deleteTeamMember, setUserBanned, listBannedUserIds } from "@/lib/team.functions";
+import { createTeamUser, regeneratePasswordLink } from "@/lib/approvals.functions";
+import { PasswordLinkModal } from "@/routes/_app/aprovacoes";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AlertCircle, Activity, Clock, Hourglass, ShieldAlert, Pencil, Upload, Trash2, Lock, Unlock } from "lucide-react";
+import { AlertCircle, Activity, Clock, Hourglass, ShieldAlert, Pencil, Upload, Trash2, Lock, Unlock, UserPlus, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 
 

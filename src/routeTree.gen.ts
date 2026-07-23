@@ -22,6 +22,7 @@ import { Route as PortalEstrategiaRouteImport } from './routes/portal/estrategia
 import { Route as PortalCalendarioRouteImport } from './routes/portal/calendario'
 import { Route as PortalAprovadosRouteImport } from './routes/portal/aprovados'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as CadastroUsuarioRouteImport } from './routes/cadastro.usuario'
 import { Route as CadastroClienteRouteImport } from './routes/cadastro.cliente'
 import { Route as AppTicketsRouteImport } from './routes/_app/tickets'
 import { Route as AppTempoRouteImport } from './routes/_app/tempo'
@@ -40,6 +41,7 @@ import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppClientesAreaRouteImport } from './routes/_app/clientes-area'
 import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
+import { Route as AppAprovacoesRouteImport } from './routes/_app/aprovacoes'
 import { Route as AppAcessosRouteImport } from './routes/_app/acessos'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AppSquadRelatorioRouteImport } from './routes/_app/squad.relatorio'
@@ -111,6 +113,11 @@ const PortalAprovadosRoute = PortalAprovadosRouteImport.update({
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
   path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CadastroUsuarioRoute = CadastroUsuarioRouteImport.update({
+  id: '/cadastro/usuario',
+  path: '/cadastro/usuario',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CadastroClienteRoute = CadastroClienteRouteImport.update({
@@ -203,6 +210,11 @@ const AppCadastrosRoute = AppCadastrosRouteImport.update({
   path: '/cadastros',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAprovacoesRoute = AppAprovacoesRouteImport.update({
+  id: '/aprovacoes',
+  path: '/aprovacoes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAcessosRoute = AppAcessosRouteImport.update({
   id: '/acessos',
   path: '/acessos',
@@ -254,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/ticket': typeof TicketRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/acessos': typeof AppAcessosRoute
+  '/aprovacoes': typeof AppAprovacoesRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
   '/clientes-area': typeof AppClientesAreaRoute
@@ -272,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/tempo': typeof AppTempoRoute
   '/tickets': typeof AppTicketsRoute
   '/cadastro/cliente': typeof CadastroClienteRoute
+  '/cadastro/usuario': typeof CadastroUsuarioRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
   '/portal/calendario': typeof PortalCalendarioRoute
@@ -293,6 +307,7 @@ export interface FileRoutesByTo {
   '/ticket': typeof TicketRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/acessos': typeof AppAcessosRoute
+  '/aprovacoes': typeof AppAprovacoesRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
   '/clientes-area': typeof AppClientesAreaRoute
@@ -311,6 +326,7 @@ export interface FileRoutesByTo {
   '/tempo': typeof AppTempoRoute
   '/tickets': typeof AppTicketsRoute
   '/cadastro/cliente': typeof CadastroClienteRoute
+  '/cadastro/usuario': typeof CadastroUsuarioRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
   '/portal/calendario': typeof PortalCalendarioRoute
@@ -335,6 +351,7 @@ export interface FileRoutesById {
   '/ticket': typeof TicketRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_app/acessos': typeof AppAcessosRoute
+  '/_app/aprovacoes': typeof AppAprovacoesRoute
   '/_app/cadastros': typeof AppCadastrosRoute
   '/_app/calendario': typeof AppCalendarioRoute
   '/_app/clientes-area': typeof AppClientesAreaRoute
@@ -353,6 +370,7 @@ export interface FileRoutesById {
   '/_app/tempo': typeof AppTempoRoute
   '/_app/tickets': typeof AppTicketsRoute
   '/cadastro/cliente': typeof CadastroClienteRoute
+  '/cadastro/usuario': typeof CadastroUsuarioRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
   '/portal/calendario': typeof PortalCalendarioRoute
@@ -377,6 +395,7 @@ export interface FileRouteTypes {
     | '/ticket'
     | '/unsubscribe'
     | '/acessos'
+    | '/aprovacoes'
     | '/cadastros'
     | '/calendario'
     | '/clientes-area'
@@ -395,6 +414,7 @@ export interface FileRouteTypes {
     | '/tempo'
     | '/tickets'
     | '/cadastro/cliente'
+    | '/cadastro/usuario'
     | '/email/unsubscribe'
     | '/portal/aprovados'
     | '/portal/calendario'
@@ -416,6 +436,7 @@ export interface FileRouteTypes {
     | '/ticket'
     | '/unsubscribe'
     | '/acessos'
+    | '/aprovacoes'
     | '/cadastros'
     | '/calendario'
     | '/clientes-area'
@@ -434,6 +455,7 @@ export interface FileRouteTypes {
     | '/tempo'
     | '/tickets'
     | '/cadastro/cliente'
+    | '/cadastro/usuario'
     | '/email/unsubscribe'
     | '/portal/aprovados'
     | '/portal/calendario'
@@ -457,6 +479,7 @@ export interface FileRouteTypes {
     | '/ticket'
     | '/unsubscribe'
     | '/_app/acessos'
+    | '/_app/aprovacoes'
     | '/_app/cadastros'
     | '/_app/calendario'
     | '/_app/clientes-area'
@@ -475,6 +498,7 @@ export interface FileRouteTypes {
     | '/_app/tempo'
     | '/_app/tickets'
     | '/cadastro/cliente'
+    | '/cadastro/usuario'
     | '/email/unsubscribe'
     | '/portal/aprovados'
     | '/portal/calendario'
@@ -499,6 +523,7 @@ export interface RootRouteChildren {
   TicketRoute: typeof TicketRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   CadastroClienteRoute: typeof CadastroClienteRoute
+  CadastroUsuarioRoute: typeof CadastroUsuarioRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   VTokenRoute: typeof VTokenRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -600,6 +625,13 @@ declare module '@tanstack/react-router' {
       path: '/email/unsubscribe'
       fullPath: '/email/unsubscribe'
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cadastro/usuario': {
+      id: '/cadastro/usuario'
+      path: '/cadastro/usuario'
+      fullPath: '/cadastro/usuario'
+      preLoaderRoute: typeof CadastroUsuarioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cadastro/cliente': {
@@ -728,6 +760,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCadastrosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/aprovacoes': {
+      id: '/_app/aprovacoes'
+      path: '/aprovacoes'
+      fullPath: '/aprovacoes'
+      preLoaderRoute: typeof AppAprovacoesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/acessos': {
       id: '/_app/acessos'
       path: '/acessos'
@@ -801,6 +840,7 @@ const AppSquadRouteWithChildren = AppSquadRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAcessosRoute: typeof AppAcessosRoute
+  AppAprovacoesRoute: typeof AppAprovacoesRoute
   AppCadastrosRoute: typeof AppCadastrosRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
   AppClientesAreaRoute: typeof AppClientesAreaRoute
@@ -822,6 +862,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAcessosRoute: AppAcessosRoute,
+  AppAprovacoesRoute: AppAprovacoesRoute,
   AppCadastrosRoute: AppCadastrosRoute,
   AppCalendarioRoute: AppCalendarioRoute,
   AppClientesAreaRoute: AppClientesAreaRoute,
@@ -870,6 +911,7 @@ const rootRouteChildren: RootRouteChildren = {
   TicketRoute: TicketRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   CadastroClienteRoute: CadastroClienteRoute,
+  CadastroUsuarioRoute: CadastroUsuarioRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   VTokenRoute: VTokenRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
