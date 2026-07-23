@@ -17,44 +17,59 @@ export type Database = {
       app_branding: {
         Row: {
           accent_color: string
+          background_image: string | null
           brand_name: string
           contact_email: string | null
           contact_phone: string | null
           favicon_url: string | null
           id: boolean
+          login_box_position: string | null
           logo_url: string | null
           primary_color: string
+          sidebar_color: string | null
           suggestions: string | null
           theme_json: Json
           updated_at: string
+          welcome_subtitle: string | null
+          welcome_title: string | null
           whatsapp: string | null
         }
         Insert: {
           accent_color?: string
+          background_image?: string | null
           brand_name?: string
           contact_email?: string | null
           contact_phone?: string | null
           favicon_url?: string | null
           id?: boolean
+          login_box_position?: string | null
           logo_url?: string | null
           primary_color?: string
+          sidebar_color?: string | null
           suggestions?: string | null
           theme_json?: Json
           updated_at?: string
+          welcome_subtitle?: string | null
+          welcome_title?: string | null
           whatsapp?: string | null
         }
         Update: {
           accent_color?: string
+          background_image?: string | null
           brand_name?: string
           contact_email?: string | null
           contact_phone?: string | null
           favicon_url?: string | null
           id?: boolean
+          login_box_position?: string | null
           logo_url?: string | null
           primary_color?: string
+          sidebar_color?: string | null
           suggestions?: string | null
           theme_json?: Json
           updated_at?: string
+          welcome_subtitle?: string | null
+          welcome_title?: string | null
           whatsapp?: string | null
         }
         Relationships: []

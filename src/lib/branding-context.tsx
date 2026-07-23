@@ -14,12 +14,19 @@ export type ThemeJson = {
   chart6?: string;
 };
 
+export type LoginBoxPosition = "left" | "center" | "right";
+
 export type Branding = {
   brand_name: string;
   logo_url: string | null;
   favicon_url: string | null;
   primary_color: string;
   accent_color: string;
+  sidebar_color: string | null;
+  background_image: string | null;
+  login_box_position: LoginBoxPosition;
+  welcome_title: string;
+  welcome_subtitle: string;
   suggestions: string | null;
   theme_json: ThemeJson | null;
 };
@@ -30,6 +37,11 @@ const DEFAULT: Branding = {
   favicon_url: null,
   primary_color: "#1a936f",
   accent_color: "#0f766e",
+  sidebar_color: null,
+  background_image: null,
+  login_box_position: "right",
+  welcome_title: "Como deseja entrar?",
+  welcome_subtitle: "Escolha o tipo de acesso.",
   suggestions: null,
   theme_json: null,
 };
@@ -53,10 +65,18 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   const load = async () => {
     const { data } = await supabase
       .from("app_branding")
-      .select("brand_name, logo_url, favicon_url, primary_color, accent_color, suggestions, theme_json")
+      .select("brand_name, logo_url, favicon_url, primary_color, accent_color, sidebar_color, background_image, login_box_position, welcome_title, welcome_subtitle, suggestions, theme_json")
       .eq("id", true)
       .maybeSingle();
-    if (data) setBranding(data as Branding);
+    if (data) {
+      setBranding({
+        ...DEFAULT,
+        ...(data as Partial<Branding>),
+        login_box_position: ((data as any).login_box_position ?? "right") as LoginBoxPosition,
+        welcome_title: (data as any).welcome_title ?? DEFAULT.welcome_title,
+        welcome_subtitle: (data as any).welcome_subtitle ?? DEFAULT.welcome_subtitle,
+      });
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -67,6 +87,11 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     root.style.setProperty("--brand-primary", hexToRgb(branding.primary_color));
     root.style.setProperty("--brand-accent", hexToRgb(branding.accent_color));
+    if (branding.sidebar_color) {
+      root.style.setProperty("--brand-sidebar", hexToRgb(branding.sidebar_color));
+    } else {
+      root.style.removeProperty("--brand-sidebar");
+    }
 
     const t = branding.theme_json ?? {};
     const setVar = (k: string, v?: string) => { if (v) root.style.setProperty(k, v); };

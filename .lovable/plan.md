@@ -1,144 +1,41 @@
-## Escopo
+## Objetivo
+Centralizar toda personalização visual em uma aba única **"Identidade & Aparência"** (Configurações → exclusiva para Admins), adicionar novos campos de branding (cor do menu, fundo do login, posição da caixa, textos de boas-vindas) e aplicar essa estilização em volta da tela de login **sem alterar** o fluxo de 2 passos (Cliente/Agência → formulário).
 
-1. **Tela de login com escolha Cliente / Agência** (dois cartões grandes)
-2. **Auto-cadastro público** para Cliente e Usuário — **agora com fluxo de aprovação por Admin**
-3. **Criar usuário na Equipe** com link para definir senha
-4. **Dashboard no portal do Cliente + botão WhatsApp** quando não puder editar o estratégico
-5. **Admin visualiza qualquer portal de cliente**
-6. **Aba "Contato da empresa"** em Cadastros (WhatsApp de atendimento)
-7. **Auto-registro de permissões** para novos recursos
+## 1. Banco de dados (migration)
+Adicionar colunas em `app_branding`:
+- `sidebar_color text` (default igual à primary)
+- `background_image text null` (URL do bucket `brand-assets`)
+- `login_box_position text check in ('left','center','right') default 'right'`
+- `welcome_title text default 'Como deseja entrar?'`
+- `welcome_subtitle text default 'Escolha o tipo de acesso.'`
 
----
+Atualizar `BrandingSchema` em `src/lib/branding.functions.ts` e o tipo `Branding` em `src/lib/branding-context.tsx` para incluir esses campos, expor variáveis CSS `--brand-sidebar`, e persistir os novos valores.
 
-## 1. Login (`src/routes/login.tsx`)
+## 2. Aba "Identidade & Aparência"
+Refatorar `src/routes/_app/personalizacao.tsx` consolidando tudo em **uma única aba** com seções (usando `Card` + separadores, removendo as sub-abas Marca / Tema / Emails para uma tela única — emails ficam em uma sub-seção ao final):
 
-- Estado inicial: dois cartões grandes lado a lado — **Cliente** (`Building2`) e **Agência** (`Briefcase`), nome abaixo do ícone.
-- Ao clicar, mostra o formulário de login correspondente com botão "Voltar" para trocar.
-- Remove aba "Criar conta".
-- Rodapé do card: links **"Cadastrar novo cliente"** → `/cadastro/cliente` e **"Cadastrar novo usuário"** → `/cadastro/usuario`.
-- Valida papel após `signIn`:
-  - Botão Cliente → só se `isClient`; senão `signOut` + toast.
-  - Botão Agência → só se não for `isClient`; senão `signOut` + toast.
-- Se conta ainda **pendente de aprovação** → `signOut` + toast "Cadastro aguardando aprovação do administrador".
-- Redirect: cliente → `/portal`, agência → `/dashboard`.
+- **Marca & Ícones**: nome do sistema, upload de logo, upload de favicon.
+- **Paleta de Cores**: color pickers para Primária, Destaque, Menu Lateral + paleta de gráficos (mantida).
+- **Tela de Login**: upload de imagem de fundo, seletor de posição da caixa (`left`/`center`/`right` via `RadioGroup` com preview), inputs de `welcome_title` e `welcome_subtitle`.
+- **Templates de e-mail**: mantidos como accordion no final.
 
-## 2. Cadastros públicos com aprovação
+Restringir acesso a admins (já filtrado por `can("branding","manage")`).
 
-**Nova tabela** `pending_registrations` (não cria auth user até aprovação):
+## 3. Refatoração visual do login (fluxo intacto)
+Em `src/routes/login.tsx`, **não mexer** na lógica de `kind`, `onSignIn`, validação de papel ou navegação. Apenas envolver o layout:
 
-- Campos: `id`, `type` (`cliente` | `usuario`), `full_name`, `email`, `password_hash` (bcrypt), `company_name` (opcional para cliente), `phone`, `status` (`pending` | `approved` | `rejected`), `requested_role` (para usuário), `reviewed_by`, `reviewed_at`, `rejection_reason`, `created_at`.
-- RLS: qualquer um pode inserir (anon); apenas admin/gerente lê/atualiza.
+- Ler `branding` de `useBranding()`.
+- Container raiz: `min-h-screen bg-cover bg-center` com `style={{ backgroundImage: url(branding.background_image) }}` como fallback ao gradiente atual quando ausente.
+- Substituir o grid `lg:grid-cols-2` por um flex que respeita `login_box_position` (`justify-start | justify-center | justify-end`). O painel verde esquerdo passa a ser opcional (some quando há `background_image`).
+- Na etapa 1, substituir "Como deseja entrar?" / "Escolha o tipo de acesso." pelos valores dinâmicos `welcome_title` / `welcome_subtitle`.
+- Aplicar `--brand-primary` via classes existentes (`text-primary`, `bg-primary`) nos ícones dos ChoiceCards, botão "Entrar" e links — já vinculados ao token, então basta garantir que os `Icon` usem `text-primary`.
 
-**Novas rotas públicas**:
-- `src/routes/cadastro.cliente.tsx`: nome, email, empresa, senha → cria linha em `pending_registrations` via server fn pública `submitPublicRegistration` (zod, hash bcrypt server-side, sem `requireSupabaseAuth`). Toast: "Cadastro enviado! Você receberá acesso após aprovação."
-- `src/routes/cadastro.usuario.tsx`: nome, email, senha → mesmo fluxo com `type='usuario'`.
+## 4. Aplicação global
+- `BrandingProvider` já injeta `--brand-primary`/`--brand-accent`; adicionar `--brand-sidebar` e aplicar no sidebar do `src/routes/_app.tsx` (classe `bg-[hsl(var(--brand-sidebar))]` ou style inline).
+- Favicon já é atualizado via `<link rel="icon">` — nenhuma mudança extra.
 
-**Nova tela de aprovação** `src/routes/_app/aprovacoes.tsx` (item no menu, permissão `aprovacoes.view`):
-- Lista pendentes com abas "Clientes" / "Usuários".
-- Ações: **Aprovar** (chama `approveRegistration` — cria auth user via `supabaseAdmin.auth.admin.createUser` com a senha original, insere `profiles`/`clients`/`client_users`/`user_roles` conforme tipo, marca `approved`) ou **Rejeitar** com motivo.
-- Badge no menu com contagem de pendentes.
-
-## 3. Criar usuário na Equipe
-
-- Botão "Novo usuário" (Admin) em `src/routes/_app/team.tsx`: nome, email, função.
-- Server fn `createTeamUser` (`supabaseAdmin.auth.admin.createUser` com senha aleatória autoconfirmada + `admin.generateLink({ type: 'recovery' })`).
-- Salva `password_setup_link` em `profiles`; botão "Copiar link" e "Gerar novo link" no card (Admin).
-
-## 4. Portal do Cliente
-
-- `src/routes/portal/index.tsx`: converter em **dashboard** com KPIs (projetos totais, em atendimento, aprovados no mês, pendentes) filtrados por `client_id`.
-- `src/routes/portal/estrategia.tsx`: mantém read-only para cliente. Botão discreto **"Solicitar alteração"** abrindo `https://wa.me/<num>?text=...` usando WhatsApp de `app_branding`. Admin (impersonado) vê link para edição em `/clientes-area`.
-
-## 5. Admin visualiza portais
-
-- Botão "Abrir portal" por cliente em `src/routes/_app/clientes-area.tsx`.
-- Nova rota `src/routes/portal.$clientId.tsx` (gate `isMaster || isManager`) reaproveitando layout com `clientId` da URL.
-
-## 6. Contato da empresa (Cadastros)
-
-- Nova aba "Contato" em `src/routes/_app/cadastros.tsx`: WhatsApp, email, telefone — persistidos em `app_branding` (colunas novas). Expostos via `useBranding()`.
-
-## 7. Registro automático de permissões
-
-- `src/lib/access-registry.ts`: adicionar `portal_dashboard`, `portal_estrategia`, `contato_empresa`, `aprovacoes`.
-- Seed idempotente em migration para inserir `role_permissions` correspondentes.
-- Convenção documentada: todo novo menu/submenu → entrada em `access-registry.ts` + seed permission na mesma mudança.
-
----
-
-## Migrations (SQL)
-
-```sql
--- pending_registrations
-CREATE TABLE public.pending_registrations (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  type text NOT NULL CHECK (type IN ('cliente','usuario')),
-  full_name text NOT NULL,
-  email text NOT NULL,
-  password_hash text NOT NULL,
-  company_name text,
-  phone text,
-  requested_role app_role,
-  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
-  rejection_reason text,
-  reviewed_by uuid REFERENCES auth.users(id),
-  reviewed_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-GRANT SELECT, UPDATE ON public.pending_registrations TO authenticated;
-GRANT INSERT ON public.pending_registrations TO anon, authenticated;
-GRANT ALL ON public.pending_registrations TO service_role;
-ALTER TABLE public.pending_registrations ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Anyone can submit" ON public.pending_registrations FOR INSERT TO anon, authenticated WITH CHECK (status = 'pending');
-CREATE POLICY "Managers view" ON public.pending_registrations FOR SELECT TO authenticated USING (public.is_manager(auth.uid()));
-CREATE POLICY "Managers update" ON public.pending_registrations FOR UPDATE TO authenticated USING (public.is_manager(auth.uid()));
-
--- profiles: link de senha
-ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS password_setup_link text,
-  ADD COLUMN IF NOT EXISTS password_setup_expires_at timestamptz;
-
--- app_branding: contato
-ALTER TABLE public.app_branding
-  ADD COLUMN IF NOT EXISTS whatsapp text,
-  ADD COLUMN IF NOT EXISTS contact_email text,
-  ADD COLUMN IF NOT EXISTS contact_phone text;
-
--- role_permissions seed
-INSERT INTO public.role_permissions (role, resource, action) VALUES
-  ('cliente','portal_dashboard','view'),
-  ('cliente','portal_estrategia','view'),
-  ('admin','portal_dashboard','view'),('admin','contato_empresa','view'),('admin','contato_empresa','manage'),
-  ('admin','aprovacoes','view'),('admin','aprovacoes','manage'),
-  ('gerente','aprovacoes','view'),('gerente','aprovacoes','manage'),
-  ('gerente','portal_dashboard','view')
-ON CONFLICT DO NOTHING;
-```
-
----
-
-## Arquivos afetados
-
-- `src/routes/login.tsx` (reescrever)
-- `src/routes/cadastro.cliente.tsx`, `src/routes/cadastro.usuario.tsx` (novos)
-- `src/lib/auth-public.functions.ts` (novo — `submitPublicRegistration`)
-- `src/lib/approvals.functions.ts` (novo — `listPending`, `approveRegistration`, `rejectRegistration`)
-- `src/routes/_app/aprovacoes.tsx` (novo)
-- `src/routes/_app.tsx` (novo item de menu "Aprovações" com badge de contagem)
-- `src/routes/_app/team.tsx` + `src/lib/team.functions.ts` (novo usuário + link)
-- `src/routes/portal/index.tsx` (dashboard)
-- `src/routes/portal/estrategia.tsx` (botão WhatsApp)
-- `src/routes/portal.$clientId.tsx` (novo, impersonation admin)
-- `src/routes/_app/clientes-area.tsx` (botão "Abrir portal")
-- `src/routes/_app/cadastros.tsx` (aba Contato)
-- `src/lib/branding-context.tsx`, `src/lib/branding.functions.ts` (novos campos)
-- `src/lib/access-registry.ts` (novos resources)
-- Nova migration em `supabase/migrations/`
-
----
-
-## Considerações
-
-- Senha do cadastro público é armazenada **hasheada** (bcrypt via server fn) até aprovação; ao aprovar, `supabaseAdmin.auth.admin.createUser` recebe a senha original — como só temos o hash, alternativa: **guardar a senha criptografada com AES usando `SUPABASE_SERVICE_ROLE_KEY` como chave** ou pedir que o usuário defina senha só após aprovação (via link enviado). **Recomendação final**: não pedir senha no cadastro público — apenas dados de contato. Ao aprovar, cria auth user e gera link de definição de senha (mesmo fluxo do item 3). Confirme se prefere essa abordagem.
-- Badge de "Aprovações pendentes" no menu principal atualiza a cada ~30s via query.
-- Bloqueio de login para conta pendente: checar se email existe em `pending_registrations` com `status='pending'` (nenhum auth user existe ainda), então erro de credenciais será natural.
+## Detalhes técnicos
+- Uploads reutilizam o bucket `brand-assets` (já público), pasta `background/`.
+- Nenhuma alteração no fluxo de auth, roles ou rotas.
+- Migration inclui GRANTs? `app_branding` já existe; apenas `ALTER TABLE ADD COLUMN`, sem novos GRANTs.
+- Types regenerados após aprovação da migration.
