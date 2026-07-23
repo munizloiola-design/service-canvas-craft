@@ -162,7 +162,7 @@ function LoginPage() {
                   className="text-2xl font-semibold tracking-tight motion-safe:animate-fade-in"
                   style={{ animationFillMode: "backwards" }}
                 >
-                  Entrar como {kind === "cliente" ? "Cliente" : "Agência"}
+                  Entrar como {kind === "cliente" ? branding.login_client_label : branding.login_agency_label}
                 </h2>
                 <p
                   className="text-sm text-muted-foreground mt-1 mb-6 motion-safe:animate-fade-in"
