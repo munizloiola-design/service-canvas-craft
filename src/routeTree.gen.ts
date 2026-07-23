@@ -41,6 +41,7 @@ import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
 import { Route as AppAcessosRouteImport } from './routes/_app/acessos'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as AppSquadRelatorioRouteImport } from './routes/_app/squad.relatorio'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
@@ -206,6 +207,11 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSquadRelatorioRoute = AppSquadRelatorioRouteImport.update({
+  id: '/relatorio',
+  path: '/relatorio',
+  getParentRoute: () => AppSquadRoute,
+} as any)
 const LovableEmailTransactionalSendRoute =
   LovableEmailTransactionalSendRouteImport.update({
     id: '/lovable/email/transactional/send',
@@ -255,7 +261,7 @@ export interface FileRoutesByFullPath {
   '/permissoes': typeof AppPermissoesRoute
   '/personalizacao': typeof AppPersonalizacaoRoute
   '/projects': typeof AppProjectsRoute
-  '/squad': typeof AppSquadRoute
+  '/squad': typeof AppSquadRouteWithChildren
   '/team': typeof AppTeamRoute
   '/tempo': typeof AppTempoRoute
   '/tickets': typeof AppTicketsRoute
@@ -266,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
   '/portal/': typeof PortalIndexRoute
+  '/squad/relatorio': typeof AppSquadRelatorioRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -292,7 +299,7 @@ export interface FileRoutesByTo {
   '/permissoes': typeof AppPermissoesRoute
   '/personalizacao': typeof AppPersonalizacaoRoute
   '/projects': typeof AppProjectsRoute
-  '/squad': typeof AppSquadRoute
+  '/squad': typeof AppSquadRouteWithChildren
   '/team': typeof AppTeamRoute
   '/tempo': typeof AppTempoRoute
   '/tickets': typeof AppTicketsRoute
@@ -303,6 +310,7 @@ export interface FileRoutesByTo {
   '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
   '/portal': typeof PortalIndexRoute
+  '/squad/relatorio': typeof AppSquadRelatorioRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -332,7 +340,7 @@ export interface FileRoutesById {
   '/_app/permissoes': typeof AppPermissoesRoute
   '/_app/personalizacao': typeof AppPersonalizacaoRoute
   '/_app/projects': typeof AppProjectsRoute
-  '/_app/squad': typeof AppSquadRoute
+  '/_app/squad': typeof AppSquadRouteWithChildren
   '/_app/team': typeof AppTeamRoute
   '/_app/tempo': typeof AppTempoRoute
   '/_app/tickets': typeof AppTicketsRoute
@@ -343,6 +351,7 @@ export interface FileRoutesById {
   '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
   '/portal/': typeof PortalIndexRoute
+  '/_app/squad/relatorio': typeof AppSquadRelatorioRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -383,6 +392,7 @@ export interface FileRouteTypes {
     | '/portal/pendentes'
     | '/v/$token'
     | '/portal/'
+    | '/squad/relatorio'
     | '/lovable/email/suppression'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -420,6 +430,7 @@ export interface FileRouteTypes {
     | '/portal/pendentes'
     | '/v/$token'
     | '/portal'
+    | '/squad/relatorio'
     | '/lovable/email/suppression'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -459,6 +470,7 @@ export interface FileRouteTypes {
     | '/portal/pendentes'
     | '/v/$token'
     | '/portal/'
+    | '/_app/squad/relatorio'
     | '/lovable/email/suppression'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -710,6 +722,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/squad/relatorio': {
+      id: '/_app/squad/relatorio'
+      path: '/relatorio'
+      fullPath: '/squad/relatorio'
+      preLoaderRoute: typeof AppSquadRelatorioRouteImport
+      parentRoute: typeof AppSquadRoute
+    }
     '/lovable/email/transactional/send': {
       id: '/lovable/email/transactional/send'
       path: '/lovable/email/transactional/send'
@@ -748,6 +767,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppSquadRouteChildren {
+  AppSquadRelatorioRoute: typeof AppSquadRelatorioRoute
+}
+
+const AppSquadRouteChildren: AppSquadRouteChildren = {
+  AppSquadRelatorioRoute: AppSquadRelatorioRoute,
+}
+
+const AppSquadRouteWithChildren = AppSquadRoute._addFileChildren(
+  AppSquadRouteChildren,
+)
+
 interface AppRouteChildren {
   AppAcessosRoute: typeof AppAcessosRoute
   AppCadastrosRoute: typeof AppCadastrosRoute
@@ -763,7 +794,7 @@ interface AppRouteChildren {
   AppPermissoesRoute: typeof AppPermissoesRoute
   AppPersonalizacaoRoute: typeof AppPersonalizacaoRoute
   AppProjectsRoute: typeof AppProjectsRoute
-  AppSquadRoute: typeof AppSquadRoute
+  AppSquadRoute: typeof AppSquadRouteWithChildren
   AppTeamRoute: typeof AppTeamRoute
   AppTempoRoute: typeof AppTempoRoute
   AppTicketsRoute: typeof AppTicketsRoute
@@ -784,7 +815,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPermissoesRoute: AppPermissoesRoute,
   AppPersonalizacaoRoute: AppPersonalizacaoRoute,
   AppProjectsRoute: AppProjectsRoute,
-  AppSquadRoute: AppSquadRoute,
+  AppSquadRoute: AppSquadRouteWithChildren,
   AppTeamRoute: AppTeamRoute,
   AppTempoRoute: AppTempoRoute,
   AppTicketsRoute: AppTicketsRoute,
