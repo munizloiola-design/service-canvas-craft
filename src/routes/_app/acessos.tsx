@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Settings, Trash2, Pencil } from "lucide-react";
@@ -53,11 +53,13 @@ function AcessosPage() {
 function HierarchyTab() {
   const qc = useQueryClient();
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
-  const [newAreaName, setNewAreaName] = useState("");
-  const [newSpecName, setNewSpecName] = useState("");
   const [menuAreaId, setMenuAreaId] = useState<string | null>(null);
   const [fieldSpecId, setFieldSpecId] = useState<string | null>(null);
   const [renameTarget, setRenameTarget] = useState<{ type: "area" | "spec"; id: string; name: string } | null>(null);
+  const [newAreaOpen, setNewAreaOpen] = useState(false);
+  const [newSpecOpen, setNewSpecOpen] = useState(false);
+  const [newAreaName, setNewAreaName] = useState("");
+  const [newSpecName, setNewSpecName] = useState("");
 
   const areasQ = useQuery<Area[]>({
     queryKey: ["provider_areas"],
@@ -94,7 +96,7 @@ function HierarchyTab() {
       const { error } = await supabase.from("provider_areas").insert({ name });
       if (error) throw error;
     },
-    onSuccess: () => { setNewAreaName(""); qc.invalidateQueries({ queryKey: ["provider_areas"] }); toast.success("Área criada"); },
+    onSuccess: () => { setNewAreaName(""); setNewAreaOpen(false); qc.invalidateQueries({ queryKey: ["provider_areas"] }); toast.success("Área criada"); },
     onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
@@ -112,7 +114,7 @@ function HierarchyTab() {
       const { error } = await supabase.from("provider_specialties").insert({ area_id: areaId, name });
       if (error) throw error;
     },
-    onSuccess: () => { setNewSpecName(""); qc.invalidateQueries({ queryKey: ["provider_specialties"] }); toast.success("Especialidade criada"); },
+    onSuccess: () => { setNewSpecName(""); setNewSpecOpen(false); qc.invalidateQueries({ queryKey: ["provider_specialties"] }); toast.success("Especialidade criada"); },
     onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
@@ -144,12 +146,32 @@ function HierarchyTab() {
       <Card>
         <CardHeader><CardTitle className="text-base">Áreas de Atuação</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex gap-2">
-            <Input placeholder="Ex.: Arte" value={newAreaName} onChange={(e) => setNewAreaName(e.target.value)} />
-            <Button onClick={() => newAreaName.trim() && createArea.mutate(newAreaName.trim())} disabled={createArea.isPending}>
-              <Plus className="h-4 w-4 mr-1" /> Nova
-            </Button>
-          </div>
+          <Dialog open={newAreaOpen} onOpenChange={setNewAreaOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full"><Plus className="h-4 w-4 mr-1" /> Nova área</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Nova área de atuação</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <Input
+                  autoFocus
+                  placeholder="Ex.: Arte"
+                  value={newAreaName}
+                  onChange={(e) => setNewAreaName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && newAreaName.trim()) createArea.mutate(newAreaName.trim()); }}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setNewAreaOpen(false)}>Cancelar</Button>
+                  <Button
+                    onClick={() => newAreaName.trim() && createArea.mutate(newAreaName.trim())}
+                    disabled={!newAreaName.trim() || createArea.isPending}
+                  >
+                    {createArea.isPending ? "Salvando..." : "Criar"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
           <div className="space-y-1">
             {areas.map((a) => {
               const active = a.id === activeArea;
@@ -172,12 +194,32 @@ function HierarchyTab() {
         <CardContent className="space-y-3">
           {activeArea ? (
             <>
-              <div className="flex gap-2">
-                <Input placeholder="Ex.: Designer" value={newSpecName} onChange={(e) => setNewSpecName(e.target.value)} />
-                <Button onClick={() => newSpecName.trim() && createSpec.mutate({ areaId: activeArea, name: newSpecName.trim() })} disabled={createSpec.isPending}>
-                  <Plus className="h-4 w-4 mr-1" /> Nova
-                </Button>
-              </div>
+              <Dialog open={newSpecOpen} onOpenChange={setNewSpecOpen}>
+                <DialogTrigger asChild>
+                  <Button className="w-full"><Plus className="h-4 w-4 mr-1" /> Nova especialidade</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Nova especialidade</DialogTitle></DialogHeader>
+                  <div className="space-y-3">
+                    <Input
+                      autoFocus
+                      placeholder="Ex.: Designer"
+                      value={newSpecName}
+                      onChange={(e) => setNewSpecName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && newSpecName.trim()) createSpec.mutate({ areaId: activeArea, name: newSpecName.trim() }); }}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setNewSpecOpen(false)}>Cancelar</Button>
+                      <Button
+                        onClick={() => newSpecName.trim() && createSpec.mutate({ areaId: activeArea, name: newSpecName.trim() })}
+                        disabled={!newSpecName.trim() || createSpec.isPending}
+                      >
+                        {createSpec.isPending ? "Salvando..." : "Criar"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <div className="space-y-1">
                 {areaSpecs.map((s) => (
                   <div key={s.id} className="flex items-center gap-2 rounded-md border px-3 py-2">

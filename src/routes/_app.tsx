@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -212,6 +213,20 @@ function AppLayout() {
         {SidebarContent}
       </aside>
 
+      {/* Floating sidebar trigger — always visible on desktop, especially when collapsed */}
+      {desktopCollapsed && (
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setDesktopCollapsed(false)}
+          aria-label="Mostrar menu"
+          title="Mostrar menu"
+          className="hidden md:inline-flex fixed top-3 left-3 z-50 h-9 w-9 rounded-full shadow-lg glass"
+        >
+          <PanelLeft className="h-4 w-4" />
+        </Button>
+      )}
+
       {/* Mobile topbar */}
       <header
         style={sidebarStyle}
@@ -227,18 +242,25 @@ function AppLayout() {
           )}
           <span className="font-semibold text-sm truncate">{branding.brand_name}</span>
         </div>
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9"><Menu className="h-5 w-5" /></Button>
-          </SheetTrigger>
-          <SheetContent side="left" style={sidebarStyle} className="p-0 w-72 text-sidebar-foreground flex flex-col">
-            <SheetTitle className="sr-only">Menu</SheetTitle>
-            {SidebarContent}
-          </SheetContent>
-        </Sheet>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9"><Menu className="h-5 w-5" /></Button>
+            </SheetTrigger>
+            <SheetContent side="left" style={sidebarStyle} className="p-0 w-72 text-sidebar-foreground flex flex-col">
+              <SheetTitle className="sr-only">Menu</SheetTitle>
+              {SidebarContent}
+            </SheetContent>
+          </Sheet>
+        </div>
       </header>
 
       <main className="flex-1 overflow-auto pt-14 md:pt-0 min-w-0">
+        {/* Desktop top-right theme toggle */}
+        <div className="hidden md:flex justify-end px-4 pt-3">
+          <ThemeToggle />
+        </div>
         <Outlet />
       </main>
     </div>

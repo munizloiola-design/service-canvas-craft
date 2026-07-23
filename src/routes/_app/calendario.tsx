@@ -208,9 +208,14 @@ function CalendarioPage() {
             const isToday = isSameDay(day, new Date());
             const maxVisible = view === "week" ? 20 : 3;
             const minH = view === "week" ? "min-h-[60vh]" : "min-h-[100px]";
+            const highlightWeekToday = view === "week" && isToday;
+            const cellStyle: React.CSSProperties | undefined = highlightWeekToday
+              ? { background: "color-mix(in oklab, hsl(var(--primary)) 15%, transparent)" }
+              : undefined;
             return (
               <div
                 key={key}
+                style={cellStyle}
                 className={`${cellCommon(key)} ${minH} ${inMonth ? "" : "opacity-40"}`}
                 onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dragOverKey !== key) setDragOverKey(key); }}
                 onDragLeave={() => { if (dragOverKey === key) setDragOverKey(null); }}
@@ -221,7 +226,15 @@ function CalendarioPage() {
                 }}
               >
                 <div className="flex items-center justify-between">
-                  <span className={`text-xs font-medium ${isToday ? "bg-primary text-primary-foreground rounded-full h-5 w-5 flex items-center justify-center" : ""}`}>
+                  <span
+                    className={`text-xs font-medium ${
+                      isToday && view === "month"
+                        ? "bg-primary text-primary-foreground rounded-full h-5 w-5 flex items-center justify-center"
+                        : highlightWeekToday
+                        ? "text-primary font-semibold"
+                        : ""
+                    }`}
+                  >
                     {format(day, view === "week" ? "d/MM" : "d")}
                   </span>
                 </div>

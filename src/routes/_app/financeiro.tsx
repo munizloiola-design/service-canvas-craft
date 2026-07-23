@@ -24,6 +24,20 @@ export const Route = createFileRoute("/_app/financeiro")({ component: Financeiro
 
 const fmtBRL = (n: number) => (Number(n) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+type FinCat = { id: string; name: string; kind: "expense" | "income"; is_fixed: boolean };
+
+function useFinancialCategories(kind?: "expense" | "income") {
+  return useQuery({
+    queryKey: ["financial_categories", kind ?? "all"],
+    queryFn: async () => {
+      let q = supabase.from("financial_categories").select("id, name, kind, is_fixed").order("name");
+      if (kind) q = q.eq("kind", kind);
+      const { data } = await q;
+      return (data ?? []) as FinCat[];
+    },
+  });
+}
+
 function FinanceiroPage() {
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -311,6 +325,7 @@ function EntryForm({ initial, projects, clients, onSubmit }: { initial?: any; pr
     kind: "income", entry_date: new Date().toISOString().slice(0, 10),
     description: "", category: "", amount: 0, project_id: null, client_id: null,
   });
+  const { data: categories = [] } = useFinancialCategories(f.kind as "income" | "expense");
   return (
     <DialogContent>
       <DialogHeader><DialogTitle>{initial ? "Editar lançamento" : "Novo lançamento"}</DialogTitle></DialogHeader>
@@ -330,7 +345,17 @@ function EntryForm({ initial, projects, clients, onSubmit }: { initial?: any; pr
         </div>
         <div><Label>Descrição</Label><Input value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Categoria</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></div>
+          <div>
+            <Label>Categoria</Label>
+            <Select value={f.category || "__none__"} onValueChange={(v) => setF({ ...f, category: v === "__none__" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— sem categoria —</SelectItem>
+                {categories.map((c) => <SelectItem key={c.id} value={c.name}>{c.name}{c.is_fixed ? " (fixo)" : ""}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground mt-1">Gerencie categorias em Configurações.</p>
+          </div>
           <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={f.amount} onChange={(e) => setF({ ...f, amount: Number(e.target.value) })} /></div>
         </div>
         {f.kind === "income" && (
@@ -373,6 +398,7 @@ function FixedCosts() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const { data: items = [] } = useQuery({ queryKey: ["fixed_costs"], queryFn: async () => (await supabase.from("fixed_costs").select("*").order("name")).data ?? [] });
+  const { data: expenseCats = [] } = useFinancialCategories("expense");
   const empty = { name: "", category: "", amount: 0, commission_pct: 0, recurrence: "monthly", due_day: 5, active: true };
   const [f, setF] = useState<any>(empty);
 
@@ -413,7 +439,16 @@ function FixedCosts() {
           <div className="space-y-3">
             <div><Label>Nome</Label><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Categoria</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></div>
+              <div>
+                <Label>Categoria</Label>
+                <Select value={f.category || "__none__"} onValueChange={(v) => setF({ ...f, category: v === "__none__" ? "" : v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— sem categoria —</SelectItem>
+                    {expenseCats.map((c) => <SelectItem key={c.id} value={c.name}>{c.name}{c.is_fixed ? " (fixo)" : ""}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
               <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={f.amount} onChange={(e) => setF({ ...f, amount: Number(e.target.value) })} /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
@@ -471,7 +506,8 @@ function RecurringIncomes() {
   const [editing, setEditing] = useState<any | null>(null);
   const { data: items = [] } = useQuery({ queryKey: ["recurring_incomes"], queryFn: async () => (await supabase.from("recurring_incomes").select("*, clients(name)").order("description")).data ?? [] });
   const { data: clients = [] } = useQuery({ queryKey: ["clients-mini"], queryFn: async () => (await supabase.from("clients").select("id, name").order("name")).data ?? [] });
-  const empty = { client_id: null as string | null, description: "", amount: 0, commission_pct: 0, recurrence: "monthly", next_due: new Date().toISOString().slice(0, 10), active: true };
+  const { data: incomeCats = [] } = useFinancialCategories("income");
+  const empty = { client_id: null as string | null, description: "", amount: 0, commission_pct: 0, recurrence: "monthly", next_due: new Date().toISOString().slice(0, 10), active: true, category_id: null as string | null };
   const [f, setF] = useState<any>(empty);
 
   const save = useMutation({
@@ -501,6 +537,7 @@ function RecurringIncomes() {
       recurrence: i.recurrence ?? "monthly",
       next_due: i.next_due ?? new Date().toISOString().slice(0, 10),
       active: i.active,
+      category_id: i.category_id ?? null,
     });
     setOpen(true);
   };
@@ -533,6 +570,16 @@ function RecurringIncomes() {
                 </Select>
               </div>
               <div><Label>Próximo vencimento</Label><Input type="date" value={f.next_due} onChange={(e) => setF({ ...f, next_due: e.target.value })} /></div>
+            </div>
+            <div>
+              <Label>Categoria</Label>
+              <Select value={f.category_id ?? "__none__"} onValueChange={(v) => setF({ ...f, category_id: v === "__none__" ? null : v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— sem categoria —</SelectItem>
+                  {incomeCats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div><Label>Comissão (%)</Label><Input type="number" step="0.01" min={0} value={f.commission_pct} onChange={(e) => setF({ ...f, commission_pct: Number(e.target.value) })} /></div>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -967,13 +1014,130 @@ function SettingsTab() {
     onError: (e: any) => toast.error(e.message),
   });
   return (
-    <Card className="p-6 max-w-xl space-y-4">
-      <h3 className="font-medium">Configurações financeiras</h3>
-      <div className="grid grid-cols-2 gap-4">
-        <div><Label>Alíquota de imposto padrão (%)</Label><Input type="number" step="0.1" value={taxV} onChange={(e) => setTax(Number(e.target.value))} disabled={!canEdit} /></div>
-        <div><Label>Comissão padrão (%)</Label><Input type="number" step="0.1" value={commV} onChange={(e) => setComm(Number(e.target.value))} disabled={!canEdit} /></div>
+    <div className="space-y-6 max-w-3xl">
+      <Card className="p-6 space-y-4">
+        <h3 className="font-medium">Configurações financeiras</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div><Label>Alíquota de imposto padrão (%)</Label><Input type="number" step="0.1" value={taxV} onChange={(e) => setTax(Number(e.target.value))} disabled={!canEdit} /></div>
+          <div><Label>Comissão padrão (%)</Label><Input type="number" step="0.1" value={commV} onChange={(e) => setComm(Number(e.target.value))} disabled={!canEdit} /></div>
+        </div>
+        {canEdit && <Button onClick={() => save.mutate()}>Salvar</Button>}
+      </Card>
+
+      <CategoriesSettings canEdit={canEdit} />
+    </div>
+  );
+}
+
+function CategoriesSettings({ canEdit }: { canEdit: boolean }) {
+  const qc = useQueryClient();
+  const { data: cats = [] } = useQuery({
+    queryKey: ["financial_categories", "all"],
+    queryFn: async () => (await supabase.from("financial_categories").select("id, name, kind, is_fixed, sort_order").order("kind").order("sort_order")).data as FinCat[] ?? [],
+  });
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Partial<FinCat> | null>(null);
+
+  const save = useMutation({
+    mutationFn: async (f: Partial<FinCat>) => {
+      if (!f.name?.trim() || !f.kind) throw new Error("Nome e tipo são obrigatórios");
+      if (f.id) {
+        const { error } = await supabase.from("financial_categories").update({ name: f.name, kind: f.kind, is_fixed: !!f.is_fixed, updated_at: new Date().toISOString() }).eq("id", f.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("financial_categories").insert({ name: f.name, kind: f.kind, is_fixed: !!f.is_fixed } as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["financial_categories"] }); toast.success("Salvo"); setOpen(false); setEditing(null); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const del = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("financial_categories").delete().eq("id", id); if (error) throw error; },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["financial_categories"] }),
+  });
+  const toggleFixed = useMutation({
+    mutationFn: async (c: FinCat) => { const { error } = await supabase.from("financial_categories").update({ is_fixed: !c.is_fixed }).eq("id", c.id); if (error) throw error; },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["financial_categories"] }),
+  });
+
+  return (
+    <Card className="p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-medium">Categorias financeiras</h3>
+          <p className="text-xs text-muted-foreground">Marque quais categorias compõem os custos fixos.</p>
+        </div>
+        {canEdit && (
+          <Button size="sm" onClick={() => { setEditing({ name: "", kind: "expense", is_fixed: false }); setOpen(true); }}>
+            <Plus className="h-4 w-4 mr-1" /> Nova categoria
+          </Button>
+        )}
       </div>
-      {canEdit && <Button onClick={() => save.mutate()}>Salvar</Button>}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nome</TableHead>
+            <TableHead>Tipo</TableHead>
+            <TableHead>Custo fixo</TableHead>
+            <TableHead></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {cats.map((c) => (
+            <TableRow key={c.id}>
+              <TableCell className="font-medium">{c.name}</TableCell>
+              <TableCell>{c.kind === "expense" ? "Saída" : "Entrada"}</TableCell>
+              <TableCell>
+                <Checkbox
+                  checked={c.is_fixed}
+                  disabled={!canEdit || c.kind !== "expense"}
+                  onCheckedChange={() => toggleFixed.mutate(c)}
+                />
+              </TableCell>
+              <TableCell className="text-right">
+                {canEdit && <>
+                  <Button size="icon" variant="ghost" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => { if (confirm(`Remover "${c.name}"?`)) del.mutate(c.id); }}><Trash2 className="h-4 w-4" /></Button>
+                </>}
+              </TableCell>
+            </TableRow>
+          ))}
+          {cats.length === 0 && (
+            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Nenhuma categoria cadastrada</TableCell></TableRow>
+          )}
+        </TableBody>
+      </Table>
+
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editing?.id ? "Editar categoria" : "Nova categoria"}</DialogTitle></DialogHeader>
+          {editing && (
+            <div className="space-y-3">
+              <div><Label>Nome</Label><Input value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
+              <div>
+                <Label>Tipo</Label>
+                <Select value={editing.kind ?? "expense"} onValueChange={(v) => setEditing({ ...editing, kind: v as "expense" | "income" })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="expense">Saída (despesa)</SelectItem>
+                    <SelectItem value="income">Entrada (receita)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {editing.kind === "expense" && (
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox checked={!!editing.is_fixed} onCheckedChange={(v) => setEditing({ ...editing, is_fixed: !!v })} />
+                  Compõe os custos fixos
+                </label>
+              )}
+              <DialogFooter>
+                <Button onClick={() => save.mutate(editing)} disabled={save.isPending}>Salvar</Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

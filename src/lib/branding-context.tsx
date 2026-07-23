@@ -23,10 +23,15 @@ export type Branding = {
   primary_color: string;
   accent_color: string;
   sidebar_color: string | null;
+  button_color: string | null;
   background_image: string | null;
   login_box_position: LoginBoxPosition;
   welcome_title: string;
   welcome_subtitle: string;
+  login_client_label: string;
+  login_client_desc: string;
+  login_agency_label: string;
+  login_agency_desc: string;
   suggestions: string | null;
   theme_json: ThemeJson | null;
 };
@@ -38,10 +43,15 @@ const DEFAULT: Branding = {
   primary_color: "#1a936f",
   accent_color: "#0f766e",
   sidebar_color: null,
+  button_color: null,
   background_image: null,
   login_box_position: "right",
   welcome_title: "Como deseja entrar?",
   welcome_subtitle: "Escolha o tipo de acesso.",
+  login_client_label: "Cliente",
+  login_client_desc: "Acesso ao portal de aprovações",
+  login_agency_label: "Agência",
+  login_agency_desc: "Colaboradores e gestores",
   suggestions: null,
   theme_json: null,
 };
@@ -65,7 +75,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   const load = async () => {
     const { data } = await supabase
       .from("app_branding")
-      .select("brand_name, logo_url, favicon_url, primary_color, accent_color, sidebar_color, background_image, login_box_position, welcome_title, welcome_subtitle, suggestions, theme_json")
+      .select("brand_name, logo_url, favicon_url, primary_color, accent_color, sidebar_color, button_color, background_image, login_box_position, welcome_title, welcome_subtitle, login_client_label, login_client_desc, login_agency_label, login_agency_desc, suggestions, theme_json")
       .eq("id", true)
       .maybeSingle();
     if (data) {
@@ -75,6 +85,10 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
         login_box_position: ((data as any).login_box_position ?? "right") as LoginBoxPosition,
         welcome_title: (data as any).welcome_title ?? DEFAULT.welcome_title,
         welcome_subtitle: (data as any).welcome_subtitle ?? DEFAULT.welcome_subtitle,
+        login_client_label: (data as any).login_client_label ?? DEFAULT.login_client_label,
+        login_client_desc: (data as any).login_client_desc ?? DEFAULT.login_client_desc,
+        login_agency_label: (data as any).login_agency_label ?? DEFAULT.login_agency_label,
+        login_agency_desc: (data as any).login_agency_desc ?? DEFAULT.login_agency_desc,
       });
     }
   };
@@ -91,6 +105,11 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       root.style.setProperty("--brand-sidebar", hexToRgb(branding.sidebar_color));
     } else {
       root.style.removeProperty("--brand-sidebar");
+    }
+    if (branding.button_color) {
+      root.style.setProperty("--brand-button", hexToRgb(branding.button_color));
+    } else {
+      root.style.removeProperty("--brand-button");
     }
 
     const t = branding.theme_json ?? {};

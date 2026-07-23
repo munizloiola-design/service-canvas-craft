@@ -5,6 +5,7 @@ import { useBranding } from "@/lib/branding-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Briefcase, CalendarDays, ClipboardCheck, CheckCircle2, LogOut, Target } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/portal")({ component: PortalLayout });
 
@@ -59,9 +60,12 @@ function PortalLayout() {
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={async () => { await signOut(); navigate({ to: "/login" }); }}>
-            <LogOut className="h-4 w-4 mr-2" /> Sair
-          </Button>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <Button variant="ghost" size="sm" onClick={async () => { await signOut(); navigate({ to: "/login" }); }}>
+              <LogOut className="h-4 w-4 mr-2" /> Sair
+            </Button>
+          </div>
         </div>
         <nav className="max-w-6xl mx-auto px-4 flex gap-1 overflow-x-auto">
           {nav.map((item) => {

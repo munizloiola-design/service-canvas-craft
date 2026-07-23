@@ -48,10 +48,15 @@ function PersonalizacaoPage() {
   const [primary, setPrimary] = useState(branding.primary_color);
   const [accent, setAccent] = useState(branding.accent_color);
   const [sidebar, setSidebar] = useState(branding.sidebar_color ?? branding.primary_color);
+  const [buttonColor, setButtonColor] = useState(branding.button_color ?? branding.primary_color);
   const [bgImage, setBgImage] = useState(branding.background_image ?? "");
   const [boxPos, setBoxPos] = useState<LoginBoxPosition>(branding.login_box_position);
   const [welcomeTitle, setWelcomeTitle] = useState(branding.welcome_title);
   const [welcomeSubtitle, setWelcomeSubtitle] = useState(branding.welcome_subtitle);
+  const [clientLabel, setClientLabel] = useState(branding.login_client_label);
+  const [clientDesc, setClientDesc] = useState(branding.login_client_desc);
+  const [agencyLabel, setAgencyLabel] = useState(branding.login_agency_label);
+  const [agencyDesc, setAgencyDesc] = useState(branding.login_agency_desc);
   const [suggestions, setSuggestions] = useState(branding.suggestions ?? "");
   const [theme, setTheme] = useState<Record<string, string>>({
     ...INVOME_PRESET,
@@ -69,10 +74,15 @@ function PersonalizacaoPage() {
     setPrimary(branding.primary_color);
     setAccent(branding.accent_color);
     setSidebar(branding.sidebar_color ?? branding.primary_color);
+    setButtonColor(branding.button_color ?? branding.primary_color);
     setBgImage(branding.background_image ?? "");
     setBoxPos(branding.login_box_position);
     setWelcomeTitle(branding.welcome_title);
     setWelcomeSubtitle(branding.welcome_subtitle);
+    setClientLabel(branding.login_client_label);
+    setClientDesc(branding.login_client_desc);
+    setAgencyLabel(branding.login_agency_label);
+    setAgencyDesc(branding.login_agency_desc);
     setSuggestions(branding.suggestions ?? "");
     setTheme({ ...INVOME_PRESET, ...(branding.theme_json ?? {}) });
   }, [branding]);
@@ -110,14 +120,19 @@ function PersonalizacaoPage() {
         primary_color: primary,
         accent_color: accent,
         sidebar_color: sidebar || null,
+        button_color: buttonColor || null,
         background_image: bgImage || null,
         login_box_position: boxPos,
         welcome_title: welcomeTitle.trim() || "Como deseja entrar?",
         welcome_subtitle: welcomeSubtitle.trim() || "Escolha o tipo de acesso.",
+        login_client_label: clientLabel.trim() || "Cliente",
+        login_client_desc: clientDesc.trim() || "Acesso ao portal de aprovações",
+        login_agency_label: agencyLabel.trim() || "Agência",
+        login_agency_desc: agencyDesc.trim() || "Colaboradores e gestores",
         suggestions: suggestions || null,
         theme_json: theme,
         updated_at: new Date().toISOString(),
-      });
+      } as any);
       if (error) throw error;
       await refresh();
       toast.success("Personalização salva");
@@ -201,10 +216,11 @@ function PersonalizacaoPage() {
           <h2 className="text-lg font-semibold">Paleta de Cores</h2>
         </div>
         <Separator />
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <ColorPicker label="Cor primária" value={primary} onChange={setPrimary} />
           <ColorPicker label="Cor de destaque" value={accent} onChange={setAccent} />
           <ColorPicker label="Cor do menu lateral" value={sidebar} onChange={setSidebar} />
+          <ColorPicker label="Cor dos botões" value={buttonColor} onChange={setButtonColor} />
         </div>
         <div>
           <p className="text-sm font-medium mb-2">Cores dos gráficos</p>
@@ -267,6 +283,51 @@ function PersonalizacaoPage() {
             <Label htmlFor="ws">Subtítulo</Label>
             <Input id="ws" value={welcomeSubtitle} onChange={(e) => setWelcomeSubtitle(e.target.value)} maxLength={140} />
           </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Rótulo do cartão "Cliente"</Label>
+            <Input value={clientLabel} onChange={(e) => setClientLabel(e.target.value)} maxLength={40} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Descrição do cartão "Cliente"</Label>
+            <Input value={clientDesc} onChange={(e) => setClientDesc(e.target.value)} maxLength={120} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Rótulo do cartão "Agência"</Label>
+            <Input value={agencyLabel} onChange={(e) => setAgencyLabel(e.target.value)} maxLength={40} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Descrição do cartão "Agência"</Label>
+            <Input value={agencyDesc} onChange={(e) => setAgencyDesc(e.target.value)} maxLength={120} />
+          </div>
+        </div>
+
+        {/* Live preview */}
+        <div className="rounded-xl border p-4 bg-muted/30">
+          <p className="text-xs text-muted-foreground mb-3">Prévia da tela de login</p>
+          <div className="text-center space-y-1 mb-3">
+            <p className="text-lg font-semibold">{welcomeTitle}</p>
+            <p className="text-xs text-muted-foreground">{welcomeSubtitle}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border p-3 bg-card">
+              <p className="text-sm font-medium">{clientLabel}</p>
+              <p className="text-xs text-muted-foreground">{clientDesc}</p>
+            </div>
+            <div className="rounded-lg border p-3 bg-card">
+              <p className="text-sm font-medium">{agencyLabel}</p>
+              <p className="text-xs text-muted-foreground">{agencyDesc}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="mt-3 w-full rounded-md text-white text-sm py-2"
+            style={{ background: buttonColor }}
+          >
+            Entrar
+          </button>
         </div>
       </Card>
 

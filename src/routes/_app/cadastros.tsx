@@ -78,12 +78,16 @@ function CadastrosPage() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex-wrap h-auto">
           {TABLES.map((t) => <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>)}
+          <TabsTrigger value="__emails__">Modelos de e-mail</TabsTrigger>
         </TabsList>
         {TABLES.map((t) => (
           <TabsContent key={t.key} value={t.key} className="mt-4">
             <CrudTable table={t} />
           </TabsContent>
         ))}
+        <TabsContent value="__emails__" className="mt-4">
+          <EmailTemplatesTab />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -213,6 +217,111 @@ function CrudTable({ table }: { table: typeof TABLES[number] }) {
           </div>
         ))}
       </div>
+    </Card>
+  );
+}
+
+type EmailTpl = { id: string; key: string; subject: string; body_html: string };
+
+function EmailTemplatesTab() {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState<EmailTpl | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const { data: templates = [] } = useQuery({
+    queryKey: ["email_templates_all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("email_templates").select("id, key, subject, body_html").order("key");
+      if (error) throw error;
+      return (data ?? []) as EmailTpl[];
+    },
+  });
+
+  const save = useMutation({
+    mutationFn: async (t: EmailTpl) => {
+      if (t.id) {
+        const { error } = await supabase.from("email_templates").update({
+          key: t.key.trim(), subject: t.subject, body_html: t.body_html, updated_at: new Date().toISOString(),
+        }).eq("id", t.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("email_templates").insert({
+          key: t.key.trim(), subject: t.subject, body_html: t.body_html,
+        } as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["email_templates_all"] }); toast.success("Modelo salvo"); setOpen(false); setEditing(null); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("email_templates").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["email_templates_all"] }); toast.success("Modelo removido"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const openNew = () => { setEditing({ id: "", key: "", subject: "", body_html: "" }); setOpen(true); };
+  const openEdit = (t: EmailTpl) => { setEditing({ ...t }); setOpen(true); };
+
+  return (
+    <Card className="p-4">
+      <div className="flex justify-between items-center mb-4">
+        <span className="text-sm text-muted-foreground">{templates.length} modelo(s)</span>
+        <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-1" /> Novo modelo</Button>
+      </div>
+      <div className="border rounded-md divide-y">
+        {templates.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">Nenhum modelo cadastrado</p>}
+        {templates.map((t) => (
+          <div key={t.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{t.key}</p>
+              <p className="text-xs text-muted-foreground truncate">{t.subject}</p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive"
+              onClick={() => { if (confirm(`Remover modelo "${t.key}"?`)) remove.mutate(t.id); }}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ))}
+      </div>
+
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>{editing?.id ? "Editar modelo" : "Novo modelo de e-mail"}</DialogTitle></DialogHeader>
+          {editing && (
+            <form
+              className="space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!editing.key.trim() || !editing.subject.trim()) { toast.error("Chave e assunto são obrigatórios"); return; }
+                save.mutate(editing);
+              }}
+            >
+              <div className="space-y-1">
+                <Label>Chave (identificador único)</Label>
+                <Input value={editing.key} onChange={(e) => setEditing({ ...editing, key: e.target.value })} placeholder="ex.: bem_vindo_cliente" required />
+              </div>
+              <div className="space-y-1">
+                <Label>Assunto</Label>
+                <Input value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} required />
+              </div>
+              <div className="space-y-1">
+                <Label>Corpo (HTML)</Label>
+                <Textarea rows={10} className="font-mono text-xs" value={editing.body_html} onChange={(e) => setEditing({ ...editing, body_html: e.target.value })} />
+                <p className="text-xs text-muted-foreground">Variáveis comuns: {"{{brand_name}}"}, {"{{requester_name}}"}, {"{{title}}"}</p>
+              </div>
+              <DialogFooter>
+                <Button type="submit" disabled={save.isPending}>{save.isPending ? "Salvando..." : "Salvar"}</Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
