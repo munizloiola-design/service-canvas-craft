@@ -194,12 +194,32 @@ function HierarchyTab() {
         <CardContent className="space-y-3">
           {activeArea ? (
             <>
-              <div className="flex gap-2">
-                <Input placeholder="Ex.: Designer" value={newSpecName} onChange={(e) => setNewSpecName(e.target.value)} />
-                <Button onClick={() => newSpecName.trim() && createSpec.mutate({ areaId: activeArea, name: newSpecName.trim() })} disabled={createSpec.isPending}>
-                  <Plus className="h-4 w-4 mr-1" /> Nova
-                </Button>
-              </div>
+              <Dialog open={newSpecOpen} onOpenChange={setNewSpecOpen}>
+                <DialogTrigger asChild>
+                  <Button className="w-full"><Plus className="h-4 w-4 mr-1" /> Nova especialidade</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Nova especialidade</DialogTitle></DialogHeader>
+                  <div className="space-y-3">
+                    <Input
+                      autoFocus
+                      placeholder="Ex.: Designer"
+                      value={newSpecName}
+                      onChange={(e) => setNewSpecName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && newSpecName.trim()) createSpec.mutate({ areaId: activeArea, name: newSpecName.trim() }); }}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setNewSpecOpen(false)}>Cancelar</Button>
+                      <Button
+                        onClick={() => newSpecName.trim() && createSpec.mutate({ areaId: activeArea, name: newSpecName.trim() })}
+                        disabled={!newSpecName.trim() || createSpec.isPending}
+                      >
+                        {createSpec.isPending ? "Salvando..." : "Criar"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <div className="space-y-1">
                 {areaSpecs.map((s) => (
                   <div key={s.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
