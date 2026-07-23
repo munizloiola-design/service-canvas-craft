@@ -1,34 +1,27 @@
-# Migração de `clients.team_id` → `client_teams`
+## Objetivo
 
-Hoje `clients.team_id` aponta para a tabela antiga `teams`. A nova estrutura (`client_teams` + `client_team_members`) já existe mas está vazia (0 linhas) e coexiste com a antiga, causando duas fontes de verdade. Vamos consolidar tudo em `client_teams` sem quebrar o front-end.
+Permitir editar o nome dos times no menu **Squad → Times**.
 
-## Estado atual verificado
+## Situação atual
 
-- 1 cliente com `team_id` preenchido (Digital Comunicação → "Novo time 23/07/2026, 19:57", 1 membro em `team_members`).
-- `client_teams`: 0 linhas. `client_team_members`: 0 linhas.
-- Código que ainda lê `clients.team_id`:
-  - `src/routes/_app/clientes.tsx` (edição do cliente, seleção de time)
-  - `src/routes/_app/projects.tsx` (auto-preenchimento de assignees a partir do time do cliente)
-  - `src/routes/_app/squad.relatorio.tsx` (filtro por time)
+Em `src/routes/_app/squad.tsx`, o diálogo de time (`TeamDialog`) não expõe um campo para o nome:
 
-## Etapa 1 — Migração SQL (uma migration)
+- Linha 200: `teamName` é uma constante derivada de `editing?.name` ou de um timestamp para novos times.
+- O formulário salva sempre esse valor fixo, então não é possível renomear um time existente nem escolher o nome de um novo time.
 
-1. Backfill: para cada `clients.team_id NOT NULL`, criar uma linha em `client_teams` com `client_id = c.id`, `name = teams.name`, `is_default = true`.
-2. Copiar `team_members` correspondentes para `client_team_members` (mapeando via `teams.id`), com `role_hint = NULL`.
-3. Remover FK `clients_team_id_fkey` e a coluna `clients.team_id` (a coluna paralela `projects.team_id` continua existindo e não é tocada nesta etapa).
+O backend já suporta: a mutação em `onSubmit` faz `teams.update({ name })` quando `editing` existe, e `teams.insert({ name })` quando é novo. Falta apenas a UI.
 
-Nenhum GRANT/RLS novo é necessário — `client_teams` e `client_team_members` já têm políticas.
+## Mudanças
 
-## Etapa 2 — Ajustes no front-end
+Arquivo único: `src/routes/_app/squad.tsx`
 
-- `clientes.tsx`: remover o `<Select>` de time e o campo `team_id` do formulário/lista. A coluna "Time" da tabela passa a mostrar o time default de `client_teams` (ou "—"). Gestão de times continua em Squad → Times de Cliente.
-- `projects.tsx`: substituir a query `client_team_id` por uma que lê `client_teams` (default do cliente) e `client_team_members` para popular assignees. Passar `team_id: null` no insert (ou remover, mantendo compatibilidade).
-- `squad.relatorio.tsx`: trocar `clients.team_id` + `team_members` por `client_teams` + `client_team_members`. O filtro "Time" continua funcionando, agora sobre times de cliente.
+1. Trocar a constante `teamName` por um `useState<string>` inicializado com `editing?.name ?? ""` (ou com o timestamp padrão só como placeholder do input).
+2. Adicionar um campo `<Label>Nome do time</Label><Input value={teamName} onChange=... />` no topo do formulário do `TeamDialog`.
+3. Validar no submit: se `teamName.trim()` estiver vazio, mostrar `toast.error("Informe o nome do time")` e não chamar `onSubmit`.
+4. Garantir que ao reabrir o diálogo (troca de `editing`) o estado do nome seja reiniciado — usar `key={editing?.id ?? "new"}` no `TeamDialog` no ponto de uso, ou um `useEffect` que ressincroniza quando `editing?.id` muda.
 
-## Etapa 3 — Regenerar tipos
+Sem alterações de schema, RLS ou outros arquivos.
 
-Após a migration aprovada, `src/integrations/supabase/types.ts` é regenerado automaticamente; os ajustes de código na Etapa 2 usam o schema novo.
+&nbsp;
 
-## Fora do escopo
-
-- Remoção da tabela legada `teams` / `team_members` (ainda usada por `projects.team_id` e outras telas de Squad). Fica para uma migração futura, se desejado.
+Verifique porque o relatório de times ainda não está funcionando

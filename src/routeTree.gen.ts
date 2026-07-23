@@ -44,6 +44,7 @@ import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
 import { Route as AppAprovacoesRouteImport } from './routes/_app/aprovacoes'
 import { Route as AppAcessosRouteImport } from './routes/_app/acessos'
+import { Route as AppSquadIndexRouteImport } from './routes/_app/squad.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AppSquadRelatorioRouteImport } from './routes/_app/squad.relatorio'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -226,6 +227,11 @@ const AppAcessosRoute = AppAcessosRouteImport.update({
   path: '/acessos',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSquadIndexRoute = AppSquadIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppSquadRoute,
+} as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
@@ -302,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/portal/': typeof PortalIndexRoute
   '/squad/relatorio': typeof AppSquadRelatorioRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/squad/': typeof AppSquadIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -329,7 +336,6 @@ export interface FileRoutesByTo {
   '/permissoes': typeof AppPermissoesRoute
   '/personalizacao': typeof AppPersonalizacaoRoute
   '/projects': typeof AppProjectsRoute
-  '/squad': typeof AppSquadRouteWithChildren
   '/team': typeof AppTeamRoute
   '/tempo': typeof AppTempoRoute
   '/tickets': typeof AppTicketsRoute
@@ -344,6 +350,7 @@ export interface FileRoutesByTo {
   '/portal': typeof PortalIndexRoute
   '/squad/relatorio': typeof AppSquadRelatorioRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/squad': typeof AppSquadIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -389,6 +396,7 @@ export interface FileRoutesById {
   '/portal/': typeof PortalIndexRoute
   '/_app/squad/relatorio': typeof AppSquadRelatorioRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/_app/squad/': typeof AppSquadIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -434,6 +442,7 @@ export interface FileRouteTypes {
     | '/portal/'
     | '/squad/relatorio'
     | '/lovable/email/suppression'
+    | '/squad/'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -461,7 +470,6 @@ export interface FileRouteTypes {
     | '/permissoes'
     | '/personalizacao'
     | '/projects'
-    | '/squad'
     | '/team'
     | '/tempo'
     | '/tickets'
@@ -476,6 +484,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/squad/relatorio'
     | '/lovable/email/suppression'
+    | '/squad'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -520,6 +529,7 @@ export interface FileRouteTypes {
     | '/portal/'
     | '/_app/squad/relatorio'
     | '/lovable/email/suppression'
+    | '/_app/squad/'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -793,6 +803,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAcessosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/squad/': {
+      id: '/_app/squad/'
+      path: '/'
+      fullPath: '/squad/'
+      preLoaderRoute: typeof AppSquadIndexRouteImport
+      parentRoute: typeof AppSquadRoute
+    }
     '/lovable/email/suppression': {
       id: '/lovable/email/suppression'
       path: '/lovable/email/suppression'
@@ -847,10 +864,12 @@ declare module '@tanstack/react-router' {
 
 interface AppSquadRouteChildren {
   AppSquadRelatorioRoute: typeof AppSquadRelatorioRoute
+  AppSquadIndexRoute: typeof AppSquadIndexRoute
 }
 
 const AppSquadRouteChildren: AppSquadRouteChildren = {
   AppSquadRelatorioRoute: AppSquadRelatorioRoute,
+  AppSquadIndexRoute: AppSquadIndexRoute,
 }
 
 const AppSquadRouteWithChildren = AppSquadRoute._addFileChildren(
