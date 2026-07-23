@@ -105,7 +105,7 @@ function TempoPage() {
   });
   const { data: profiles = [] } = useQuery({
     queryKey: ["all_profiles_min"],
-    queryFn: async () => (await supabase.from("profiles").select("id, full_name").order("full_name")).data ?? [],
+    queryFn: async () => (await supabase.from("internal_profiles" as any).select("id, full_name").order("full_name")).data ?? [],
   });
   const { data: statuses = [] } = useQuery({
     queryKey: ["all_statuses_min"],
