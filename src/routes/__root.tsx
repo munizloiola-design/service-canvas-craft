@@ -113,10 +113,12 @@ function RootComponent() {
       <AuthProvider>
         <BrandingProvider>
           <PermissionsProvider>
-            <FieldVisibilityProvider>
-              <Outlet />
-              <Toaster richColors position="top-right" />
-            </FieldVisibilityProvider>
+            <AccessProvider>
+              <FieldVisibilityProvider>
+                <Outlet />
+                <Toaster richColors position="top-right" />
+              </FieldVisibilityProvider>
+            </AccessProvider>
           </PermissionsProvider>
         </BrandingProvider>
       </AuthProvider>

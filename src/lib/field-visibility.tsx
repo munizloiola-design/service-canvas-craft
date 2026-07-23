@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth-context";
+import { createContext, useContext, type ReactNode } from "react";
+import { useAccess } from "@/lib/access-context";
 
+// Compat layer: PROJECT_FIELDS + useFieldVisibility continuam existindo,
+// mas agora usam a nova hierarquia (Áreas/Especialidades) via AccessProvider.
 export const PROJECT_FIELDS = [
   { key: "budget", label: "Orçamento" },
   { key: "client_id", label: "Cliente" },
@@ -9,67 +10,31 @@ export const PROJECT_FIELDS = [
   { key: "post_date", label: "Data de postagem" },
   { key: "priority", label: "Prioridade" },
   { key: "description", label: "Descrição" },
-  { key: "notes", label: "Notas internas" },
+  { key: "notes", label: "Direção de arte" },
   { key: "reference_links", label: "Links de referência" },
   { key: "deliverable_path", label: "Entregável" },
+  { key: "final_link", label: "Arquivo ou link finalizado" },
   { key: "client_feedback", label: "Feedback do cliente" },
   { key: "media_type", label: "Tipo de mídia" },
 ] as const;
 export type ProjectFieldKey = (typeof PROJECT_FIELDS)[number]["key"];
 
 type Ctx = {
-  hidden: Set<string>;
   loading: boolean;
   canSee: (field: ProjectFieldKey) => boolean;
+  canEdit: (field: ProjectFieldKey) => boolean;
 };
 
 const FieldVisibilityContext = createContext<Ctx | null>(null);
 
 export function FieldVisibilityProvider({ children }: { children: ReactNode }) {
-  const { user, isManager } = useAuth();
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user || isManager) {
-      setHidden(new Set());
-      setLoading(false);
-      return;
-    }
-    (async () => {
-      const { data: ufs } = await supabase.from("user_functions").select("function_id").eq("user_id", user.id);
-      const fnIds = (ufs ?? []).map((u: { function_id: string }) => u.function_id);
-      if (fnIds.length === 0) {
-        setHidden(new Set());
-        setLoading(false);
-        return;
-      }
-      const { data: vis } = await supabase
-        .from("function_field_visibility")
-        .select("field_key, visible, function_id")
-        .in("function_id", fnIds);
-      // Hide field only if ALL of the user's functions mark it as hidden
-      const perField: Record<string, boolean> = {};
-      for (const row of vis ?? []) {
-        const k = row.field_key as string;
-        perField[k] = perField[k] || !!row.visible;
-      }
-      const h = new Set<string>();
-      for (const [k, anyVisible] of Object.entries(perField)) {
-        if (!anyVisible) h.add(k);
-      }
-      setHidden(h);
-      setLoading(false);
-    })();
-  }, [user, isManager]);
-
-  const canSee = (field: ProjectFieldKey) => isManager || !hidden.has(field);
-
-  return (
-    <FieldVisibilityContext.Provider value={{ hidden, loading, canSee }}>
-      {children}
-    </FieldVisibilityContext.Provider>
-  );
+  const access = useAccess();
+  const value: Ctx = {
+    loading: access.loading,
+    canSee: (f) => access.canViewField(f),
+    canEdit: (f) => access.canEditField(f),
+  };
+  return <FieldVisibilityContext.Provider value={value}>{children}</FieldVisibilityContext.Provider>;
 }
 
 export function useFieldVisibility() {
