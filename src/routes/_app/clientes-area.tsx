@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Plus, Trash2, Save, ExternalLink, Pencil, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { inviteClientUser, listClientAccess, removeClientAccess } from "@/lib/client-access.functions";
+import { describeSupabaseError } from "@/lib/supabase-error";
 
 export const Route = createFileRoute("/_app/clientes-area")({ component: ClientesAreaPage });
 
@@ -77,27 +78,37 @@ function ClientsCrud() {
 
   const save = useMutation({
     mutationFn: async (payload: Omit<Client, "id">) => {
-      if (editing?.id) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase.from as any)("clients").update(payload).eq("id", editing.id);
-        if (error) throw error;
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase.from as any)("clients").insert(payload);
-        if (error) throw error;
+      try {
+        if (editing?.id) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error } = await (supabase.from as any)("clients").update(payload).eq("id", editing.id);
+          if (error) throw error;
+        } else {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error } = await (supabase.from as any)("clients").insert(payload);
+          if (error) throw error;
+        }
+      } catch (err) {
+        console.error("[clients:save]", err, { payload, editingId: editing?.id });
+        throw err;
       }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["clients"] }); toast.success("Salvo"); setOpen(false); setEditing(null); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("clients").delete().eq("id", id);
-      if (error) throw error;
+      try {
+        const { error } = await supabase.from("clients").delete().eq("id", id);
+        if (error) throw error;
+      } catch (err) {
+        console.error("[clients:delete]", err, { id });
+        throw err;
+      }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["clients"] }); toast.success("Removido"); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
   return (
