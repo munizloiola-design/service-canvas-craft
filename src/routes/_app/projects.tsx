@@ -596,7 +596,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         notes: String(fd.get("notes") || "") || null,
         final_link: (finalLink.trim() || null),
         client_id: clientId || null,
-        team_id: teamId || null,
+        team_id: clientTeamId ?? null,
         media_type_id: (fd.get("media_type_id") as string) || null,
         status_id: (fd.get("status_id") as string) || null,
         priority_id: (fd.get("priority_id") as string) || null,
