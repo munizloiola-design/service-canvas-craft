@@ -59,7 +59,7 @@ function TempoPage() {
   const userFilter = search.user ?? "";
 
   const setSearch = (patch: Partial<SearchParams>) => {
-    navigate({ to: "/tempo", search: (prev) => ({ ...prev, ...patch }) });
+    navigate({ to: "/tempo", search: (prev: SearchParams) => ({ ...prev, ...patch }) });
   };
 
   const { data: logs = [], isLoading } = useQuery({

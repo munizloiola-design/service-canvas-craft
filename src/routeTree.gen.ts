@@ -23,6 +23,7 @@ import { Route as PortalCalendarioRouteImport } from './routes/portal/calendario
 import { Route as PortalAprovadosRouteImport } from './routes/portal/aprovados'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AppTicketsRouteImport } from './routes/_app/tickets'
+import { Route as AppTempoRouteImport } from './routes/_app/tempo'
 import { Route as AppTeamRouteImport } from './routes/_app/team'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
 import { Route as AppPersonalizacaoRouteImport } from './routes/_app/personalizacao'
@@ -111,6 +112,11 @@ const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
 const AppTicketsRoute = AppTicketsRouteImport.update({
   id: '/tickets',
   path: '/tickets',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTempoRoute = AppTempoRouteImport.update({
+  id: '/tempo',
+  path: '/tempo',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTeamRoute = AppTeamRouteImport.update({
@@ -237,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/personalizacao': typeof AppPersonalizacaoRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
+  '/tempo': typeof AppTempoRoute
   '/tickets': typeof AppTicketsRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
@@ -271,6 +278,7 @@ export interface FileRoutesByTo {
   '/personalizacao': typeof AppPersonalizacaoRoute
   '/projects': typeof AppProjectsRoute
   '/team': typeof AppTeamRoute
+  '/tempo': typeof AppTempoRoute
   '/tickets': typeof AppTicketsRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/_app/personalizacao': typeof AppPersonalizacaoRoute
   '/_app/projects': typeof AppProjectsRoute
   '/_app/team': typeof AppTeamRoute
+  '/_app/tempo': typeof AppTempoRoute
   '/_app/tickets': typeof AppTicketsRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
@@ -345,6 +354,7 @@ export interface FileRouteTypes {
     | '/personalizacao'
     | '/projects'
     | '/team'
+    | '/tempo'
     | '/tickets'
     | '/email/unsubscribe'
     | '/portal/aprovados'
@@ -379,6 +389,7 @@ export interface FileRouteTypes {
     | '/personalizacao'
     | '/projects'
     | '/team'
+    | '/tempo'
     | '/tickets'
     | '/email/unsubscribe'
     | '/portal/aprovados'
@@ -415,6 +426,7 @@ export interface FileRouteTypes {
     | '/_app/personalizacao'
     | '/_app/projects'
     | '/_app/team'
+    | '/_app/tempo'
     | '/_app/tickets'
     | '/email/unsubscribe'
     | '/portal/aprovados'
@@ -546,6 +558,13 @@ declare module '@tanstack/react-router' {
       path: '/tickets'
       fullPath: '/tickets'
       preLoaderRoute: typeof AppTicketsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/tempo': {
+      id: '/_app/tempo'
+      path: '/tempo'
+      fullPath: '/tempo'
+      preLoaderRoute: typeof AppTempoRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/team': {
@@ -706,6 +725,7 @@ interface AppRouteChildren {
   AppPersonalizacaoRoute: typeof AppPersonalizacaoRoute
   AppProjectsRoute: typeof AppProjectsRoute
   AppTeamRoute: typeof AppTeamRoute
+  AppTempoRoute: typeof AppTempoRoute
   AppTicketsRoute: typeof AppTicketsRoute
 }
 
@@ -724,6 +744,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPersonalizacaoRoute: AppPersonalizacaoRoute,
   AppProjectsRoute: AppProjectsRoute,
   AppTeamRoute: AppTeamRoute,
+  AppTempoRoute: AppTempoRoute,
   AppTicketsRoute: AppTicketsRoute,
 }
 
