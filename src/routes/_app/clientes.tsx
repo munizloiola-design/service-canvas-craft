@@ -1095,6 +1095,117 @@ function ProspectCard({
 }
 
 /* ============================================================
+   Novo prospect (cria cliente com status = prospecção)
+============================================================ */
+function NewProspectDialog({
+  open, onOpenChange, stages, initialStage,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  stages: CrmStage[];
+  initialStage: string | null;
+}) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [value, setValue] = useState("");
+  const [nextAction, setNextAction] = useState("");
+  const [stage, setStage] = useState<string>("");
+
+  useEffect(() => {
+    if (open) {
+      setName(""); setContactName(""); setPhone(""); setEmail("");
+      setValue(""); setNextAction("");
+      setStage(initialStage ?? stages[0]?.name ?? "");
+    }
+  }, [open, initialStage, stages]);
+
+  const create = useMutation({
+    mutationFn: async () => {
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("Informe o nome do cliente");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from as any)("clients").insert({
+        name: trimmed,
+        contact_name: contactName.trim() || null,
+        phone: phone.trim() || null,
+        email: email.trim() || null,
+        status: "prospeccao",
+        prospect_stage: stage || null,
+        prospect_value: value ? Number(value) : null,
+        prospect_next_action: nextAction.trim() || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      toast.success("Prospect criado");
+      onOpenChange(false);
+    },
+    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Novo prospect</DialogTitle></DialogHeader>
+        <form
+          className="space-y-3"
+          onSubmit={(e) => { e.preventDefault(); create.mutate(); }}
+        >
+          <div className="space-y-1">
+            <Label>Nome do cliente *</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Contato</Label>
+              <Input value={contactName} onChange={(e) => setContactName(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Telefone</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(11) 91234-5678" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>E-mail</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Estágio inicial</Label>
+              <Select value={stage} onValueChange={setStage}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {stages.map((s) => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Valor estimado (R$)</Label>
+              <Input type="number" step="0.01" value={value} onChange={(e) => setValue(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Próxima ação</Label>
+            <Input value={nextAction} onChange={(e) => setNextAction(e.target.value)} placeholder="Ex.: enviar proposta..." />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="submit" disabled={create.isPending}>
+              {create.isPending ? "Salvando..." : "Criar prospect"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+/* ============================================================
    Gerenciar estágios do CRM
 ============================================================ */
 function StagesManagerDialog({
