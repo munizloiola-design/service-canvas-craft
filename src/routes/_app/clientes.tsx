@@ -18,8 +18,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Plus, Trash2, Save, ExternalLink, Pencil, UserPlus,
   Users, KeyRound, FileText, FolderKanban, Sparkles, Search, MessageCircle,
-  Settings2, ArrowUp, ArrowDown, Trophy, XCircle,
+  Settings2, ArrowUp, ArrowDown, Trophy, XCircle, PlusCircle,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { inviteClientUser, listClientAccess, removeClientAccess } from "@/lib/client-access.functions";
 import { describeSupabaseError } from "@/lib/supabase-error";
