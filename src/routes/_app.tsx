@@ -75,8 +75,8 @@ const navGroups: NavGroup[] = [
 ];
 
 function AppLayout() {
-  const { user, loading, signOut, roles, isClient, isMaster, isManager, hasRole } = useAuth();
-  const isClientOnly = isClient && !isMaster && !isManager && !hasRole("membro");
+  const { user, loading, signOut, roles, isClient, isMaster, isManager } = useAuth();
+
   const { branding } = useBranding();
   const { can, loading: permsLoading } = usePermissions();
   const { menuAllowed, loading: accessLoading } = useAccess();
@@ -102,7 +102,8 @@ function AppLayout() {
     );
   }
   if (!user) return <Navigate to="/login" />;
-  if (isClientOnly) return <Navigate to="/portal/calendario" />;
+  if (isClient && !isMaster && !isManager) return <Navigate to="/portal" />;
+
 
   const visibleGroups = navGroups
     .map((g) => ({
