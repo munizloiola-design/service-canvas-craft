@@ -777,6 +777,8 @@ export function CrmTab() {
   const { data: rows = [] } = useClients();
   const { data: stages = [] } = useCrmStages();
   const [managerOpen, setManagerOpen] = useState(false);
+  const [newProspectStage, setNewProspectStage] = useState<string | null>(null);
+  const [newProspectOpen, setNewProspectOpen] = useState(false);
   const prospects = useMemo(() => rows.filter((r) => r.status === "prospeccao"), [rows]);
 
   const update = useMutation({
@@ -820,6 +822,11 @@ export function CrmTab() {
     }
   };
 
+  const openNewProspect = (stageName?: string) => {
+    setNewProspectStage(stageName ?? firstStageName);
+    setNewProspectOpen(true);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -843,62 +850,70 @@ export function CrmTab() {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button size="sm" onClick={() => openNewProspect()} disabled={stages.length === 0}>
+          <Plus className="h-4 w-4 mr-1.5" /> Novo prospect
+        </Button>
         <Button variant="outline" size="sm" onClick={() => setManagerOpen(true)}>
           <Settings2 className="h-4 w-4 mr-1.5" /> Gerenciar estágios
         </Button>
       </div>
 
-      {stages.length === 0 && (
+      {stages.length === 0 ? (
         <Card className="p-10 text-center bg-card/95 backdrop-blur">
           <p className="text-sm text-muted-foreground">
             Nenhum estágio cadastrado. Clique em "Gerenciar estágios" para começar.
           </p>
         </Card>
-      )}
-
-      {stages.length > 0 && total === 0 && (
-        <Card className="p-10 text-center bg-card/95 backdrop-blur">
-          <Sparkles className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground">
-            Nenhum cliente em prospecção. Cadastre um cliente com status <strong>Prospecção</strong> no Diretório para começar.
-          </p>
-        </Card>
-      )}
-
-      {stages.length > 0 && total > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {stages.map((stage) => (
-            <StageColumn
-              key={stage.id}
-              stage={stage}
-              items={byStage[stage.name] ?? []}
-              onDropClient={(clientId) => handleDrop(clientId, stage)}
-              renderCard={(p) => (
-                <ProspectCard
-                  key={p.id}
-                  client={p}
-                  stages={stages}
-                  onChange={(patch) => update.mutate({ id: p.id, ...patch })}
-                  onWin={() => {
-                    const won = stages.find((s) => s.is_won);
-                    update.mutate({ id: p.id, status: "ativo", prospect_stage: won?.name ?? p.prospect_stage ?? null });
-                  }}
-                  onLose={() => {
-                    const lost = stages.find((s) => s.is_lost);
-                    update.mutate({ id: p.id, status: "inativo", prospect_stage: lost?.name ?? p.prospect_stage ?? null });
-                  }}
-                />
-              )}
-            />
-          ))}
-        </div>
+      ) : (
+        <>
+          {total === 0 && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" />
+              Nenhum prospect ainda. Use <strong>Novo prospect</strong> ou o <strong>+</strong> em uma coluna para criar o primeiro.
+            </p>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {stages.map((stage) => (
+              <StageColumn
+                key={stage.id}
+                stage={stage}
+                items={byStage[stage.name] ?? []}
+                onDropClient={(clientId) => handleDrop(clientId, stage)}
+                onAdd={() => openNewProspect(stage.name)}
+                renderCard={(p) => (
+                  <ProspectCard
+                    key={p.id}
+                    client={p}
+                    stages={stages}
+                    onChange={(patch) => update.mutate({ id: p.id, ...patch })}
+                    onWin={() => {
+                      const won = stages.find((s) => s.is_won);
+                      update.mutate({ id: p.id, status: "ativo", prospect_stage: won?.name ?? p.prospect_stage ?? null });
+                    }}
+                    onLose={() => {
+                      const lost = stages.find((s) => s.is_lost);
+                      update.mutate({ id: p.id, status: "inativo", prospect_stage: lost?.name ?? p.prospect_stage ?? null });
+                    }}
+                  />
+                )}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       <StagesManagerDialog open={managerOpen} onOpenChange={setManagerOpen} stages={stages} prospects={prospects} />
+      <NewProspectDialog
+        open={newProspectOpen}
+        onOpenChange={setNewProspectOpen}
+        stages={stages}
+        initialStage={newProspectStage}
+      />
     </div>
   );
 }
+
 
 
 function StageColumn({
