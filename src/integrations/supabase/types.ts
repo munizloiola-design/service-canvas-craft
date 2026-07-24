@@ -432,6 +432,39 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_stages: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_lost: boolean
+          is_won: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dashboard_widgets: {
         Row: {
           config: Json
