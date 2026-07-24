@@ -917,11 +917,12 @@ export function CrmTab() {
 
 
 function StageColumn({
-  stage, items, onDropClient, renderCard,
+  stage, items, onDropClient, onAdd, renderCard,
 }: {
   stage: CrmStage;
   items: Client[];
   onDropClient: (clientId: string) => void;
+  onAdd?: () => void;
   renderCard: (c: Client) => React.ReactNode;
 }) {
   const [over, setOver] = useState(false);
@@ -931,6 +932,7 @@ function StageColumn({
       onDragOver={(e) => { e.preventDefault(); setOver(true); }}
       onDragLeave={() => setOver(false)}
       onDrop={(e) => {
+
         e.preventDefault();
         setOver(false);
         const id = e.dataTransfer.getData("text/plain");
