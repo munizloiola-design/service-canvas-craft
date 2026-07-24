@@ -20,6 +20,7 @@ import { Route as PortalIndexRouteImport } from './routes/portal/index'
 import { Route as VTokenRouteImport } from './routes/v.$token'
 import { Route as PortalPendentesRouteImport } from './routes/portal/pendentes'
 import { Route as PortalEstrategiaRouteImport } from './routes/portal/estrategia'
+import { Route as PortalDashboardRouteImport } from './routes/portal/dashboard'
 import { Route as PortalCalendarioRouteImport } from './routes/portal/calendario'
 import { Route as PortalAprovadosRouteImport } from './routes/portal/aprovados'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
@@ -107,6 +108,11 @@ const PortalPendentesRoute = PortalPendentesRouteImport.update({
 const PortalEstrategiaRoute = PortalEstrategiaRouteImport.update({
   id: '/estrategia',
   path: '/estrategia',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalDashboardRoute = PortalDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => PortalRoute,
 } as any)
 const PortalCalendarioRoute = PortalCalendarioRouteImport.update({
@@ -314,6 +320,7 @@ export interface FileRoutesByFullPath {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
   '/portal/calendario': typeof PortalCalendarioRoute
+  '/portal/dashboard': typeof PortalDashboardRoute
   '/portal/estrategia': typeof PortalEstrategiaRoute
   '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
@@ -358,6 +365,7 @@ export interface FileRoutesByTo {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
   '/portal/calendario': typeof PortalCalendarioRoute
+  '/portal/dashboard': typeof PortalDashboardRoute
   '/portal/estrategia': typeof PortalEstrategiaRoute
   '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
@@ -406,6 +414,7 @@ export interface FileRoutesById {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/portal/aprovados': typeof PortalAprovadosRoute
   '/portal/calendario': typeof PortalCalendarioRoute
+  '/portal/dashboard': typeof PortalDashboardRoute
   '/portal/estrategia': typeof PortalEstrategiaRoute
   '/portal/pendentes': typeof PortalPendentesRoute
   '/v/$token': typeof VTokenRoute
@@ -454,6 +463,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/portal/aprovados'
     | '/portal/calendario'
+    | '/portal/dashboard'
     | '/portal/estrategia'
     | '/portal/pendentes'
     | '/v/$token'
@@ -498,6 +508,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/portal/aprovados'
     | '/portal/calendario'
+    | '/portal/dashboard'
     | '/portal/estrategia'
     | '/portal/pendentes'
     | '/v/$token'
@@ -545,6 +556,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/portal/aprovados'
     | '/portal/calendario'
+    | '/portal/dashboard'
     | '/portal/estrategia'
     | '/portal/pendentes'
     | '/v/$token'
@@ -658,6 +670,13 @@ declare module '@tanstack/react-router' {
       path: '/estrategia'
       fullPath: '/portal/estrategia'
       preLoaderRoute: typeof PortalEstrategiaRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/dashboard': {
+      id: '/portal/dashboard'
+      path: '/dashboard'
+      fullPath: '/portal/dashboard'
+      preLoaderRoute: typeof PortalDashboardRouteImport
       parentRoute: typeof PortalRoute
     }
     '/portal/calendario': {
@@ -968,6 +987,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 interface PortalRouteChildren {
   PortalAprovadosRoute: typeof PortalAprovadosRoute
   PortalCalendarioRoute: typeof PortalCalendarioRoute
+  PortalDashboardRoute: typeof PortalDashboardRoute
   PortalEstrategiaRoute: typeof PortalEstrategiaRoute
   PortalPendentesRoute: typeof PortalPendentesRoute
   PortalIndexRoute: typeof PortalIndexRoute
@@ -976,6 +996,7 @@ interface PortalRouteChildren {
 const PortalRouteChildren: PortalRouteChildren = {
   PortalAprovadosRoute: PortalAprovadosRoute,
   PortalCalendarioRoute: PortalCalendarioRoute,
+  PortalDashboardRoute: PortalDashboardRoute,
   PortalEstrategiaRoute: PortalEstrategiaRoute,
   PortalPendentesRoute: PortalPendentesRoute,
   PortalIndexRoute: PortalIndexRoute,
@@ -1006,3 +1027,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
