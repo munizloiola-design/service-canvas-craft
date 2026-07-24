@@ -18,8 +18,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Plus, Trash2, Save, ExternalLink, Pencil, UserPlus,
   Users, KeyRound, FileText, FolderKanban, Sparkles, Search, MessageCircle,
-  Settings2, ArrowUp, ArrowDown, Trophy, XCircle,
+  Settings2, ArrowUp, ArrowDown, Trophy, XCircle, PlusCircle,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { inviteClientUser, listClientAccess, removeClientAccess } from "@/lib/client-access.functions";
 import { describeSupabaseError } from "@/lib/supabase-error";
@@ -776,6 +777,8 @@ export function CrmTab() {
   const { data: rows = [] } = useClients();
   const { data: stages = [] } = useCrmStages();
   const [managerOpen, setManagerOpen] = useState(false);
+  const [newProspectStage, setNewProspectStage] = useState<string | null>(null);
+  const [newProspectOpen, setNewProspectOpen] = useState(false);
   const prospects = useMemo(() => rows.filter((r) => r.status === "prospeccao"), [rows]);
 
   const update = useMutation({
@@ -819,6 +822,11 @@ export function CrmTab() {
     }
   };
 
+  const openNewProspect = (stageName?: string) => {
+    setNewProspectStage(stageName ?? firstStageName);
+    setNewProspectOpen(true);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -842,70 +850,79 @@ export function CrmTab() {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button size="sm" onClick={() => openNewProspect()} disabled={stages.length === 0}>
+          <Plus className="h-4 w-4 mr-1.5" /> Novo prospect
+        </Button>
         <Button variant="outline" size="sm" onClick={() => setManagerOpen(true)}>
           <Settings2 className="h-4 w-4 mr-1.5" /> Gerenciar estágios
         </Button>
       </div>
 
-      {stages.length === 0 && (
+      {stages.length === 0 ? (
         <Card className="p-10 text-center bg-card/95 backdrop-blur">
           <p className="text-sm text-muted-foreground">
             Nenhum estágio cadastrado. Clique em "Gerenciar estágios" para começar.
           </p>
         </Card>
-      )}
-
-      {stages.length > 0 && total === 0 && (
-        <Card className="p-10 text-center bg-card/95 backdrop-blur">
-          <Sparkles className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground">
-            Nenhum cliente em prospecção. Cadastre um cliente com status <strong>Prospecção</strong> no Diretório para começar.
-          </p>
-        </Card>
-      )}
-
-      {stages.length > 0 && total > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {stages.map((stage) => (
-            <StageColumn
-              key={stage.id}
-              stage={stage}
-              items={byStage[stage.name] ?? []}
-              onDropClient={(clientId) => handleDrop(clientId, stage)}
-              renderCard={(p) => (
-                <ProspectCard
-                  key={p.id}
-                  client={p}
-                  stages={stages}
-                  onChange={(patch) => update.mutate({ id: p.id, ...patch })}
-                  onWin={() => {
-                    const won = stages.find((s) => s.is_won);
-                    update.mutate({ id: p.id, status: "ativo", prospect_stage: won?.name ?? p.prospect_stage ?? null });
-                  }}
-                  onLose={() => {
-                    const lost = stages.find((s) => s.is_lost);
-                    update.mutate({ id: p.id, status: "inativo", prospect_stage: lost?.name ?? p.prospect_stage ?? null });
-                  }}
-                />
-              )}
-            />
-          ))}
-        </div>
+      ) : (
+        <>
+          {total === 0 && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" />
+              Nenhum prospect ainda. Use <strong>Novo prospect</strong> ou o <strong>+</strong> em uma coluna para criar o primeiro.
+            </p>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {stages.map((stage) => (
+              <StageColumn
+                key={stage.id}
+                stage={stage}
+                items={byStage[stage.name] ?? []}
+                onDropClient={(clientId) => handleDrop(clientId, stage)}
+                onAdd={() => openNewProspect(stage.name)}
+                renderCard={(p) => (
+                  <ProspectCard
+                    key={p.id}
+                    client={p}
+                    stages={stages}
+                    onChange={(patch) => update.mutate({ id: p.id, ...patch })}
+                    onWin={() => {
+                      const won = stages.find((s) => s.is_won);
+                      update.mutate({ id: p.id, status: "ativo", prospect_stage: won?.name ?? p.prospect_stage ?? null });
+                    }}
+                    onLose={() => {
+                      const lost = stages.find((s) => s.is_lost);
+                      update.mutate({ id: p.id, status: "inativo", prospect_stage: lost?.name ?? p.prospect_stage ?? null });
+                    }}
+                  />
+                )}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       <StagesManagerDialog open={managerOpen} onOpenChange={setManagerOpen} stages={stages} prospects={prospects} />
+      <NewProspectDialog
+        open={newProspectOpen}
+        onOpenChange={setNewProspectOpen}
+        stages={stages}
+        initialStage={newProspectStage}
+      />
     </div>
   );
 }
 
 
+
 function StageColumn({
-  stage, items, onDropClient, renderCard,
+  stage, items, onDropClient, onAdd, renderCard,
 }: {
   stage: CrmStage;
   items: Client[];
   onDropClient: (clientId: string) => void;
+  onAdd?: () => void;
   renderCard: (c: Client) => React.ReactNode;
 }) {
   const [over, setOver] = useState(false);
@@ -915,6 +932,7 @@ function StageColumn({
       onDragOver={(e) => { e.preventDefault(); setOver(true); }}
       onDragLeave={() => setOver(false)}
       onDrop={(e) => {
+
         e.preventDefault();
         setOver(false);
         const id = e.dataTransfer.getData("text/plain");
@@ -930,12 +948,20 @@ function StageColumn({
           {stage.is_won && <Trophy className="h-3.5 w-3.5 text-emerald-600" />}
           {stage.is_lost && <XCircle className="h-3.5 w-3.5 text-destructive" />}
         </div>
-        <Badge variant="secondary">{items.length}</Badge>
+        <div className="flex items-center gap-1">
+          <Badge variant="secondary">{items.length}</Badge>
+          {onAdd && (
+            <Button variant="ghost" size="icon" className="h-6 w-6" title="Adicionar prospect nesta fase" onClick={onAdd}>
+              <PlusCircle className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
       <div className="space-y-2 min-h-[40px]">
         {items.length === 0 && (
-          <p className="text-xs text-muted-foreground italic">Arraste um card para cá</p>
+          <p className="text-xs text-muted-foreground italic">Arraste um card para cá ou clique em +</p>
         )}
+
         {items.map((p) => renderCard(p))}
       </div>
     </Card>
@@ -1067,6 +1093,117 @@ function ProspectCard({
     </div>
   );
 }
+
+/* ============================================================
+   Novo prospect (cria cliente com status = prospecção)
+============================================================ */
+function NewProspectDialog({
+  open, onOpenChange, stages, initialStage,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  stages: CrmStage[];
+  initialStage: string | null;
+}) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [value, setValue] = useState("");
+  const [nextAction, setNextAction] = useState("");
+  const [stage, setStage] = useState<string>("");
+
+  useEffect(() => {
+    if (open) {
+      setName(""); setContactName(""); setPhone(""); setEmail("");
+      setValue(""); setNextAction("");
+      setStage(initialStage ?? stages[0]?.name ?? "");
+    }
+  }, [open, initialStage, stages]);
+
+  const create = useMutation({
+    mutationFn: async () => {
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("Informe o nome do cliente");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from as any)("clients").insert({
+        name: trimmed,
+        contact_name: contactName.trim() || null,
+        phone: phone.trim() || null,
+        email: email.trim() || null,
+        status: "prospeccao",
+        prospect_stage: stage || null,
+        prospect_value: value ? Number(value) : null,
+        prospect_next_action: nextAction.trim() || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      toast.success("Prospect criado");
+      onOpenChange(false);
+    },
+    onError: (e: unknown) => toast.error(describeSupabaseError(e)),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Novo prospect</DialogTitle></DialogHeader>
+        <form
+          className="space-y-3"
+          onSubmit={(e) => { e.preventDefault(); create.mutate(); }}
+        >
+          <div className="space-y-1">
+            <Label>Nome do cliente *</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Contato</Label>
+              <Input value={contactName} onChange={(e) => setContactName(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Telefone</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(11) 91234-5678" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>E-mail</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Estágio inicial</Label>
+              <Select value={stage} onValueChange={setStage}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {stages.map((s) => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Valor estimado (R$)</Label>
+              <Input type="number" step="0.01" value={value} onChange={(e) => setValue(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Próxima ação</Label>
+            <Input value={nextAction} onChange={(e) => setNextAction(e.target.value)} placeholder="Ex.: enviar proposta..." />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="submit" disabled={create.isPending}>
+              {create.isPending ? "Salvando..." : "Criar prospect"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 /* ============================================================
    Gerenciar estágios do CRM
