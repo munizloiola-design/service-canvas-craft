@@ -748,12 +748,34 @@ function ProjectsTab({ clientId, setClientId }: { clientId: string; setClientId:
 /* ============================================================
    ABA 5 — CRM Prospecção
 ============================================================ */
-const STAGES = ["Novo lead", "Qualificação", "Proposta enviada", "Negociação", "Ganho", "Perdido"] as const;
-type Stage = (typeof STAGES)[number];
+type CrmStage = {
+  id: string;
+  name: string;
+  sort_order: number;
+  is_won: boolean;
+  is_lost: boolean;
+  color: string | null;
+};
+
+function useCrmStages() {
+  return useQuery({
+    queryKey: ["crm_stages"],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from as any)("crm_stages")
+        .select("*")
+        .order("sort_order");
+      if (error) throw error;
+      return (data ?? []) as CrmStage[];
+    },
+  });
+}
 
 export function CrmTab() {
   const qc = useQueryClient();
   const { data: rows = [] } = useClients();
+  const { data: stages = [] } = useCrmStages();
+  const [managerOpen, setManagerOpen] = useState(false);
   const prospects = useMemo(() => rows.filter((r) => r.status === "prospeccao"), [rows]);
 
   const update = useMutation({
@@ -767,44 +789,74 @@ export function CrmTab() {
     onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
+  const firstStageName = stages[0]?.name ?? "Novo lead";
+
   const byStage = useMemo(() => {
     const map: Record<string, Client[]> = {};
-    STAGES.forEach((s) => (map[s] = []));
+    stages.forEach((s) => (map[s.name] = []));
     const unset: Client[] = [];
     for (const p of prospects) {
       const stage = (p.prospect_stage ?? "").trim();
       if (stage && map[stage]) map[stage].push(p);
       else unset.push(p);
     }
-    if (unset.length) map["Novo lead"].push(...unset);
+    if (unset.length && map[firstStageName]) map[firstStageName].push(...unset);
     return map;
-  }, [prospects]);
+  }, [prospects, stages, firstStageName]);
 
   const total = prospects.length;
   const totalValor = prospects.reduce((s, p) => s + (Number(p.prospect_value) || 0), 0);
 
+  const handleDrop = (clientId: string, stage: CrmStage) => {
+    const current = prospects.find((p) => p.id === clientId);
+    if (!current || current.prospect_stage === stage.name) return;
+    if (stage.is_won) {
+      update.mutate({ id: clientId, status: "ativo", prospect_stage: stage.name });
+    } else if (stage.is_lost) {
+      update.mutate({ id: clientId, status: "inativo", prospect_stage: stage.name });
+    } else {
+      update.mutate({ id: clientId, prospect_stage: stage.name });
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Card className="p-4 bg-card/95 backdrop-blur">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Prospects ativos</p>
-          <p className="text-3xl font-semibold mt-1">{total}</p>
-        </Card>
-        <Card className="p-4 bg-card/95 backdrop-blur">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Pipeline (valor estimado)</p>
-          <p className="text-3xl font-semibold mt-1">
-            {totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-          </p>
-        </Card>
-        <Card className="p-4 bg-card/95 backdrop-blur">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Ações pendentes</p>
-          <p className="text-3xl font-semibold mt-1">
-            {prospects.filter((p) => p.prospect_next_action).length}
-          </p>
-        </Card>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1">
+          <Card className="p-4 bg-card/95 backdrop-blur">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Prospects ativos</p>
+            <p className="text-3xl font-semibold mt-1">{total}</p>
+          </Card>
+          <Card className="p-4 bg-card/95 backdrop-blur">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Pipeline (valor estimado)</p>
+            <p className="text-3xl font-semibold mt-1">
+              {totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            </p>
+          </Card>
+          <Card className="p-4 bg-card/95 backdrop-blur">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Ações pendentes</p>
+            <p className="text-3xl font-semibold mt-1">
+              {prospects.filter((p) => p.prospect_next_action).length}
+            </p>
+          </Card>
+        </div>
       </div>
 
-      {total === 0 && (
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => setManagerOpen(true)}>
+          <Settings2 className="h-4 w-4 mr-1.5" /> Gerenciar estágios
+        </Button>
+      </div>
+
+      {stages.length === 0 && (
+        <Card className="p-10 text-center bg-card/95 backdrop-blur">
+          <p className="text-sm text-muted-foreground">
+            Nenhum estágio cadastrado. Clique em "Gerenciar estágios" para começar.
+          </p>
+        </Card>
+      )}
+
+      {stages.length > 0 && total === 0 && (
         <Card className="p-10 text-center bg-card/95 backdrop-blur">
           <Sparkles className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">
@@ -813,40 +865,40 @@ export function CrmTab() {
         </Card>
       )}
 
-      {total > 0 && (
+      {stages.length > 0 && total > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {STAGES.map((stage) => (
+          {stages.map((stage) => (
             <StageColumn
-              key={stage}
+              key={stage.id}
               stage={stage}
-              items={byStage[stage]}
-              onDropClient={(clientId) => {
-                const current = prospects.find((p) => p.id === clientId);
-                if (!current || current.prospect_stage === stage) return;
-                if (stage === "Ganho") {
-                  update.mutate({ id: clientId, status: "ativo", prospect_stage: "Ganho" });
-                } else if (stage === "Perdido") {
-                  update.mutate({ id: clientId, status: "inativo", prospect_stage: "Perdido" });
-                } else {
-                  update.mutate({ id: clientId, prospect_stage: stage });
-                }
-              }}
+              items={byStage[stage.name] ?? []}
+              onDropClient={(clientId) => handleDrop(clientId, stage)}
               renderCard={(p) => (
                 <ProspectCard
                   key={p.id}
                   client={p}
+                  stages={stages}
                   onChange={(patch) => update.mutate({ id: p.id, ...patch })}
-                  onWin={() => update.mutate({ id: p.id, status: "ativo", prospect_stage: "Ganho" })}
-                  onLose={() => update.mutate({ id: p.id, status: "inativo", prospect_stage: "Perdido" })}
+                  onWin={() => {
+                    const won = stages.find((s) => s.is_won);
+                    update.mutate({ id: p.id, status: "ativo", prospect_stage: won?.name ?? p.prospect_stage ?? null });
+                  }}
+                  onLose={() => {
+                    const lost = stages.find((s) => s.is_lost);
+                    update.mutate({ id: p.id, status: "inativo", prospect_stage: lost?.name ?? p.prospect_stage ?? null });
+                  }}
                 />
               )}
             />
           ))}
         </div>
       )}
+
+      <StagesManagerDialog open={managerOpen} onOpenChange={setManagerOpen} stages={stages} prospects={prospects} />
     </div>
   );
 }
+
 
 function StageColumn({
   stage, items, onDropClient, renderCard,
