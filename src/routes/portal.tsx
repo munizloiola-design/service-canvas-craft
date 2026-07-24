@@ -5,12 +5,13 @@ import { useBranding } from "@/lib/branding-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Briefcase, CalendarDays, ClipboardCheck, CheckCircle2, LogOut, Target } from "lucide-react";
+import { Briefcase, CalendarDays, ClipboardCheck, CheckCircle2, LogOut, Target, LayoutDashboard } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/portal")({ component: PortalLayout });
 
 const nav = [
+  { to: "/portal/dashboard", label: "Painel", icon: LayoutDashboard },
   { to: "/portal/calendario", label: "Calendário", icon: CalendarDays },
   { to: "/portal/pendentes", label: "Pendentes", icon: ClipboardCheck },
   { to: "/portal/aprovados", label: "Aprovados", icon: CheckCircle2 },
