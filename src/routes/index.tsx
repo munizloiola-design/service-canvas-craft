@@ -6,7 +6,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { user, loading } = useAuth();
+  const { user, loading, isClient } = useAuth();
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -14,5 +14,6 @@ function Index() {
       </div>
     );
   }
-  return user ? <Navigate to="/dashboard" /> : <Navigate to="/login" />;
+  if (!user) return <Navigate to="/login" />;
+  return <Navigate to={isClient ? "/portal" : "/dashboard"} />;
 }
