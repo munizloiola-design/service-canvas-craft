@@ -948,12 +948,20 @@ function StageColumn({
           {stage.is_won && <Trophy className="h-3.5 w-3.5 text-emerald-600" />}
           {stage.is_lost && <XCircle className="h-3.5 w-3.5 text-destructive" />}
         </div>
-        <Badge variant="secondary">{items.length}</Badge>
+        <div className="flex items-center gap-1">
+          <Badge variant="secondary">{items.length}</Badge>
+          {onAdd && (
+            <Button variant="ghost" size="icon" className="h-6 w-6" title="Adicionar prospect nesta fase" onClick={onAdd}>
+              <PlusCircle className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
       <div className="space-y-2 min-h-[40px]">
         {items.length === 0 && (
-          <p className="text-xs text-muted-foreground italic">Arraste um card para cá</p>
+          <p className="text-xs text-muted-foreground italic">Arraste um card para cá ou clique em +</p>
         )}
+
         {items.map((p) => renderCard(p))}
       </div>
     </Card>
