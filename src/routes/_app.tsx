@@ -75,8 +75,8 @@ const navGroups: NavGroup[] = [
 ];
 
 function AppLayout() {
-  const { user, loading, signOut, roles, isClient, isMaster, isManager, hasRole } = useAuth();
-  const isClientOnly = isClient && !isMaster && !isManager && !hasRole("membro");
+  const { user, loading, signOut, roles, isClient, isMaster, isManager } = useAuth();
+
   const { branding } = useBranding();
   const { can, loading: permsLoading } = usePermissions();
   const { menuAllowed, loading: accessLoading } = useAccess();
