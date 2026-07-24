@@ -102,7 +102,8 @@ function AppLayout() {
     );
   }
   if (!user) return <Navigate to="/login" />;
-  if (isClientOnly) return <Navigate to="/portal/calendario" />;
+  if (isClient && !isMaster && !isManager) return <Navigate to="/portal" />;
+
 
   const visibleGroups = navGroups
     .map((g) => ({
