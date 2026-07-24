@@ -40,12 +40,12 @@ import { Route as AppFacebookRouteImport } from './routes/_app/facebook'
 import { Route as AppEquipamentosRouteImport } from './routes/_app/equipamentos'
 import { Route as AppDiguinhoRouteImport } from './routes/_app/diguinho'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
-import { Route as AppClientesRouteImport } from './routes/_app/clientes'
 import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCadastrosRouteImport } from './routes/_app/cadastros'
 import { Route as AppAprovacoesRouteImport } from './routes/_app/aprovacoes'
 import { Route as AppAcessosRouteImport } from './routes/_app/acessos'
 import { Route as AppSquadIndexRouteImport } from './routes/_app/squad.index'
+import { Route as AppClientesIndexRouteImport } from './routes/_app/clientes.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AppSquadRelatorioRouteImport } from './routes/_app/squad.relatorio'
 import { Route as AppClientesCrmRouteImport } from './routes/_app/clientes.crm'
@@ -209,11 +209,6 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
-const AppClientesRoute = AppClientesRouteImport.update({
-  id: '/clientes',
-  path: '/clientes',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppCalendarioRoute = AppCalendarioRouteImport.update({
   id: '/calendario',
   path: '/calendario',
@@ -239,6 +234,11 @@ const AppSquadIndexRoute = AppSquadIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSquadRoute,
 } as any)
+const AppClientesIndexRoute = AppClientesIndexRouteImport.update({
+  id: '/clientes/',
+  path: '/clientes/',
+  getParentRoute: () => AppRoute,
+} as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
@@ -250,9 +250,9 @@ const AppSquadRelatorioRoute = AppSquadRelatorioRouteImport.update({
   getParentRoute: () => AppSquadRoute,
 } as any)
 const AppClientesCrmRoute = AppClientesCrmRouteImport.update({
-  id: '/crm',
-  path: '/crm',
-  getParentRoute: () => AppClientesRoute,
+  id: '/clientes/crm',
+  path: '/clientes/crm',
+  getParentRoute: () => AppRoute,
 } as any)
 const LovableEmailTransactionalSendRoute =
   LovableEmailTransactionalSendRouteImport.update({
@@ -294,7 +294,6 @@ export interface FileRoutesByFullPath {
   '/aprovacoes': typeof AppAprovacoesRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
-  '/clientes': typeof AppClientesRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/diguinho': typeof AppDiguinhoRoute
   '/equipamentos': typeof AppEquipamentosRoute
@@ -322,6 +321,7 @@ export interface FileRoutesByFullPath {
   '/clientes/crm': typeof AppClientesCrmRoute
   '/squad/relatorio': typeof AppSquadRelatorioRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/clientes/': typeof AppClientesIndexRoute
   '/squad/': typeof AppSquadIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -339,7 +339,6 @@ export interface FileRoutesByTo {
   '/aprovacoes': typeof AppAprovacoesRoute
   '/cadastros': typeof AppCadastrosRoute
   '/calendario': typeof AppCalendarioRoute
-  '/clientes': typeof AppClientesRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/diguinho': typeof AppDiguinhoRoute
   '/equipamentos': typeof AppEquipamentosRoute
@@ -366,6 +365,7 @@ export interface FileRoutesByTo {
   '/clientes/crm': typeof AppClientesCrmRoute
   '/squad/relatorio': typeof AppSquadRelatorioRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/clientes': typeof AppClientesIndexRoute
   '/squad': typeof AppSquadIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -386,7 +386,6 @@ export interface FileRoutesById {
   '/_app/aprovacoes': typeof AppAprovacoesRoute
   '/_app/cadastros': typeof AppCadastrosRoute
   '/_app/calendario': typeof AppCalendarioRoute
-  '/_app/clientes': typeof AppClientesRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/diguinho': typeof AppDiguinhoRoute
   '/_app/equipamentos': typeof AppEquipamentosRoute
@@ -414,6 +413,7 @@ export interface FileRoutesById {
   '/_app/clientes/crm': typeof AppClientesCrmRoute
   '/_app/squad/relatorio': typeof AppSquadRelatorioRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/_app/clientes/': typeof AppClientesIndexRoute
   '/_app/squad/': typeof AppSquadIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -434,7 +434,6 @@ export interface FileRouteTypes {
     | '/aprovacoes'
     | '/cadastros'
     | '/calendario'
-    | '/clientes'
     | '/dashboard'
     | '/diguinho'
     | '/equipamentos'
@@ -462,6 +461,7 @@ export interface FileRouteTypes {
     | '/clientes/crm'
     | '/squad/relatorio'
     | '/lovable/email/suppression'
+    | '/clientes/'
     | '/squad/'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -479,7 +479,6 @@ export interface FileRouteTypes {
     | '/aprovacoes'
     | '/cadastros'
     | '/calendario'
-    | '/clientes'
     | '/dashboard'
     | '/diguinho'
     | '/equipamentos'
@@ -506,6 +505,7 @@ export interface FileRouteTypes {
     | '/clientes/crm'
     | '/squad/relatorio'
     | '/lovable/email/suppression'
+    | '/clientes'
     | '/squad'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -525,7 +525,6 @@ export interface FileRouteTypes {
     | '/_app/aprovacoes'
     | '/_app/cadastros'
     | '/_app/calendario'
-    | '/_app/clientes'
     | '/_app/dashboard'
     | '/_app/diguinho'
     | '/_app/equipamentos'
@@ -553,6 +552,7 @@ export interface FileRouteTypes {
     | '/_app/clientes/crm'
     | '/_app/squad/relatorio'
     | '/lovable/email/suppression'
+    | '/_app/clientes/'
     | '/_app/squad/'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -800,13 +800,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/clientes': {
-      id: '/_app/clientes'
-      path: '/clientes'
-      fullPath: '/clientes'
-      preLoaderRoute: typeof AppClientesRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/calendario': {
       id: '/_app/calendario'
       path: '/calendario'
@@ -842,6 +835,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSquadIndexRouteImport
       parentRoute: typeof AppSquadRoute
     }
+    '/_app/clientes/': {
+      id: '/_app/clientes/'
+      path: '/clientes'
+      fullPath: '/clientes/'
+      preLoaderRoute: typeof AppClientesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/lovable/email/suppression': {
       id: '/lovable/email/suppression'
       path: '/lovable/email/suppression'
@@ -858,10 +858,10 @@ declare module '@tanstack/react-router' {
     }
     '/_app/clientes/crm': {
       id: '/_app/clientes/crm'
-      path: '/crm'
+      path: '/clientes/crm'
       fullPath: '/clientes/crm'
       preLoaderRoute: typeof AppClientesCrmRouteImport
-      parentRoute: typeof AppClientesRoute
+      parentRoute: typeof AppRoute
     }
     '/lovable/email/transactional/send': {
       id: '/lovable/email/transactional/send'
@@ -901,18 +901,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AppClientesRouteChildren {
-  AppClientesCrmRoute: typeof AppClientesCrmRoute
-}
-
-const AppClientesRouteChildren: AppClientesRouteChildren = {
-  AppClientesCrmRoute: AppClientesCrmRoute,
-}
-
-const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
-  AppClientesRouteChildren,
-)
-
 interface AppSquadRouteChildren {
   AppSquadRelatorioRoute: typeof AppSquadRelatorioRoute
   AppSquadIndexRoute: typeof AppSquadIndexRoute
@@ -932,7 +920,6 @@ interface AppRouteChildren {
   AppAprovacoesRoute: typeof AppAprovacoesRoute
   AppCadastrosRoute: typeof AppCadastrosRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
-  AppClientesRoute: typeof AppClientesRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
   AppDiguinhoRoute: typeof AppDiguinhoRoute
   AppEquipamentosRoute: typeof AppEquipamentosRoute
@@ -948,6 +935,8 @@ interface AppRouteChildren {
   AppTeamRoute: typeof AppTeamRoute
   AppTempoRoute: typeof AppTempoRoute
   AppTicketsRoute: typeof AppTicketsRoute
+  AppClientesCrmRoute: typeof AppClientesCrmRoute
+  AppClientesIndexRoute: typeof AppClientesIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -955,7 +944,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppAprovacoesRoute: AppAprovacoesRoute,
   AppCadastrosRoute: AppCadastrosRoute,
   AppCalendarioRoute: AppCalendarioRoute,
-  AppClientesRoute: AppClientesRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
   AppDiguinhoRoute: AppDiguinhoRoute,
   AppEquipamentosRoute: AppEquipamentosRoute,
@@ -971,6 +959,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppTeamRoute: AppTeamRoute,
   AppTempoRoute: AppTempoRoute,
   AppTicketsRoute: AppTicketsRoute,
+  AppClientesCrmRoute: AppClientesCrmRoute,
+  AppClientesIndexRoute: AppClientesIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

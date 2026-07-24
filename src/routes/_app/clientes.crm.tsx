@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CrmTab } from "./clientes";
+import { CrmTab } from "./clientes.index";
 
 export const Route = createFileRoute("/_app/clientes/crm")({
   head: () => ({

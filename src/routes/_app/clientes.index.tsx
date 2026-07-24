@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { inviteClientUser, listClientAccess, removeClientAccess } from "@/lib/client-access.functions";
 import { describeSupabaseError } from "@/lib/supabase-error";
 
-export const Route = createFileRoute("/_app/clientes")({ component: ClientesPage });
+export const Route = createFileRoute("/_app/clientes/")({ component: ClientesPage });
 
 type ClientStatus = "ativo" | "inativo" | "prospeccao";
 
