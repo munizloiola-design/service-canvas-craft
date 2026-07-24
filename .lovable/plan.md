@@ -1,41 +1,47 @@
-## Objetivo
-1. Colocar "Esqueci minha senha" no `/login`.
-2. Quando o admin envia acesso ao portal, o cliente recebe um e-mail que abre uma tela para ele criar a própria senha.
+## Diagnóstico do "CRM sumido"
 
-## Situação atual (verificada)
-- `/login` já existe (`src/routes/login.tsx`) e faz `signInWithPassword`. Sem link de recuperação.
-- Convite do cliente usa `inviteClientUser` (`src/lib/client-access.functions.ts`) chamando `supabaseAdmin.auth.admin.inviteUserByEmail(email)` — hoje sem `redirectTo`, então o link do e-mail cai na Site URL padrão do Supabase, sem página dedicada de criar senha.
+A rota `/clientes/crm` existe (`src/routes/_app/clientes.crm.tsx` → renderiza `CrmTab` de `clientes.tsx`) e o link no menu aponta para ela. O `CrmTab` só mostra colunas quando há clientes com `status = 'prospeccao'`; sem prospects ele renderiza o cabeçalho + card "Nenhum cliente em prospecção. Cadastre um cliente com status Prospecção no Diretório para começar." — provavelmente é isso que você está vendo (só o topo da página, sem o kanban).
 
-## Mudanças
+Confirmação a fazer na 1ª etapa do build: abrir `/clientes/crm` no preview e checar console/DB — se houver ≥1 cliente com `status='prospeccao'`, é bug de render; se não houver, é o empty state esperado.
 
-### 1. Nova rota pública `/set-password` (`src/routes/set-password.tsx`)
-- Página pública (fora de `_authenticated`).
-- Lê o hash da URL (`#access_token=...&type=invite|recovery`) — o Supabase Auth já hidrata a sessão automaticamente via `detectSessionInUrl` no cliente. Confirma com `supabase.auth.getSession()` num `useEffect`.
-- Se não houver sessão de recuperação/convite, mostra mensagem "Link inválido ou expirado" com botão para voltar ao login.
-- Formulário: nova senha + confirmação (min. 8 caracteres, iguais). Envia `supabase.auth.updateUser({ password })`.
-- Ao sucesso: `toast.success` e redireciona — clientes (têm role `cliente`) vão para `/portal`; demais para `/dashboard`. Usa `supabase.auth.getUser()` + consulta a `user_roles` para decidir.
-- Trata erros com `describeSupabaseError` + `console.error`.
+## Estágios editáveis (add / editar / remover)
 
-### 2. Link "Esqueci minha senha" no `/login`
-- Abaixo do campo de senha, botão "Esqueci minha senha" abre um `Dialog` com input de e-mail.
-- Chama `supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/set-password` })`.
-- Mostra toast "Se o e-mail existir, enviaremos as instruções" (sem vazar existência de conta) e fecha o dialog.
+Hoje os estágios são a constante `STAGES` no código. Vou mover para uma tabela e criar UI de gestão.
 
-### 3. Ajuste no convite do cliente (`src/lib/client-access.functions.ts`)
-- Acrescentar campo opcional `redirect_to: string().url()` no schema.
-- Passar `{ redirectTo: data.redirect_to }` para `inviteUserByEmail` quando presente.
-- No chamador (`src/routes/_app/clientes.tsx`), enviar `redirect_to: `${window.location.origin}/set-password``. Assim o link do convite abre direto a tela de criar senha.
+### 1. Banco
+Nova tabela `crm_stages`:
+- `name` (text, único)
+- `sort_order` (int)
+- `is_won` (bool), `is_lost` (bool) — marcam os estágios terminais (movem `clients.status` para `ativo`/`inativo`)
+- `color` (text opcional, hex)
+- timestamps padrão
 
-### 4. E-mails de auth
-- Se o projeto já tem templates de auth Lovable ativos, os assuntos "Convite" e "Recuperação de senha" continuam funcionando — o link dentro deles aponta para `redirectTo`. Nenhuma alteração de template necessária.
-- Não vou habilitar templates customizados agora — só se o usuário pedir.
+RLS: leitura para `authenticated`; escrita só para managers (`is_manager(auth.uid())`). GRANT para `authenticated` e `service_role`.
 
-## Detalhes técnicos
-- Sessão do link vem no fragmento (`#`); TanStack Start é SSR mas o hash não é enviado ao servidor, então o handling é 100% client (`useEffect`).
-- `resetPasswordForEmail` sempre retorna sucesso (não confirma existência) — bom para segurança.
-- Cliente sem role `cliente` ainda pode chegar em `/set-password` (fluxo de recuperação normal); redirect final decide pelo tipo de usuário.
+Seed com os 6 estágios atuais (Ganho = is_won, Perdido = is_lost).
+
+### 2. CrmTab (`src/routes/_app/clientes.tsx`)
+- Substituir constante `STAGES` por `useQuery(["crm_stages"])`.
+- Ordenar colunas por `sort_order`.
+- Ao soltar em coluna com `is_won` → `status='ativo'`; `is_lost` → `status='inativo'`; senão só grava `prospect_stage`.
+- Dialog do card: `Select` populado a partir dos estágios do banco.
+- Empty-state atual continua; adiciono um botão "Gerenciar estágios" no topo do CRM que abre o dialog abaixo (visível mesmo sem prospects, resolvendo a percepção de "página vazia").
+
+### 3. UI de gestão de estágios
+Novo componente `StagesManagerDialog` dentro de `clientes.tsx`:
+- Lista os estágios com input inline para renomear, toggles "Ganho" / "Perdido", botões ↑ ↓ para reordenar (`sort_order`), lixeira para excluir.
+- Botão "Adicionar estágio" (nome + posição no fim).
+- Regras: não deixar excluir estágio que tem prospects vinculados (checar `clients.prospect_stage`); em vez disso pedir para mover antes. Toast com `describeSupabaseError` em falhas.
+- Só managers veem/editam (a página inteira já é gated por `isManager`).
+
+### 4. Página CRM (`src/routes/_app/clientes.crm.tsx`)
+Sem mudança estrutural — continua renderizando `CrmTab`. O botão "Gerenciar estágios" fica dentro de `CrmTab`.
 
 ## Fora de escopo
-- Alterar Site URL/Redirect URLs no Supabase (assumo que `window.location.origin` já está permitido; se falhar, aviso o usuário para adicionar a URL na lista de Redirect URLs do projeto).
-- Custom auth email templates.
-- Migrações de banco.
+- Migração de `prospect_stage` para FK — mantenho como texto para não quebrar dados existentes; renomear estágio atualiza os `clients` correspondentes numa mesma transação (UPDATE em `clients` quando o `name` muda).
+
+## Detalhes técnicos
+- Migração cria tabela + RLS + GRANT + seed dos 6 estágios em uma única call ao `supabase--migration`.
+- Renomear estágio: mutation dispara `UPDATE clients SET prospect_stage=novo WHERE prospect_stage=antigo` + `UPDATE crm_stages`.
+- Reordenar: dois updates de `sort_order` numa mutation.
+- Tipos do Supabase serão regenerados após a migration aprovada; só então edito `clientes.tsx`.

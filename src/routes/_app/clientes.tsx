@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Plus, Trash2, Save, ExternalLink, Pencil, UserPlus,
   Users, KeyRound, FileText, FolderKanban, Sparkles, Search, MessageCircle,
+  Settings2, ArrowUp, ArrowDown, Trophy, XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { inviteClientUser, listClientAccess, removeClientAccess } from "@/lib/client-access.functions";
@@ -747,12 +748,34 @@ function ProjectsTab({ clientId, setClientId }: { clientId: string; setClientId:
 /* ============================================================
    ABA 5 — CRM Prospecção
 ============================================================ */
-const STAGES = ["Novo lead", "Qualificação", "Proposta enviada", "Negociação", "Ganho", "Perdido"] as const;
-type Stage = (typeof STAGES)[number];
+type CrmStage = {
+  id: string;
+  name: string;
+  sort_order: number;
+  is_won: boolean;
+  is_lost: boolean;
+  color: string | null;
+};
+
+function useCrmStages() {
+  return useQuery({
+    queryKey: ["crm_stages"],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from as any)("crm_stages")
+        .select("*")
+        .order("sort_order");
+      if (error) throw error;
+      return (data ?? []) as CrmStage[];
+    },
+  });
+}
 
 export function CrmTab() {
   const qc = useQueryClient();
   const { data: rows = [] } = useClients();
+  const { data: stages = [] } = useCrmStages();
+  const [managerOpen, setManagerOpen] = useState(false);
   const prospects = useMemo(() => rows.filter((r) => r.status === "prospeccao"), [rows]);
 
   const update = useMutation({
@@ -766,44 +789,74 @@ export function CrmTab() {
     onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
+  const firstStageName = stages[0]?.name ?? "Novo lead";
+
   const byStage = useMemo(() => {
     const map: Record<string, Client[]> = {};
-    STAGES.forEach((s) => (map[s] = []));
+    stages.forEach((s) => (map[s.name] = []));
     const unset: Client[] = [];
     for (const p of prospects) {
       const stage = (p.prospect_stage ?? "").trim();
       if (stage && map[stage]) map[stage].push(p);
       else unset.push(p);
     }
-    if (unset.length) map["Novo lead"].push(...unset);
+    if (unset.length && map[firstStageName]) map[firstStageName].push(...unset);
     return map;
-  }, [prospects]);
+  }, [prospects, stages, firstStageName]);
 
   const total = prospects.length;
   const totalValor = prospects.reduce((s, p) => s + (Number(p.prospect_value) || 0), 0);
 
+  const handleDrop = (clientId: string, stage: CrmStage) => {
+    const current = prospects.find((p) => p.id === clientId);
+    if (!current || current.prospect_stage === stage.name) return;
+    if (stage.is_won) {
+      update.mutate({ id: clientId, status: "ativo", prospect_stage: stage.name });
+    } else if (stage.is_lost) {
+      update.mutate({ id: clientId, status: "inativo", prospect_stage: stage.name });
+    } else {
+      update.mutate({ id: clientId, prospect_stage: stage.name });
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Card className="p-4 bg-card/95 backdrop-blur">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Prospects ativos</p>
-          <p className="text-3xl font-semibold mt-1">{total}</p>
-        </Card>
-        <Card className="p-4 bg-card/95 backdrop-blur">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Pipeline (valor estimado)</p>
-          <p className="text-3xl font-semibold mt-1">
-            {totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-          </p>
-        </Card>
-        <Card className="p-4 bg-card/95 backdrop-blur">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Ações pendentes</p>
-          <p className="text-3xl font-semibold mt-1">
-            {prospects.filter((p) => p.prospect_next_action).length}
-          </p>
-        </Card>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1">
+          <Card className="p-4 bg-card/95 backdrop-blur">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Prospects ativos</p>
+            <p className="text-3xl font-semibold mt-1">{total}</p>
+          </Card>
+          <Card className="p-4 bg-card/95 backdrop-blur">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Pipeline (valor estimado)</p>
+            <p className="text-3xl font-semibold mt-1">
+              {totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            </p>
+          </Card>
+          <Card className="p-4 bg-card/95 backdrop-blur">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Ações pendentes</p>
+            <p className="text-3xl font-semibold mt-1">
+              {prospects.filter((p) => p.prospect_next_action).length}
+            </p>
+          </Card>
+        </div>
       </div>
 
-      {total === 0 && (
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => setManagerOpen(true)}>
+          <Settings2 className="h-4 w-4 mr-1.5" /> Gerenciar estágios
+        </Button>
+      </div>
+
+      {stages.length === 0 && (
+        <Card className="p-10 text-center bg-card/95 backdrop-blur">
+          <p className="text-sm text-muted-foreground">
+            Nenhum estágio cadastrado. Clique em "Gerenciar estágios" para começar.
+          </p>
+        </Card>
+      )}
+
+      {stages.length > 0 && total === 0 && (
         <Card className="p-10 text-center bg-card/95 backdrop-blur">
           <Sparkles className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">
@@ -812,45 +865,45 @@ export function CrmTab() {
         </Card>
       )}
 
-      {total > 0 && (
+      {stages.length > 0 && total > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {STAGES.map((stage) => (
+          {stages.map((stage) => (
             <StageColumn
-              key={stage}
+              key={stage.id}
               stage={stage}
-              items={byStage[stage]}
-              onDropClient={(clientId) => {
-                const current = prospects.find((p) => p.id === clientId);
-                if (!current || current.prospect_stage === stage) return;
-                if (stage === "Ganho") {
-                  update.mutate({ id: clientId, status: "ativo", prospect_stage: "Ganho" });
-                } else if (stage === "Perdido") {
-                  update.mutate({ id: clientId, status: "inativo", prospect_stage: "Perdido" });
-                } else {
-                  update.mutate({ id: clientId, prospect_stage: stage });
-                }
-              }}
+              items={byStage[stage.name] ?? []}
+              onDropClient={(clientId) => handleDrop(clientId, stage)}
               renderCard={(p) => (
                 <ProspectCard
                   key={p.id}
                   client={p}
+                  stages={stages}
                   onChange={(patch) => update.mutate({ id: p.id, ...patch })}
-                  onWin={() => update.mutate({ id: p.id, status: "ativo", prospect_stage: "Ganho" })}
-                  onLose={() => update.mutate({ id: p.id, status: "inativo", prospect_stage: "Perdido" })}
+                  onWin={() => {
+                    const won = stages.find((s) => s.is_won);
+                    update.mutate({ id: p.id, status: "ativo", prospect_stage: won?.name ?? p.prospect_stage ?? null });
+                  }}
+                  onLose={() => {
+                    const lost = stages.find((s) => s.is_lost);
+                    update.mutate({ id: p.id, status: "inativo", prospect_stage: lost?.name ?? p.prospect_stage ?? null });
+                  }}
                 />
               )}
             />
           ))}
         </div>
       )}
+
+      <StagesManagerDialog open={managerOpen} onOpenChange={setManagerOpen} stages={stages} prospects={prospects} />
     </div>
   );
 }
 
+
 function StageColumn({
   stage, items, onDropClient, renderCard,
 }: {
-  stage: Stage;
+  stage: CrmStage;
   items: Client[];
   onDropClient: (clientId: string) => void;
   renderCard: (c: Client) => React.ReactNode;
@@ -869,7 +922,14 @@ function StageColumn({
       }}
     >
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold">{stage}</h3>
+        <div className="flex items-center gap-2 min-w-0">
+          {stage.color && (
+            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
+          )}
+          <h3 className="text-sm font-semibold truncate">{stage.name}</h3>
+          {stage.is_won && <Trophy className="h-3.5 w-3.5 text-emerald-600" />}
+          {stage.is_lost && <XCircle className="h-3.5 w-3.5 text-destructive" />}
+        </div>
         <Badge variant="secondary">{items.length}</Badge>
       </div>
       <div className="space-y-2 min-h-[40px]">
@@ -889,15 +949,17 @@ function buildWhatsAppUrl(phone: string) {
 }
 
 function ProspectCard({
-  client, onChange, onWin, onLose,
+  client, stages, onChange, onWin, onLose,
 }: {
   client: Client;
+  stages: CrmStage[];
   onChange: (patch: Partial<Client>) => void;
   onWin: () => void;
   onLose: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const defaultStage = client.prospect_stage ?? stages[0]?.name ?? "";
   return (
     <div
       draggable
@@ -961,7 +1023,7 @@ function ProspectCard({
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
               onChange({
-                prospect_stage: (fd.get("stage") as Stage) || null,
+                prospect_stage: (fd.get("stage") as string) || null,
                 prospect_value: fd.get("value") ? Number(fd.get("value")) : null,
                 prospect_next_action: (fd.get("action") as string) || null,
                 prospect_next_action_at: (fd.get("action_at") as string) || null,
@@ -971,10 +1033,10 @@ function ProspectCard({
           >
             <div className="space-y-1">
               <Label>Estágio</Label>
-              <Select name="stage" defaultValue={client.prospect_stage ?? "Novo lead"}>
+              <Select name="stage" defaultValue={defaultStage}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {STAGES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {stages.map((s) => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -1005,3 +1067,174 @@ function ProspectCard({
     </div>
   );
 }
+
+/* ============================================================
+   Gerenciar estágios do CRM
+============================================================ */
+function StagesManagerDialog({
+  open, onOpenChange, stages, prospects,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  stages: CrmStage[];
+  prospects: Client[];
+}) {
+  const qc = useQueryClient();
+  const [newName, setNewName] = useState("");
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["crm_stages"] });
+
+  const addStage = useMutation({
+    mutationFn: async (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("Informe um nome para o estágio.");
+      const nextOrder = (stages.at(-1)?.sort_order ?? 0) + 10;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from as any)("crm_stages").insert({ name: trimmed, sort_order: nextOrder });
+      if (error) throw error;
+    },
+    onSuccess: () => { setNewName(""); invalidate(); toast.success("Estágio adicionado"); },
+    onError: (e) => toast.error(describeSupabaseError(e)),
+  });
+
+  const patchStage = useMutation({
+    mutationFn: async ({ id, patch, previousName }: { id: string; patch: Partial<CrmStage>; previousName?: string }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from as any)("crm_stages").update(patch).eq("id", id);
+      if (error) throw error;
+      if (patch.name && previousName && patch.name !== previousName) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: cerr } = await (supabase.from as any)("clients")
+          .update({ prospect_stage: patch.name })
+          .eq("prospect_stage", previousName);
+        if (cerr) throw cerr;
+      }
+    },
+    onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ["clients"] }); },
+    onError: (e) => toast.error(describeSupabaseError(e)),
+  });
+
+  const deleteStage = useMutation({
+    mutationFn: async (stage: CrmStage) => {
+      const inUse = prospects.some((p) => p.prospect_stage === stage.name);
+      if (inUse) throw new Error("Existem prospects neste estágio. Mova-os antes de excluir.");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from as any)("crm_stages").delete().eq("id", stage.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidate(); toast.success("Estágio removido"); },
+    onError: (e) => toast.error(describeSupabaseError(e)),
+  });
+
+  const swap = (index: number, dir: -1 | 1) => {
+    const a = stages[index];
+    const b = stages[index + dir];
+    if (!a || !b) return;
+    patchStage.mutate({ id: a.id, patch: { sort_order: b.sort_order } });
+    patchStage.mutate({ id: b.id, patch: { sort_order: a.sort_order } });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle>Gerenciar estágios do CRM</DialogTitle></DialogHeader>
+
+        <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+          {stages.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum estágio cadastrado ainda.</p>
+          )}
+          {stages.map((s, idx) => (
+            <StageRow
+              key={s.id}
+              stage={s}
+              disableUp={idx === 0}
+              disableDown={idx === stages.length - 1}
+              onMove={(dir) => swap(idx, dir)}
+              onSave={(patch) => patchStage.mutate({ id: s.id, patch, previousName: s.name })}
+              onDelete={() => deleteStage.mutate(s)}
+              inUse={prospects.some((p) => p.prospect_stage === s.name)}
+            />
+          ))}
+        </div>
+
+        <div className="border-t pt-3 flex items-end gap-2">
+          <div className="flex-1 space-y-1">
+            <Label>Novo estágio</Label>
+            <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ex.: Follow-up 30 dias" />
+          </div>
+          <Button onClick={() => addStage.mutate(newName)} disabled={!newName.trim() || addStage.isPending}>
+            <Plus className="h-4 w-4 mr-1" /> Adicionar
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StageRow({
+  stage, disableUp, disableDown, onMove, onSave, onDelete, inUse,
+}: {
+  stage: CrmStage;
+  disableUp: boolean;
+  disableDown: boolean;
+  onMove: (dir: -1 | 1) => void;
+  onSave: (patch: Partial<CrmStage>) => void;
+  onDelete: () => void;
+  inUse: boolean;
+}) {
+  const [name, setName] = useState(stage.name);
+  const [color, setColor] = useState(stage.color ?? "#64748b");
+  const dirty = name.trim() !== stage.name || (color || null) !== (stage.color ?? null);
+
+  useEffect(() => { setName(stage.name); setColor(stage.color ?? "#64748b"); }, [stage.name, stage.color]);
+
+  return (
+    <div className="flex items-center gap-2 rounded-md border p-2 bg-background/50">
+      <div className="flex flex-col gap-0.5">
+        <Button variant="ghost" size="icon" className="h-6 w-6" disabled={disableUp} onClick={() => onMove(-1)}>
+          <ArrowUp className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-6 w-6" disabled={disableDown} onClick={() => onMove(1)}>
+          <ArrowDown className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <Input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-9 w-12 p-1 shrink-0" />
+      <Input value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
+      <label className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+        <input
+          type="checkbox"
+          checked={stage.is_won}
+          onChange={(e) => onSave({ is_won: e.target.checked, is_lost: e.target.checked ? false : stage.is_lost })}
+        />
+        Ganho
+      </label>
+      <label className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+        <input
+          type="checkbox"
+          checked={stage.is_lost}
+          onChange={(e) => onSave({ is_lost: e.target.checked, is_won: e.target.checked ? false : stage.is_won })}
+        />
+        Perdido
+      </label>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        disabled={!dirty}
+        title="Salvar alterações"
+        onClick={() => onSave({ name: name.trim(), color })}
+      >
+        <Save className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-destructive"
+        title={inUse ? "Existem prospects neste estágio" : "Excluir"}
+        onClick={onDelete}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
