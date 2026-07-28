@@ -540,10 +540,18 @@ function AssignTab({ focusUserId }: { focusUserId?: string }) {
         {members.map((m) => {
           const mine = userSpecs.filter((u) => u.user_id === m.id).map((u) => u.specialty_id);
           const mineSet = new Set(mine);
+          const memberRoles = allUserRoles.filter((r) => r.user_id === m.id).map((r) => r.role);
+          const primaryRole: AppRole = memberRoles[0] ?? "membro";
+          const targetRank = Math.max(-1, ...memberRoles.map((r) => ROLE_RANK[r] ?? -1));
+          const canManageRole = isMaster || actorRank > targetRank;
+          const allowedRoles = isMaster ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
           return (
-            <div key={m.id} className="border rounded-md p-3 space-y-3">
+            <div key={m.id} id={`assign-member-${m.id}`} className="border rounded-md p-3 space-y-3 transition-shadow">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <p className="font-medium">{m.full_name ?? m.id}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-medium">{m.full_name ?? m.id}</p>
+                  <Badge variant="outline" className="text-[10px] uppercase">{ROLE_LABELS[primaryRole]}</Badge>
+                </div>
                 <div className="flex gap-1 flex-wrap">
                   {mine.length === 0 && <span className="text-xs text-muted-foreground">Sem cargos atribuídos</span>}
                   {mine.map((sid) => {
@@ -566,34 +574,50 @@ function AssignTab({ focusUserId }: { focusUserId?: string }) {
                   })}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground whitespace-nowrap">Adicionar cargo:</Label>
-                <Select
-                  value=""
-                  onValueChange={(val) => { if (val) assign.mutate({ userId: m.id, specId: val }); }}
-                >
-                  <SelectTrigger className="max-w-sm">
-                    <SelectValue placeholder="Selecionar subfunção…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {specsByArea.map(({ area, specs: aSpecs }) => {
-                      const available = aSpecs.filter((s) => !mineSet.has(s.id));
-                      if (available.length === 0) return null;
-                      return (
-                        <SelectGroup key={area.id}>
-                          <SelSelectLabel>{area.name}</SelSelectLabel>
-                          {available.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                          ))}
-                        </SelectGroup>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Papel principal:</Label>
+                  <Select
+                    value={primaryRole}
+                    onValueChange={(v) => setRole.mutate({ userId: m.id, role: v as AppRole })}
+                    disabled={!canManageRole || allowedRoles.length === 0}
+                  >
+                    <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {allowedRoles.map((r) => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Adicionar cargo:</Label>
+                  <Select
+                    value=""
+                    onValueChange={(val) => { if (val) assign.mutate({ userId: m.id, specId: val }); }}
+                  >
+                    <SelectTrigger className="max-w-sm">
+                      <SelectValue placeholder="Selecionar subfunção…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {specsByArea.map(({ area, specs: aSpecs }) => {
+                        const available = aSpecs.filter((s) => !mineSet.has(s.id));
+                        if (available.length === 0) return null;
+                        return (
+                          <SelectGroup key={area.id}>
+                            <SelSelectLabel>{area.name}</SelSelectLabel>
+                            {available.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                            ))}
+                          </SelectGroup>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           );
         })}
+
       </CardContent>
     </Card>
   );
