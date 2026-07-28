@@ -19,16 +19,31 @@ import { describeSupabaseError } from "@/lib/supabase-error";
 
 export const Route = createFileRoute("/_app/acessos")({
   head: () => ({ meta: [{ title: "Perfis e Acessos" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    tab: (s.tab as string) || undefined,
+    user: (s.user as string) || undefined,
+  }),
   component: AcessosPage,
 });
 
 type Area = { id: string; name: string; sort_order: number };
 type Specialty = { id: string; area_id: string; name: string; sort_order: number };
 type MemberProfile = { id: string; full_name: string | null };
+type AppRole = "admin" | "gerente" | "membro" | "cliente";
+
+const ROLE_LABELS: Record<AppRole, string> = {
+  admin: "Administrador",
+  gerente: "Gerente",
+  membro: "Colaborador",
+  cliente: "Cliente",
+};
+const ASSIGNABLE_ROLES: AppRole[] = ["admin", "gerente", "membro"];
+const ROLE_RANK: Record<AppRole, number> = { admin: 3, gerente: 2, membro: 1, cliente: 0 };
 
 function AcessosPage() {
   const { isMaster, roles } = useAuth();
   const isAdmin = isMaster || roles.includes("admin" as any);
+  const search = Route.useSearch();
   if (!isAdmin) return <Navigate to="/dashboard" />;
 
   return (
@@ -38,18 +53,19 @@ function AcessosPage() {
         <p className="text-sm text-muted-foreground">Configure as Áreas de atuação, Especialidades e o que cada uma enxerga no sistema.</p>
       </div>
 
-      <Tabs defaultValue="hierarchy" className="space-y-4">
+      <Tabs defaultValue={search.tab === "assign" ? "assign" : "hierarchy"} className="space-y-4">
         <TabsList>
           <TabsTrigger value="hierarchy">Áreas & Especialidades</TabsTrigger>
           <TabsTrigger value="assign">Atribuição de usuários</TabsTrigger>
         </TabsList>
 
         <TabsContent value="hierarchy"><HierarchyTab /></TabsContent>
-        <TabsContent value="assign"><AssignTab /></TabsContent>
+        <TabsContent value="assign"><AssignTab focusUserId={search.user} /></TabsContent>
       </Tabs>
     </div>
   );
 }
+
 
 function HierarchyTab() {
   const qc = useQueryClient();
