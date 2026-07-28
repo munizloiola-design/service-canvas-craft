@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
 
-type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; masterOnly?: boolean };
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard };
 type NavGroup = { label?: string; items: NavItem[] };
 
 const navGroups: NavGroup[] = [
