@@ -814,6 +814,81 @@ export type Database = {
           },
         ]
       }
+      financial_entry_requests: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string
+          created_entry_id: string | null
+          description: string
+          entry_date: string
+          id: string
+          kind: string
+          receipt_path: string | null
+          requester_email: string
+          requester_name: string
+          requester_notes: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          created_entry_id?: string | null
+          description: string
+          entry_date: string
+          id?: string
+          kind: string
+          receipt_path?: string | null
+          requester_email: string
+          requester_name: string
+          requester_notes?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          created_entry_id?: string | null
+          description?: string
+          entry_date?: string
+          id?: string
+          kind?: string
+          receipt_path?: string | null
+          requester_email?: string
+          requester_name?: string
+          requester_notes?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_entry_requests_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_entry_requests_created_entry_id_fkey"
+            columns: ["created_entry_id"]
+            isOneToOne: false
+            referencedRelation: "financial_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_settings: {
         Row: {
           currency: string

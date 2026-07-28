@@ -14,6 +14,7 @@ import { Route as TicketRouteImport } from './routes/ticket'
 import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LancamentoRouteImport } from './routes/lancamento'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalIndexRouteImport } from './routes/portal/index'
@@ -78,6 +79,11 @@ const PortalRoute = PortalRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LancamentoRoute = LancamentoRouteImport.update({
+  id: '/lancamento',
+  path: '/lancamento',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -285,6 +291,7 @@ const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/lancamento': typeof LancamentoRoute
   '/login': typeof LoginRoute
   '/portal': typeof PortalRouteWithChildren
   '/set-password': typeof SetPasswordRoute
@@ -331,6 +338,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/lancamento': typeof LancamentoRoute
   '/login': typeof LoginRoute
   '/set-password': typeof SetPasswordRoute
   '/ticket': typeof TicketRoute
@@ -377,6 +385,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/lancamento': typeof LancamentoRoute
   '/login': typeof LoginRoute
   '/portal': typeof PortalRouteWithChildren
   '/set-password': typeof SetPasswordRoute
@@ -425,6 +434,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/lancamento'
     | '/login'
     | '/portal'
     | '/set-password'
@@ -471,6 +481,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/lancamento'
     | '/login'
     | '/set-password'
     | '/ticket'
@@ -516,6 +527,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/lancamento'
     | '/login'
     | '/portal'
     | '/set-password'
@@ -564,6 +576,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  LancamentoRoute: typeof LancamentoRoute
   LoginRoute: typeof LoginRoute
   PortalRoute: typeof PortalRouteWithChildren
   SetPasswordRoute: typeof SetPasswordRoute
@@ -616,6 +629,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lancamento': {
+      id: '/lancamento'
+      path: '/lancamento'
+      fullPath: '/lancamento'
+      preLoaderRoute: typeof LancamentoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -987,6 +1007,7 @@ const PortalRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  LancamentoRoute: LancamentoRoute,
   LoginRoute: LoginRoute,
   PortalRoute: PortalRouteWithChildren,
   SetPasswordRoute: SetPasswordRoute,
@@ -1006,13 +1027,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

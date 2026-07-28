@@ -13,7 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, TrendingUp, TrendingDown, Receipt, CheckCircle2, Pencil, FileDown, Printer } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Trash2, TrendingUp, TrendingDown, Receipt, CheckCircle2, Pencil, FileDown, Printer, Link2, Copy, ExternalLink, Download, XCircle } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 import { startOfMonth, endOfMonth, subMonths, format, parseISO } from "date-fns";
@@ -52,6 +54,7 @@ function FinanceiroPage() {
           <TabsTrigger value="recorrentes">Receitas recorrentes</TabsTrigger>
           <TabsTrigger value="autorizacoes">Autorizações</TabsTrigger>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
+          <TabsTrigger value="solicitacoes">Solicitações</TabsTrigger>
           <TabsTrigger value="relatorio">Relatório</TabsTrigger>
           <TabsTrigger value="config">Configurações</TabsTrigger>
         </TabsList>
@@ -60,6 +63,7 @@ function FinanceiroPage() {
         <TabsContent value="recorrentes" className="mt-6"><RecurringIncomes /></TabsContent>
         <TabsContent value="autorizacoes" className="mt-6"><Autorizacoes /></TabsContent>
         <TabsContent value="lancamentos" className="mt-6"><Entries /></TabsContent>
+        <TabsContent value="solicitacoes" className="mt-6"><Solicitacoes /></TabsContent>
         <TabsContent value="relatorio" className="mt-6"><Relatorio /></TabsContent>
         <TabsContent value="config" className="mt-6"><SettingsTab /></TabsContent>
       </Tabs>
@@ -257,11 +261,14 @@ function Entries() {
 
   return (
     <Card className="p-4">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 gap-2 flex-wrap">
         <h3 className="font-medium">Lançamentos (entradas e saídas)</h3>
-        {canEdit && (
-          <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-2" />Novo lançamento</Button>
-        )}
+        <div className="flex items-center gap-2">
+          <ShareLancamentoLink />
+          {canEdit && (
+            <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-2" />Novo lançamento</Button>
+          )}
+        </div>
       </div>
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
         <EntryForm
@@ -1136,6 +1143,293 @@ function CategoriesSettings({ canEdit }: { canEdit: boolean }) {
               </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+// ============================ SHARE LINK + SOLICITAÇÕES ============================
+
+function ShareLancamentoLink() {
+  const url = typeof window !== "undefined" ? `${window.location.origin}/lancamento` : "/lancamento";
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline"><Link2 className="h-4 w-4 mr-2" />Link de envio</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Compartilhar link do formulário</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Qualquer pessoa com este link pode enviar um lançamento. As solicitações caem na aba
+            "Solicitações" e só entram no financeiro após sua aprovação.
+          </p>
+          <div className="flex items-center gap-2">
+            <Input readOnly value={url} className="font-mono text-sm" onFocus={(e) => e.currentTarget.select()} />
+            <Button size="icon" variant="outline" onClick={() => { navigator.clipboard.writeText(url); toast.success("Link copiado"); }} title="Copiar">
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button size="icon" variant="outline" asChild title="Abrir">
+              <a href={url} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a>
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Solicitacoes() {
+  const { roles } = useAuth();
+  const canManage = roles.includes("admin") || roles.includes("gerente");
+  const qc = useQueryClient();
+  const [tab, setTab] = useState<"pendente" | "aprovado" | "rejeitado">("pendente");
+  const [selected, setSelected] = useState<any | null>(null);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const { data: reqs = [], isLoading } = useQuery({
+    queryKey: ["financial_entry_requests", tab],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financial_entry_requests")
+        .select("*, financial_categories(name)")
+        .eq("status", tab)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: pendingCount = 0 } = useQuery({
+    queryKey: ["financial_entry_requests_count_pendente"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("financial_entry_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pendente");
+      return count ?? 0;
+    },
+  });
+
+  const approve = useMutation({
+    mutationFn: async (r: any) => {
+      const { data: u } = await supabase.auth.getUser();
+      const { data: entry, error: insErr } = await supabase
+        .from("financial_entries")
+        .insert({
+          kind: r.kind,
+          entry_date: r.entry_date,
+          description: r.description,
+          amount: r.amount,
+          category_id: r.category_id,
+          category: r.financial_categories?.name ?? null,
+          receipt_path: r.receipt_path,
+          source_type: "manual",
+          created_by: u.user?.id,
+        })
+        .select("id")
+        .single();
+      if (insErr) throw insErr;
+      const { error } = await supabase
+        .from("financial_entry_requests")
+        .update({
+          status: "aprovado",
+          reviewed_by: u.user?.id,
+          reviewed_at: new Date().toISOString(),
+          created_entry_id: entry.id,
+        })
+        .eq("id", r.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["financial_entry_requests"] });
+      qc.invalidateQueries({ queryKey: ["financial_entry_requests_count_pendente"] });
+      qc.invalidateQueries({ queryKey: ["financial_entries"] });
+      setSelected(null);
+      toast.success("Lançamento aprovado");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const reject = useMutation({
+    mutationFn: async ({ r, reason }: { r: any; reason: string }) => {
+      const { data: u } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from("financial_entry_requests")
+        .update({
+          status: "rejeitado",
+          review_notes: reason || null,
+          reviewed_by: u.user?.id,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", r.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["financial_entry_requests"] });
+      qc.invalidateQueries({ queryKey: ["financial_entry_requests_count_pendente"] });
+      setRejectOpen(false); setRejectReason(""); setSelected(null);
+      toast.success("Solicitação rejeitada");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("financial_entry_requests").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["financial_entry_requests"] });
+      qc.invalidateQueries({ queryKey: ["financial_entry_requests_count_pendente"] });
+      setSelected(null);
+      toast.success("Removido");
+    },
+  });
+
+  const openReceipt = async (path: string) => {
+    const { data, error } = await supabase.storage.from("financial-receipts").createSignedUrl(path, 60);
+    if (error) { toast.error("Não foi possível abrir o comprovante"); return; }
+    window.open(data.signedUrl, "_blank");
+  };
+
+  return (
+    <Card className="p-4">
+      <div className="flex justify-between items-center mb-4 gap-2 flex-wrap">
+        <div>
+          <h3 className="font-medium">Solicitações de lançamento</h3>
+          <p className="text-xs text-muted-foreground">Enviadas pelo formulário público de envio.</p>
+        </div>
+        <ShareLancamentoLink />
+      </div>
+
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+        <TabsList>
+          <TabsTrigger value="pendente">
+            Pendentes {pendingCount > 0 && <Badge variant="secondary" className="ml-2">{pendingCount}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="aprovado">Aprovadas</TabsTrigger>
+          <TabsTrigger value="rejeitado">Rejeitadas</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={tab} className="mt-4">
+          {isLoading ? (
+            <div className="py-10 text-center text-muted-foreground text-sm">Carregando...</div>
+          ) : reqs.length === 0 ? (
+            <div className="py-10 text-center text-muted-foreground text-sm">Nenhuma solicitação {tab}.</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Solicitante</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="w-[120px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reqs.map((r: any) => (
+                  <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelected(r)}>
+                    <TableCell>{format(parseISO(r.entry_date), "dd/MM/yyyy")}</TableCell>
+                    <TableCell><Badge variant={r.kind === "income" ? "default" : "secondary"}>{r.kind === "income" ? "Entrada" : "Saída"}</Badge></TableCell>
+                    <TableCell className="font-medium">{r.description}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{r.requester_name}<div className="text-[10px]">{r.requester_email}</div></TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{r.financial_categories?.name ?? "—"}</TableCell>
+                    <TableCell className={`text-right font-medium ${r.kind === "income" ? "text-green-600" : "text-red-600"}`}>{fmtBRL(Number(r.amount))}</TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      {tab === "pendente" && canManage && (
+                        <div className="flex justify-end gap-1">
+                          <Button size="icon" variant="ghost" title="Aprovar" onClick={() => approve.mutate(r)}>
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          </Button>
+                          <Button size="icon" variant="ghost" title="Rejeitar" onClick={() => { setSelected(r); setRejectOpen(true); }}>
+                            <XCircle className="h-4 w-4 text-red-600" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      <Sheet open={!!selected && !rejectOpen} onOpenChange={(v) => !v && setSelected(null)}>
+        <SheetContent className="sm:max-w-md overflow-y-auto">
+          {selected && (
+            <>
+              <SheetHeader><SheetTitle className="pr-8">{selected.description}</SheetTitle></SheetHeader>
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Tipo</span><span>{selected.kind === "income" ? "Entrada" : "Saída"}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Data</span><span>{format(parseISO(selected.entry_date), "dd/MM/yyyy")}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Valor</span><span className="font-medium">{fmtBRL(Number(selected.amount))}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Categoria</span><span>{selected.financial_categories?.name ?? "—"}</span></div>
+                <div className="border-t pt-3">
+                  <div className="text-muted-foreground text-xs">Solicitante</div>
+                  <div>{selected.requester_name}</div>
+                  <div className="text-xs text-muted-foreground">{selected.requester_email}</div>
+                </div>
+                {selected.requester_notes && (
+                  <div className="border-t pt-3">
+                    <div className="text-muted-foreground text-xs mb-1">Observações</div>
+                    <div className="whitespace-pre-wrap">{selected.requester_notes}</div>
+                  </div>
+                )}
+                {selected.receipt_path && (
+                  <div className="border-t pt-3">
+                    <Button size="sm" variant="outline" onClick={() => openReceipt(selected.receipt_path)}>
+                      <Download className="h-4 w-4 mr-2" />Ver comprovante
+                    </Button>
+                  </div>
+                )}
+                {selected.review_notes && (
+                  <div className="border-t pt-3">
+                    <div className="text-muted-foreground text-xs mb-1">Motivo</div>
+                    <div className="whitespace-pre-wrap">{selected.review_notes}</div>
+                  </div>
+                )}
+                {canManage && (
+                  <div className="border-t pt-4 flex flex-wrap gap-2">
+                    {selected.status === "pendente" && (
+                      <>
+                        <Button size="sm" onClick={() => approve.mutate(selected)} disabled={approve.isPending}>
+                          <CheckCircle2 className="h-4 w-4 mr-2" />Aprovar
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setRejectOpen(true)}>
+                          <XCircle className="h-4 w-4 mr-2" />Rejeitar
+                        </Button>
+                      </>
+                    )}
+                    <Button size="sm" variant="ghost" className="text-red-600 ml-auto" onClick={() => { if (confirm("Remover esta solicitação?")) del.mutate(selected.id); }}>
+                      <Trash2 className="h-4 w-4 mr-2" />Excluir
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Rejeitar solicitação</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <Label>Motivo (opcional)</Label>
+            <Textarea rows={4} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Explique brevemente..." />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={() => selected && reject.mutate({ r: selected, reason: rejectReason })} disabled={reject.isPending}>Rejeitar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
