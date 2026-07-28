@@ -1,61 +1,52 @@
 ## Objetivo
-Criar um formulário público (sem login) para envio de lançamentos financeiros, com fila de moderação no módulo Financeiro, semelhante ao fluxo de `/ticket`.
 
-## Fluxo do usuário
-1. Admin abre **Financeiro → Lançamentos**, vê um botão **"Compartilhar link de envio"** (com copiar link + preview do QR).
-2. Qualquer pessoa acessa `/lancamento`, preenche o formulário e envia.
-3. Envio cai na nova aba **Financeiro → Solicitações**, com contador de pendentes.
-4. Admin revisa cada item e clica **Aprovar** (vira `financial_entries`) ou **Rejeitar** (arquiva com motivo). Também pode editar antes de aprovar.
+Eliminar a duplicidade do controle de papéis/subfunções que hoje existe em duas telas (aba "Papel & Funções" dentro do dialog de membro em **Squad › Equipe** e a tela **Perfis e Acessos**). Deixar tudo centralizado em **Perfis e Acessos**, que já é a fonte oficial de acesso a menus e campos.
 
-## Campos do formulário (`/lancamento`)
-- Nome de quem enviou * (texto)
-- E-mail * (para retorno)
-- Tipo * (Entrada / Saída)
-- Data * (date)
-- Descrição * (texto)
-- Valor * (numérico, R$)
-- Categoria (select opcional, alimentado por `financial_categories` filtrado por `kind`)
-- Comprovante (upload opcional, 1 arquivo, ≤10MB) → bucket `financial-receipts` em `public/pending/<request_id>/...`
-- Observações (textarea opcional)
+## Diagnóstico (confirmado por leitura de código)
 
-Validação com zod + autofill de nome/e-mail via localStorage (mesmo padrão do `/ticket`).
+- `src/routes/_app/team.tsx` — o dialog do membro tem uma aba **Papel & Funções** que grava em `user_roles` (admin/gerente/membro) e `user_functions` (subfunções antigas de `collaborator_functions`). Essa aba usa uma checagem de permissão própria (`canManageThisUser = isMaster || actorRank > targetRank`) que dispara os avisos "Você não tem permissão para alterar o papel deste membro" mesmo quando o usuário já é Admin em outra área.
+- `src/routes/_app/acessos.tsx` — a fonte oficial: gerencia `provider_areas`, `provider_specialties`, `user_specialties` e a visibilidade de menus/campos (`area_menu_visibility`, `specialty_field_visibility`). É o que hoje efetivamente decide o que aparece no menu.
+- Resultado: alterar cargo em Squad não muda o menu (que vem de Perfis e Acessos), e alterar em Perfis e Acessos não altera `user_roles`, deixando checagens antigas (`isAdmin`, `isManager`) inconsistentes.
 
-## Estrutura técnica
+## O que fazer
 
-### Banco (migração)
-Nova tabela `public.financial_entry_requests`:
-- `id uuid pk`, `created_at`, `reviewed_at`, `reviewed_by uuid`
-- `requester_name text`, `requester_email text`, `requester_notes text`
-- `kind text` (`income`/`expense`), `entry_date date`, `description text`, `amount numeric`, `category_id uuid` (fk opcional)
-- `receipt_path text` (opcional)
-- `status text` (`pendente` | `aprovado` | `rejeitado`), `review_notes text`
-- `created_entry_id uuid` (fk `financial_entries.id`, preenchida na aprovação)
+### 1. `src/routes/_app/team.tsx` — remover a aba duplicada
 
-Grants + RLS:
-- `GRANT INSERT ON public.financial_entry_requests TO anon, authenticated` (permite envio público)
-- `GRANT SELECT/UPDATE/DELETE` só para `authenticated` + policies restringindo a `is_manager(auth.uid())` (mesma regra do restante do Financeiro).
-- `SELECT` liberado apenas para managers; nenhum `SELECT` para `anon`.
+- Remover a `<TabsTrigger value="funcoes">` e o `<TabsContent value="funcoes">` do `MemberDialog`.
+- Remover estados/mutations relacionados: `primaryRole`, `selectedFns`, escrita em `user_roles` e `user_functions` dentro de `saveProfile`.
+- Trocar o botão "Salvar ficha e funções" por "Salvar ficha".
+- Adicionar no cabeçalho do dialog um link/botão **"Gerenciar papel e cargos em Perfis e Acessos →"** que navega para `/acessos?tab=assign&user=<id>`.
 
-Bucket `financial-receipts` já existe (privado). Adicionar policy de INSERT para `anon` apenas em `public/pending/*` e SELECT para managers.
+### 2. `src/routes/_app/acessos.tsx` — passar a gerenciar também o Papel principal
 
-### Frontend
-- Novo arquivo `src/routes/lancamento.tsx` (público, sem `_app`), estilo/estrutura idêntico ao `src/routes/ticket.tsx`, adaptado aos campos financeiros. Head meta próprio.
-- `src/routes/_app/financeiro.tsx`:
-  - Botão **"Link de envio público"** no cabeçalho da aba Lançamentos: mostra a URL (`${origin}/lancamento`) + botões "Copiar" e "Abrir".
-  - Nova aba **Solicitações** com lista (pendentes/aprovadas/rejeitadas), detalhes em `Sheet`, ações Aprovar (cria linha em `financial_entries` via `insert`) e Rejeitar (com motivo). Badge com contador de pendentes na aba.
+- Ler `?tab=` e `?user=` da URL para abrir direto na aba **Atribuição de usuários** com o card do membro em destaque (scroll + highlight rápido).
+- No card de cada membro do `AssignTab`, adicionar acima da lista de cargos um seletor **Papel principal** (`admin` / `gerente` / `membro`) que grava em `user_roles` usando a mesma regra atual do `MemberDialog` (só Master ou papel de rank estritamente maior pode alterar).
+- Mostrar badge do papel atual ao lado do nome do membro.
 
-### Regras de negócio na aprovação
-- Cria `financial_entries` com `kind`, `entry_date`, `description`, `amount`, `category_id`, `receipt_path` (mesmo path, permanece no bucket), `source_type = 'manual'`, `created_by = auth.uid()`.
-- Atualiza request: `status='aprovado'`, `reviewed_by`, `reviewed_at`, `created_entry_id`.
-- Rejeição: apenas atualiza status + `review_notes`; anexo permanece.
+### 3. Guarda de acesso da própria tela `/acessos`
 
-## Segurança
-- Zod no client + limites de tamanho no submit.
-- Nenhum dado sensível é retornado ao público.
-- Só managers leem/aprovam (via `is_manager`).
-- Upload restrito a prefixo `public/pending/` e mime/size validados no client.
+- Hoje `AcessosPage` gateia por `isMaster || roles.includes("admin")`. Manter, mas também aceitar quem tem a especialidade **Administração › Total** (mesma regra já usada em outros pontos do sistema), para não bloquear Admins que só existem via Perfis e Acessos.
 
-## Arquivos afetados
-- **Novo:** `src/routes/lancamento.tsx`
-- **Editar:** `src/routes/_app/financeiro.tsx` (botão + nova aba Solicitações)
-- **Migração:** cria `financial_entry_requests` + grants/RLS + policies de storage
+### 4. Limpeza
+
+- Nenhuma migração de banco necessária: `user_roles` continua sendo a fonte de papel; `collaborator_functions`/`user_functions` continuam existindo para não quebrar telas que ainda leem (não vamos deletar dados nesta rodada).
+- Remover imports não usados em `team.tsx` (Checkbox, ROLE_LABELS, ASSIGNABLE_ROLES etc.) que ficarem órfãos.
+
+## Fora de escopo
+
+- Migrar `user_functions` legados para `user_specialties` (pode ser um passo futuro).
+- Alterar as políticas RLS de `user_roles`.
+
+## Diagrama
+
+```text
+Antes:
+  Squad › Equipe › [Membro] › aba "Papel & Funções"  ──► user_roles + user_functions
+  Perfis e Acessos › Atribuição                      ──► user_specialties (menus/campos)
+
+Depois:
+  Squad › Equipe › [Membro] › Ficha + Anotações      (sem papéis)
+                              └─► link "Gerenciar em Perfis e Acessos"
+  Perfis e Acessos › Atribuição                      ──► user_roles (papel)
+                                                     ──► user_specialties (menus/campos)
+```
