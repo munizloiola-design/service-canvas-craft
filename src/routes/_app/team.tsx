@@ -63,6 +63,7 @@ type Profile = {
 
 function TeamPage() {
   const { isMaster, isManager } = useAuth();
+  const { menuAllowed } = useAccess();
   const qc = useQueryClient();
   const [openMember, setOpenMember] = useState<string | null>(null);
   const doDelete = useServerFn(deleteTeamMember);
