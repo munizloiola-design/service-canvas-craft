@@ -53,6 +53,7 @@ function FinanceiroPage() {
           <TabsTrigger value="recorrentes">Receitas recorrentes</TabsTrigger>
           <TabsTrigger value="autorizacoes">Autorizações</TabsTrigger>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
+          <TabsTrigger value="solicitacoes">Solicitações</TabsTrigger>
           <TabsTrigger value="relatorio">Relatório</TabsTrigger>
           <TabsTrigger value="config">Configurações</TabsTrigger>
         </TabsList>
@@ -61,6 +62,7 @@ function FinanceiroPage() {
         <TabsContent value="recorrentes" className="mt-6"><RecurringIncomes /></TabsContent>
         <TabsContent value="autorizacoes" className="mt-6"><Autorizacoes /></TabsContent>
         <TabsContent value="lancamentos" className="mt-6"><Entries /></TabsContent>
+        <TabsContent value="solicitacoes" className="mt-6"><Solicitacoes /></TabsContent>
         <TabsContent value="relatorio" className="mt-6"><Relatorio /></TabsContent>
         <TabsContent value="config" className="mt-6"><SettingsTab /></TabsContent>
       </Tabs>
