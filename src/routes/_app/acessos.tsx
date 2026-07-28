@@ -569,12 +569,26 @@ const ACTION_OPTIONS = [
   { key: "delete", label: "Excluir" },
 ] as const;
 
-// Recursos = chaves de menu do MENU_REGISTRY (sem a barra).
-const ROLE_RESOURCES = MENU_REGISTRY.map((m) => ({
-  key: m.key.replace(/^\//, "") || "dashboard",
-  label: m.label,
-  group: m.group,
-}));
+// Recursos usados pelo sidebar (src/routes/_app.tsx) — precisam bater 1:1.
+const ROLE_RESOURCES: { key: string; label: string; group?: string }[] = [
+  { key: "dashboard", label: "Dashboard" },
+  { key: "projects", label: "Projetos", group: "Operação" },
+  { key: "tickets", label: "Tickets", group: "Operação" },
+  { key: "calendario", label: "Calendário", group: "Operação" },
+  { key: "equipamentos", label: "Equipamentos", group: "Operação" },
+  { key: "time_reports", label: "Tempo", group: "Operação" },
+  { key: "parceiros", label: "Parceiros", group: "Operação" },
+  { key: "clientes_area", label: "Clientes / CRM / Times", group: "Clientes" },
+  { key: "financeiro", label: "Financeiro", group: "Financeiro" },
+  { key: "orcamento", label: "Orçamento", group: "Financeiro" },
+  { key: "facebook", label: "Facebook Ads", group: "Marketing" },
+  { key: "diguinho", label: "Diguinho IA", group: "Marketing" },
+  { key: "team", label: "Equipe", group: "Configurações" },
+  { key: "aprovacoes", label: "Aprovações", group: "Configurações" },
+  { key: "cadastros", label: "Cadastros / Perfis e Acessos", group: "Configurações" },
+  { key: "integracoes", label: "Integrações", group: "Configurações" },
+  { key: "branding", label: "Personalização", group: "Configurações" },
+];
 
 function RolePermissionsTab() {
   const qc = useQueryClient();
