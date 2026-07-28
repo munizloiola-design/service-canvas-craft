@@ -409,10 +409,18 @@ function MemberDialog({
           <DialogTitle>{profile.full_name || "Membro"}</DialogTitle>
         </DialogHeader>
 
+        <div className="rounded-md border bg-muted/30 p-3 text-xs flex items-center justify-between gap-2">
+          <span className="text-muted-foreground">
+            O papel principal e os cargos (subfunções) agora são geridos em <b>Perfis e Acessos</b>.
+          </span>
+          <Button asChild variant="outline" size="sm">
+            <a href={`/acessos?tab=assign&user=${memberId}`}>Gerenciar em Perfis e Acessos →</a>
+          </Button>
+        </div>
+
         <Tabs defaultValue="ficha">
           <TabsList>
             <TabsTrigger value="ficha">Ficha</TabsTrigger>
-            <TabsTrigger value="funcoes">Papel & Funções</TabsTrigger>
             <TabsTrigger value="notas"><ShieldAlert className="h-3.5 w-3.5 mr-1" />Anotações privadas</TabsTrigger>
           </TabsList>
 
@@ -467,41 +475,6 @@ function MemberDialog({
             </div>
           </TabsContent>
 
-          <TabsContent value="funcoes" className="space-y-4 mt-4">
-            <div>
-              <Label className="text-xs">Papel principal</Label>
-              <Select value={primaryRole} onValueChange={(v) => setPrimaryRole(v as AppRole)} disabled={!canManageThisUser || allowedRoles.length === 0}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {allowedRoles.map((r) => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {!canManageThisUser && (
-                <p className="text-[11px] text-muted-foreground mt-1">Você não tem permissão para alterar o papel deste membro (papel igual ou superior ao seu).</p>
-              )}
-              {canManageThisUser && allowedRoles.length === 0 && (
-                <p className="text-[11px] text-muted-foreground mt-1">Seu papel não permite atribuir nenhum nível.</p>
-              )}
-            </div>
-            <div>
-              <Label className="text-xs mb-2 block">Subfunções (colaborador)</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {allFunctions.map((f) => (
-                  <label key={f.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted cursor-pointer">
-                    <Checkbox
-                      checked={selectedFns.includes(f.id)}
-                      onCheckedChange={(v) => {
-                        if (v) setSelectedFns([...selectedFns, f.id]);
-                        else setSelectedFns(selectedFns.filter((id) => id !== f.id));
-                      }}
-                    />
-                    <span className="text-sm">{f.name}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </TabsContent>
-
           <TabsContent value="notas" className="space-y-3 mt-4">
             <p className="text-xs text-muted-foreground">
               Apenas o Administrador Master pode ver ou editar estas anotações.
@@ -521,8 +494,9 @@ function MemberDialog({
         <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
           <Button variant="outline" onClick={onClose}>Fechar</Button>
           <Button onClick={() => saveProfile.mutate()} disabled={saveProfile.isPending}>
-            Salvar ficha e funções
+            Salvar ficha
           </Button>
+
         </div>
       </DialogContent>
     </Dialog>
