@@ -38,14 +38,12 @@ function AcessosPage() {
         <p className="text-sm text-muted-foreground">Configure as Áreas de atuação, Especialidades e o que cada uma enxerga no sistema.</p>
       </div>
 
-      <Tabs defaultValue="roles" className="space-y-4">
+      <Tabs defaultValue="hierarchy" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="roles">Permissões por papel</TabsTrigger>
           <TabsTrigger value="hierarchy">Áreas & Especialidades</TabsTrigger>
           <TabsTrigger value="assign">Atribuição de usuários</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="roles"><RolePermissionsTab /></TabsContent>
         <TabsContent value="hierarchy"><HierarchyTab /></TabsContent>
         <TabsContent value="assign"><AssignTab /></TabsContent>
       </Tabs>
@@ -555,115 +553,3 @@ function AssignTab() {
   );
 }
 
-// ============ Permissões por papel (migrado de /permissoes) ============
-const ROLE_OPTIONS = [
-  { key: "admin", label: "Administrador" },
-  { key: "gerente", label: "Gerente" },
-  { key: "membro", label: "Colaborador" },
-] as const;
-
-const ACTION_OPTIONS = [
-  { key: "view", label: "Ver" },
-  { key: "create", label: "Criar" },
-  { key: "edit", label: "Editar" },
-  { key: "delete", label: "Excluir" },
-] as const;
-
-// Recursos usados pelo sidebar (src/routes/_app.tsx) — precisam bater 1:1.
-const ROLE_RESOURCES: { key: string; label: string; group?: string }[] = [
-  { key: "dashboard", label: "Dashboard" },
-  { key: "projects", label: "Projetos", group: "Operação" },
-  { key: "tickets", label: "Tickets", group: "Operação" },
-  { key: "calendario", label: "Calendário", group: "Operação" },
-  { key: "equipamentos", label: "Equipamentos", group: "Operação" },
-  { key: "time_reports", label: "Tempo", group: "Operação" },
-  { key: "parceiros", label: "Parceiros", group: "Operação" },
-  { key: "clientes_area", label: "Clientes / CRM / Times", group: "Clientes" },
-  { key: "financeiro", label: "Financeiro", group: "Financeiro" },
-  { key: "orcamento", label: "Orçamento", group: "Financeiro" },
-  { key: "facebook", label: "Facebook Ads", group: "Marketing" },
-  { key: "diguinho", label: "Diguinho IA", group: "Marketing" },
-  { key: "team", label: "Equipe", group: "Configurações" },
-  { key: "aprovacoes", label: "Aprovações", group: "Configurações" },
-  { key: "cadastros", label: "Cadastros / Perfis e Acessos", group: "Configurações" },
-  { key: "integracoes", label: "Integrações", group: "Configurações" },
-  { key: "branding", label: "Personalização", group: "Configurações" },
-];
-
-function RolePermissionsTab() {
-  const qc = useQueryClient();
-  const { data: rows = [] } = useQuery({
-    queryKey: ["role_permissions"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("role_permissions").select("role, resource, action");
-      if (error) throw error;
-      return data as { role: string; resource: string; action: string }[];
-    },
-  });
-
-  const has = (role: string, resource: string, action: string) =>
-    rows.some((r) => r.role === role && r.resource === resource && r.action === action);
-
-  const toggle = useMutation({
-    mutationFn: async ({ role, resource, action, on }: { role: string; resource: string; action: string; on: boolean }) => {
-      if (on) {
-        const { error } = await supabase.from("role_permissions").insert({ role: role as any, resource, action });
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("role_permissions").delete().eq("role", role as any).eq("resource", resource).eq("action", action);
-        if (error) throw error;
-      }
-    },
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["role_permissions"] });
-      toast.success("Permissão atualizada");
-    },
-    onError: (e) => toast.error(describeSupabaseError(e)),
-  });
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Marque o que cada papel pode fazer em cada área do sistema. O menu lateral só aparece quando o papel do usuário tem <strong>Ver</strong> marcado. Administradores têm acesso total automaticamente.
-      </p>
-      {ROLE_OPTIONS.map((role) => (
-        <Card key={role.key}>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Badge variant="outline">{role.label}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-xs uppercase text-muted-foreground">
-                  <th className="text-left py-2 pl-2">Área</th>
-                  {ACTION_OPTIONS.map((a) => <th key={a.key} className="text-center py-2 px-2">{a.label}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {ROLE_RESOURCES.map((res) => (
-                  <tr key={res.key} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="py-2 pl-2 font-medium">
-                      {res.label}
-                      {res.group ? <span className="text-xs text-muted-foreground ml-2">({res.group})</span> : null}
-                    </td>
-                    {ACTION_OPTIONS.map((act) => (
-                      <td key={act.key} className="text-center py-2 px-2">
-                        <Checkbox
-                          checked={has(role.key, res.key, act.key)}
-                          disabled={toggle.isPending}
-                          onCheckedChange={(v) => toggle.mutate({ role: role.key, resource: res.key, action: act.key, on: !!v })}
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
