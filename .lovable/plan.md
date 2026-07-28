@@ -1,47 +1,70 @@
-## Objetivo
+## Auditoria — situação atual
 
-Deixar o controle de acessos **exclusivamente em "Perfis e Acessos"** (áreas → menus, especialidades → campos, mais gestão de papéis/funções). Remover a camada paralela baseada em `role_permissions` (tabela + aba "Permissões por papel" + contexto `usePermissions`) que hoje concorre com essa tela.
+Verifiquei o que ainda decide acesso por papel (role) em vez de passar por **Perfis e Acessos** (áreas/especialidades):
 
-## Como fica o modelo final
+**Sidebar (`src/routes/_app.tsx`)**
+- `masterOnly: true` no item `/acessos` (linha 62) — ainda gate por papel.
+- Redirect de cliente por papel (`isClient && !isMaster && !isManager`) — legítimo (separação portal × agência), mantém.
 
-- **Admin / Admin master / Gerente**: acesso total (bypass), como já é hoje via `isPrivileged` em `AccessProvider`.
-- **Demais usuários (membro, cliente-interno, fornecedor)**: acesso a menu e campos vem 100% de:
-  - `provider_areas` + `area_menu_visibility` (quais menus a área enxerga)
-  - `provider_specialties` + `specialty_field_visibility` (quais campos vê/edita)
-  - `user_specialties` (o vínculo do usuário)
-- Sem especialidade cadastrada = **sem menus** (hoje virava "libera tudo" por fallback em `role_permissions`). Admin precisa liberar explicitamente em Perfis e Acessos.
+**Guards de rota por papel**
+- `src/routes/_app/personalizacao.tsx`: `if (!isAdmin) return <Navigate to="/dashboard" />` (usa `roles` + `isMaster`).
+- `src/routes/_app/team.tsx`: `if (!isManager) return ...`.
+- `src/routes/_app/squad.index.tsx`: `if (!isManager) return ...`.
 
-## Mudanças no frontend
+**Bypass silencioso no AccessProvider (`src/lib/access-context.tsx`)**
+- `menuAllowed / canViewField / canEditField` retornam `true` se `isPrivileged` (admin/gerente/master) — bypass por papel.
+- Também retornam `true` quando o usuário não tem especialidade cadastrada (linha 71/76/81) — abre tudo por padrão, contornando Perfis e Acessos.
+- Comentário residual "cai no controle de role_permissions" (tabela já removida).
 
-1. `src/routes/_app.tsx`
-   - Remover `usePermissions` / `can(item.resource, "view")` do filtro de menu.
-   - Filtro fica: `masterOnly` + `menuAllowed(item.to)`.
-   - Remover `permsLoading` do gate de loading.
+**UI condicional por papel (não é liberação de rota, é edição)**
+- `projects.tsx`, `parceiros.tsx`, `team.tsx`, `ProjectChat.tsx` usam `isManager` para mostrar botões de gerenciar/excluir. **Fora do escopo desta tarefa** (é permissão de campo, não de rota); ficam como estão salvo pedido explícito.
 
-2. `src/routes/_app/acessos.tsx`
-   - Remover a aba **"Permissões por papel"** (TabsTrigger + TabsContent + componente `RolePermissionsMatrix` + constante `ROLE_RESOURCES`).
-   - Manter apenas: Áreas, Especialidades, Menus por área, Campos por especialidade, Vínculo usuário↔especialidade e gestão de papéis do usuário (papel continua servindo para hierarquia — admin/gerente/membro/cliente — mas não decide mais menu/campo).
+**Backend/DB (mantém papel — necessário)**
+- `user_roles` e RLS continuam existindo (segurança). Server functions (`team.functions.ts`, `approvals.functions.ts`, `branding.functions.ts`, `client-access.functions.ts`) checam admin/gerente para operações sensíveis — isso é correção de segurança, não é gate de menu, **mantém**.
 
-3. `src/routes/_app/personalizacao.tsx`
-   - Trocar o gate `can("branding","manage")` por `isMaster` (via `useAuth()`), já que branding é decisão de administrador.
+---
 
-4. `src/routes/__root.tsx`
-   - Remover `PermissionsProvider` (import + wrapper). `AccessProvider` continua.
+## Plano de correção
 
-5. `src/lib/permissions.tsx`
-   - Excluir o arquivo.
+Objetivo: **toda liberação de rota/menu passa por Perfis e Acessos** (chaves em `area_menu_visibility`). Papéis só sobrevivem onde são obrigatórios: separação portal cliente × agência, RLS/DB, e ações administrativas server-side.
 
-## Mudanças no backend (migration)
+### 1. `src/lib/access-context.tsx`
+- Remover o bypass `isPrivileged` de `menuAllowed / canViewField / canEditField`.
+- Remover o fallback "sem especialidade = tudo liberado". Sem entradas em `area_menu_visibility`, o item fica oculto.
+- Manter `isPrivileged` exposto apenas informativamente (para UIs que ainda o usam em botões de gerência).
 
-- Dropar policies, tabela `public.role_permissions` e a função `public.has_permission(...)` (nada no backend depende dela hoje — confirmado por `rg has_permission`).
-- Manter `user_roles`, `has_role`, `is_manager`, `is_master`, `role_rank` (usados por RLS de projetos, financeiro, etc.). Papel continua existindo para hierarquia e RLS; só a matriz de "papel × recurso × ação" some.
+### 2. `src/routes/_app.tsx`
+- Remover `masterOnly` do tipo `NavItem` e do item `/acessos`.
+- Filtro do sidebar passa a ser só `menuAllowed(item.to)`.
+- Mantém o redirect cliente → `/portal` (papel `cliente` define o portal, não a permissão).
 
-## Impacto para usuários existentes
+### 3. Guards de rota — trocar papel por `menuAllowed`
+- `personalizacao.tsx`: substituir `if (!isAdmin)` por `if (!menuAllowed("/personalizacao"))`.
+- `team.tsx`: substituir `if (!isManager)` por `if (!menuAllowed("/team"))`.
+- `squad.index.tsx`: substituir `if (!isManager)` por `if (!menuAllowed("/squad"))`.
 
-- Usuários sem especialidade que hoje viam tudo pelo fallback vão parar de ver menus até serem vinculados a uma área/especialidade em Perfis e Acessos. Isso é o comportamento pedido ("desativar completamente a lógica remanescente"). Admin/gerente/master seguem com acesso total automaticamente.
+### 4. Seed de compatibilidade (migração)
+Para o admin/master atual não perder acesso ao remover o bypass, garantir que exista uma área "Administração" com todas as `menu_key`s cadastradas (uma para cada rota do sidebar) e vincular admins/masters via `user_specialties` a uma especialidade dessa área. Alternativa mais segura: um seed idempotente que atribui a admins/masters a especialidade "Administração-Total" com todas as `area_menu_visibility` preenchidas.
 
-## Arquivos tocados
+Sem esse seed, admins/masters ficariam sem menus assim que o bypass sair. A migração:
+- Cria (idempotente) área `Administração` + especialidade `Total`.
+- Popula `area_menu_visibility` com todas as chaves usadas no sidebar.
+- Insere em `user_specialties` toda linha `user_roles` com `role in ('admin','admin_master')` que ainda não tenha essa especialidade.
 
-- Editar: `src/routes/__root.tsx`, `src/routes/_app.tsx`, `src/routes/_app/acessos.tsx`, `src/routes/_app/personalizacao.tsx`
-- Excluir: `src/lib/permissions.tsx`
-- Migration: drop `role_permissions` + `has_permission`
+### 5. Limpeza
+- Remover comentário obsoleto sobre `role_permissions`.
+- Manter `AppRole`, `useAuth`, `isMaster`, `isManager` — ainda usados para redirect de portal e para gates de escrita em componentes (fora do escopo).
+
+### Detalhes técnicos
+
+Chaves de menu esperadas em `area_menu_visibility` (uma linha por área × chave):
+```text
+/dashboard  /projects  /tickets  /calendario  /equipamentos  /tempo  /parceiros
+/clientes   /clientes/crm
+/financeiro /orcamento
+/facebook   /diguinho
+/team       /squad     /squad/relatorio  /aprovacoes  /acessos
+/cadastros  /integracoes  /personalizacao
+```
+
+Após aplicar, qualquer novo usuário só verá itens explicitamente liberados em Perfis e Acessos; admins continuam vendo tudo por herdarem a especialidade "Total" — controlável pela mesma tela, sem código.

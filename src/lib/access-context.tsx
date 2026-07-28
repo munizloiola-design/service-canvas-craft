@@ -66,21 +66,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { void load(); }, [user?.id]);
 
-  const menuAllowed = (key: string) => {
-    if (isPrivileged) return true;
-    if (state.specialtyIds.length === 0) return true; // usuário sem especialidade: cai no controle de role_permissions
-    return state.allowedMenuKeys.has(key);
-  };
-  const canViewField = (key: string) => {
-    if (isPrivileged) return true;
-    if (state.specialtyIds.length === 0) return true;
-    return state.fieldView.has(key);
-  };
-  const canEditField = (key: string) => {
-    if (isPrivileged) return true;
-    if (state.specialtyIds.length === 0) return true;
-    return state.fieldEdit.has(key);
-  };
+  // Controle exclusivo por Perfis e Acessos (áreas/especialidades).
+  // Admins/gerentes/masters recebem acesso por herdarem a especialidade "Administração › Total".
+  const menuAllowed = (key: string) => state.allowedMenuKeys.has(key);
+  const canViewField = (key: string) => state.fieldView.has(key);
+  const canEditField = (key: string) => state.fieldEdit.has(key);
 
   return (
     <AccessContext.Provider value={{ ...state, isPrivileged, menuAllowed, canViewField, canEditField, refresh: load }}>
