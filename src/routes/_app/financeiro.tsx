@@ -260,11 +260,14 @@ function Entries() {
 
   return (
     <Card className="p-4">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 gap-2 flex-wrap">
         <h3 className="font-medium">Lançamentos (entradas e saídas)</h3>
-        {canEdit && (
-          <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-2" />Novo lançamento</Button>
-        )}
+        <div className="flex items-center gap-2">
+          <ShareLancamentoLink />
+          {canEdit && (
+            <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-2" />Novo lançamento</Button>
+          )}
+        </div>
       </div>
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
         <EntryForm
