@@ -279,12 +279,10 @@ function TeamPage() {
           memberId={openMember}
           onClose={() => setOpenMember(null)}
           profile={data.profiles.find((p) => p.id === openMember)!}
-          roles={data.roles.filter((r) => r.user_id === openMember).map((r) => r.role as AppRole)}
-          allFunctions={data.functions}
-          memberFunctionIds={data.userFunctions.filter((u) => u.user_id === openMember).map((u) => u.function_id)}
           onSaved={() => qc.invalidateQueries({ queryKey: ["team-overview"] })}
         />
       )}
+
     </div>
   );
 }
