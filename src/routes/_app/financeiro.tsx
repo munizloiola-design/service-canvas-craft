@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, TrendingUp, TrendingDown, Receipt, CheckCircle2, Pencil, FileDown, Printer } from "lucide-react";
+import { Plus, Trash2, TrendingUp, TrendingDown, Receipt, CheckCircle2, Pencil, FileDown, Printer, Link2, Copy, ExternalLink, Download, XCircle } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 import { startOfMonth, endOfMonth, subMonths, format, parseISO } from "date-fns";
