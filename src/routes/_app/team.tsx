@@ -126,7 +126,7 @@ function TeamPage() {
     },
   });
 
-  if (!isManager) {
+  if (!menuAllowed("/team")) {
     return <div className="p-8 text-muted-foreground">Você não tem permissão para ver a equipe.</div>;
   }
   if (!data) return <div className="p-8">Carregando…</div>;

@@ -59,7 +59,7 @@ const navGroups: NavGroup[] = [
       { to: "/squad", label: "Times", icon: Users2 },
       { to: "/squad/relatorio", label: "Relatório", icon: BarChart3 },
       { to: "/aprovacoes", label: "Aprovações", icon: ClipboardCheck },
-      { to: "/acessos", label: "Perfis e Acessos", icon: ShieldCheck, masterOnly: true },
+      { to: "/acessos", label: "Perfis e Acessos", icon: ShieldCheck },
     ],
   },
   {
@@ -105,10 +105,7 @@ function AppLayout() {
   const visibleGroups = navGroups
     .map((g) => ({
       ...g,
-      items: g.items.filter((item) => {
-        if (item.masterOnly && !isMaster) return false;
-        return menuAllowed(item.to);
-      }),
+      items: g.items.filter((item) => menuAllowed(item.to)),
     }))
     .filter((g) => g.items.length > 0);
 
