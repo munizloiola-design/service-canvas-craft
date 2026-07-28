@@ -1,70 +1,61 @@
-## Auditoria — situação atual
+## Objetivo
+Criar um formulário público (sem login) para envio de lançamentos financeiros, com fila de moderação no módulo Financeiro, semelhante ao fluxo de `/ticket`.
 
-Verifiquei o que ainda decide acesso por papel (role) em vez de passar por **Perfis e Acessos** (áreas/especialidades):
+## Fluxo do usuário
+1. Admin abre **Financeiro → Lançamentos**, vê um botão **"Compartilhar link de envio"** (com copiar link + preview do QR).
+2. Qualquer pessoa acessa `/lancamento`, preenche o formulário e envia.
+3. Envio cai na nova aba **Financeiro → Solicitações**, com contador de pendentes.
+4. Admin revisa cada item e clica **Aprovar** (vira `financial_entries`) ou **Rejeitar** (arquiva com motivo). Também pode editar antes de aprovar.
 
-**Sidebar (`src/routes/_app.tsx`)**
-- `masterOnly: true` no item `/acessos` (linha 62) — ainda gate por papel.
-- Redirect de cliente por papel (`isClient && !isMaster && !isManager`) — legítimo (separação portal × agência), mantém.
+## Campos do formulário (`/lancamento`)
+- Nome de quem enviou * (texto)
+- E-mail * (para retorno)
+- Tipo * (Entrada / Saída)
+- Data * (date)
+- Descrição * (texto)
+- Valor * (numérico, R$)
+- Categoria (select opcional, alimentado por `financial_categories` filtrado por `kind`)
+- Comprovante (upload opcional, 1 arquivo, ≤10MB) → bucket `financial-receipts` em `public/pending/<request_id>/...`
+- Observações (textarea opcional)
 
-**Guards de rota por papel**
-- `src/routes/_app/personalizacao.tsx`: `if (!isAdmin) return <Navigate to="/dashboard" />` (usa `roles` + `isMaster`).
-- `src/routes/_app/team.tsx`: `if (!isManager) return ...`.
-- `src/routes/_app/squad.index.tsx`: `if (!isManager) return ...`.
+Validação com zod + autofill de nome/e-mail via localStorage (mesmo padrão do `/ticket`).
 
-**Bypass silencioso no AccessProvider (`src/lib/access-context.tsx`)**
-- `menuAllowed / canViewField / canEditField` retornam `true` se `isPrivileged` (admin/gerente/master) — bypass por papel.
-- Também retornam `true` quando o usuário não tem especialidade cadastrada (linha 71/76/81) — abre tudo por padrão, contornando Perfis e Acessos.
-- Comentário residual "cai no controle de role_permissions" (tabela já removida).
+## Estrutura técnica
 
-**UI condicional por papel (não é liberação de rota, é edição)**
-- `projects.tsx`, `parceiros.tsx`, `team.tsx`, `ProjectChat.tsx` usam `isManager` para mostrar botões de gerenciar/excluir. **Fora do escopo desta tarefa** (é permissão de campo, não de rota); ficam como estão salvo pedido explícito.
+### Banco (migração)
+Nova tabela `public.financial_entry_requests`:
+- `id uuid pk`, `created_at`, `reviewed_at`, `reviewed_by uuid`
+- `requester_name text`, `requester_email text`, `requester_notes text`
+- `kind text` (`income`/`expense`), `entry_date date`, `description text`, `amount numeric`, `category_id uuid` (fk opcional)
+- `receipt_path text` (opcional)
+- `status text` (`pendente` | `aprovado` | `rejeitado`), `review_notes text`
+- `created_entry_id uuid` (fk `financial_entries.id`, preenchida na aprovação)
 
-**Backend/DB (mantém papel — necessário)**
-- `user_roles` e RLS continuam existindo (segurança). Server functions (`team.functions.ts`, `approvals.functions.ts`, `branding.functions.ts`, `client-access.functions.ts`) checam admin/gerente para operações sensíveis — isso é correção de segurança, não é gate de menu, **mantém**.
+Grants + RLS:
+- `GRANT INSERT ON public.financial_entry_requests TO anon, authenticated` (permite envio público)
+- `GRANT SELECT/UPDATE/DELETE` só para `authenticated` + policies restringindo a `is_manager(auth.uid())` (mesma regra do restante do Financeiro).
+- `SELECT` liberado apenas para managers; nenhum `SELECT` para `anon`.
 
----
+Bucket `financial-receipts` já existe (privado). Adicionar policy de INSERT para `anon` apenas em `public/pending/*` e SELECT para managers.
 
-## Plano de correção
+### Frontend
+- Novo arquivo `src/routes/lancamento.tsx` (público, sem `_app`), estilo/estrutura idêntico ao `src/routes/ticket.tsx`, adaptado aos campos financeiros. Head meta próprio.
+- `src/routes/_app/financeiro.tsx`:
+  - Botão **"Link de envio público"** no cabeçalho da aba Lançamentos: mostra a URL (`${origin}/lancamento`) + botões "Copiar" e "Abrir".
+  - Nova aba **Solicitações** com lista (pendentes/aprovadas/rejeitadas), detalhes em `Sheet`, ações Aprovar (cria linha em `financial_entries` via `insert`) e Rejeitar (com motivo). Badge com contador de pendentes na aba.
 
-Objetivo: **toda liberação de rota/menu passa por Perfis e Acessos** (chaves em `area_menu_visibility`). Papéis só sobrevivem onde são obrigatórios: separação portal cliente × agência, RLS/DB, e ações administrativas server-side.
+### Regras de negócio na aprovação
+- Cria `financial_entries` com `kind`, `entry_date`, `description`, `amount`, `category_id`, `receipt_path` (mesmo path, permanece no bucket), `source_type = 'manual'`, `created_by = auth.uid()`.
+- Atualiza request: `status='aprovado'`, `reviewed_by`, `reviewed_at`, `created_entry_id`.
+- Rejeição: apenas atualiza status + `review_notes`; anexo permanece.
 
-### 1. `src/lib/access-context.tsx`
-- Remover o bypass `isPrivileged` de `menuAllowed / canViewField / canEditField`.
-- Remover o fallback "sem especialidade = tudo liberado". Sem entradas em `area_menu_visibility`, o item fica oculto.
-- Manter `isPrivileged` exposto apenas informativamente (para UIs que ainda o usam em botões de gerência).
+## Segurança
+- Zod no client + limites de tamanho no submit.
+- Nenhum dado sensível é retornado ao público.
+- Só managers leem/aprovam (via `is_manager`).
+- Upload restrito a prefixo `public/pending/` e mime/size validados no client.
 
-### 2. `src/routes/_app.tsx`
-- Remover `masterOnly` do tipo `NavItem` e do item `/acessos`.
-- Filtro do sidebar passa a ser só `menuAllowed(item.to)`.
-- Mantém o redirect cliente → `/portal` (papel `cliente` define o portal, não a permissão).
-
-### 3. Guards de rota — trocar papel por `menuAllowed`
-- `personalizacao.tsx`: substituir `if (!isAdmin)` por `if (!menuAllowed("/personalizacao"))`.
-- `team.tsx`: substituir `if (!isManager)` por `if (!menuAllowed("/team"))`.
-- `squad.index.tsx`: substituir `if (!isManager)` por `if (!menuAllowed("/squad"))`.
-
-### 4. Seed de compatibilidade (migração)
-Para o admin/master atual não perder acesso ao remover o bypass, garantir que exista uma área "Administração" com todas as `menu_key`s cadastradas (uma para cada rota do sidebar) e vincular admins/masters via `user_specialties` a uma especialidade dessa área. Alternativa mais segura: um seed idempotente que atribui a admins/masters a especialidade "Administração-Total" com todas as `area_menu_visibility` preenchidas.
-
-Sem esse seed, admins/masters ficariam sem menus assim que o bypass sair. A migração:
-- Cria (idempotente) área `Administração` + especialidade `Total`.
-- Popula `area_menu_visibility` com todas as chaves usadas no sidebar.
-- Insere em `user_specialties` toda linha `user_roles` com `role in ('admin','admin_master')` que ainda não tenha essa especialidade.
-
-### 5. Limpeza
-- Remover comentário obsoleto sobre `role_permissions`.
-- Manter `AppRole`, `useAuth`, `isMaster`, `isManager` — ainda usados para redirect de portal e para gates de escrita em componentes (fora do escopo).
-
-### Detalhes técnicos
-
-Chaves de menu esperadas em `area_menu_visibility` (uma linha por área × chave):
-```text
-/dashboard  /projects  /tickets  /calendario  /equipamentos  /tempo  /parceiros
-/clientes   /clientes/crm
-/financeiro /orcamento
-/facebook   /diguinho
-/team       /squad     /squad/relatorio  /aprovacoes  /acessos
-/cadastros  /integracoes  /personalizacao
-```
-
-Após aplicar, qualquer novo usuário só verá itens explicitamente liberados em Perfis e Acessos; admins continuam vendo tudo por herdarem a especialidade "Total" — controlável pela mesma tela, sem código.
+## Arquivos afetados
+- **Novo:** `src/routes/lancamento.tsx`
+- **Editar:** `src/routes/_app/financeiro.tsx` (botão + nova aba Solicitações)
+- **Migração:** cria `financial_entry_requests` + grants/RLS + policies de storage
