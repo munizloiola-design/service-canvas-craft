@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/lib/auth-context";
+import { useAccess } from "@/lib/access-context";
 import { deleteTeamMember, setUserBanned, listBannedUserIds } from "@/lib/team.functions";
 import { createTeamUser, regeneratePasswordLink } from "@/lib/approvals.functions";
 import { PasswordLinkModal } from "@/routes/_app/aprovacoes";
