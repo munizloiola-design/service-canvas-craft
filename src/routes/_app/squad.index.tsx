@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth-context";
+import { useAccess } from "@/lib/access-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,9 +18,9 @@ type Team = { id: string; name: string };
 type TeamMember = { team_id: string; user_id: string };
 
 function SquadPage() {
-  const { isManager } = useAuth();
-  if (!isManager) {
-    return <div className="p-8"><p className="text-muted-foreground">Apenas administradores e gerentes podem acessar.</p></div>;
+  const { menuAllowed } = useAccess();
+  if (!menuAllowed("/squad")) {
+    return <div className="p-8"><p className="text-muted-foreground">Você não tem permissão para gerenciar times.</p></div>;
   }
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
