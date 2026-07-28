@@ -1,35 +1,58 @@
-## Problema
 
-Clientes que fazem login estão caindo em `/dashboard` (área da agência) em vez do portal do cliente. Causas:
+## Objetivo
 
-1. `src/routes/index.tsx` redireciona todo usuário logado para `/dashboard`, sem checar se é cliente.
-2. Em `src/routes/_app.tsx` a guarda `isClientOnly` só redireciona quando o usuário **não tem** nenhum outro papel — se o cliente tiver acidentalmente `membro` (ou o papel ainda não carregou) ele fica preso na área da agência.
-3. Não existe uma tela inicial (dashboard) dentro do `/portal` — hoje `/portal` só redireciona para `/portal/calendario`.
+1. Descobrir por que menus somem para alguns usuários.
+2. Consolidar toda a configuração de acesso em **Perfis e Acessos** (`/acessos`) e eliminar a tela antiga **`/permissoes`**.
 
-## O que fazer
+## Diagnóstico dos menus sumindo
 
-### 1. Roteamento correto por tipo de conta
-- `src/routes/index.tsx`: usar `useAuth().isClient` e mandar cliente para `/portal`, agência para `/dashboard`.
-- `src/routes/_app.tsx`: qualquer usuário com papel `cliente` vai para `/portal` (remover a exigência "somente cliente"). Clientes não devem ver o layout da agência mesmo que tenham outro papel residual.
-- `src/routes/login.tsx`: já redireciona por `isClient`; manter, mas garantir que o destino seja `/portal` (que agora aponta para o novo dashboard).
+Um item do menu lateral só aparece se **três** filtros passarem (`src/routes/_app.tsx` linhas 112–114):
 
-### 2. Dashboard do cliente
-- Novo arquivo `src/routes/portal/dashboard.tsx` (`/portal/dashboard`) com cards resumindo:
-  - Projetos pendentes de aprovação (contagem + próximos 3).
-  - Projetos aprovados no mês.
-  - Próximas entregas / postagens (7 dias) a partir de `projects.due_date` / `post_date`.
-  - Atalhos rápidos para Calendário, Pendentes, Aprovados e Estratégia.
-- Dados via `supabase.from("projects").select(...)` filtrando pelo `client_id` acessível (RLS já restringe ao cliente logado).
-- Atualizar `src/routes/portal/index.tsx` para redirecionar `/portal` → `/portal/dashboard`.
-- Adicionar o item "Dashboard" no menu do `src/routes/portal.tsx` (primeiro item, ícone `LayoutDashboard`).
+```text
+masterOnly? → precisa ser admin
+can(resource, "view") → precisa existir linha em role_permissions
+menuAllowed(to)       → área do usuário precisa liberar aquele menu
+```
 
-### 3. Verificação
-- Login como cliente → cai em `/portal/dashboard`.
-- Login como agência → cai em `/dashboard`.
-- Cliente digitando `/dashboard` ou `/clientes` na URL é redirecionado para `/portal`.
+Ou seja, hoje o acesso é decidido por **duas fontes ao mesmo tempo**:
+
+- `role_permissions` (papel × recurso × ação) — editada pela tela antiga `/permissoes`.
+- `area_menu_visibility` (área do usuário × menu) — editada em `/acessos`.
+
+Se em `/acessos` você marcar um menu para a Área do usuário, mas o **papel** dele (ex.: `membro`) não tiver a linha `view` correspondente em `role_permissions`, o menu **continua oculto** — e a tela onde isso se ajusta está fora do menu (`/permissoes`), o que gera a sensação de "não consigo acesso".
+
+## Plano
+
+### 1. Unificar a configuração em `/acessos`
+
+Adicionar uma nova aba **"Permissões por papel"** em `src/routes/_app/acessos.tsx`, que substitui a `/permissoes` antiga:
+
+- Matriz Papel (Admin / Gerente / Colaborador) × Recurso × Ação (Ver / Criar / Editar / Excluir), lendo e gravando em `role_permissions`.
+- Após qualquer toggle, chamar `usePermissions().refresh()` para o menu atualizar sem F5.
+- Fonte única de recursos: usar `MENU_REGISTRY` de `src/lib/access-registry.ts` (já existe) para manter os nomes idênticos aos menus reais e evitar recursos "fantasmas".
+
+Estrutura final da tela `/acessos` (3 abas):
+- Áreas & Especialidades (existente)
+- Atribuição de usuários (existente)
+- **Permissões por papel** (nova, migrada de `/permissoes`)
+
+### 2. Remover a tela antiga
+
+- Excluir `src/routes/_app/permissoes.tsx` (não está no menu, mas ainda é acessível pela URL).
+- Rodar o gerador de rotas para atualizar `src/routeTree.gen.ts` (automático no dev-server).
+
+### 3. Corrigir o caso do usuário atual sem menu
+
+Depois que a nova aba estiver disponível, o próprio admin usa a matriz para dar `view` ao papel afetado nos recursos desejados. Nenhuma migração de dados é necessária — `role_permissions` já existe e tem dados para `admin` e `gerente`; provavelmente falta cobertura para `membro`.
+
+### Fora do escopo (mantém como está)
+
+- **Equipe** continua sendo onde se define o papel (admin/gerente/colaborador) e as funções do usuário.
+- **Times** continua só organizando usuários em times de cliente.
+- Regra de visibilidade por **especialidade** (menus/campos por área) permanece em `/acessos` como hoje.
 
 ## Detalhes técnicos
 
-- Só mexer em: `src/routes/index.tsx`, `src/routes/_app.tsx`, `src/routes/login.tsx` (se necessário), `src/routes/portal.tsx`, `src/routes/portal/index.tsx`, novo `src/routes/portal/dashboard.tsx`.
-- Sem alterações de schema/RLS: as policies existentes de `projects` já limitam por cliente.
-- Manter o layout glass/gradiente já usado no portal para consistência visual.
+- Arquivos alterados: `src/routes/_app/acessos.tsx` (nova aba + hooks de `role_permissions`), `src/routes/_app/permissoes.tsx` (deletar).
+- Sem migração SQL — reaproveita `role_permissions` existente e as RLS já configuradas.
+- Sem mudanças em `src/routes/_app.tsx`: a lógica de filtragem do menu não muda, apenas passa a ser toda editada em um só lugar.
