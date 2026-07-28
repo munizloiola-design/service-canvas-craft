@@ -391,8 +391,38 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
   );
 }
 
-function AssignTab() {
+function AssignTab({ focusUserId }: { focusUserId?: string }) {
   const qc = useQueryClient();
+  const { isMaster, roles: actorRoles } = useAuth();
+  const actorRank = Math.max(-1, ...actorRoles.map((r) => ROLE_RANK[r as AppRole] ?? -1));
+
+  const rolesQ = useQuery({
+    queryKey: ["all_user_roles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_roles").select("user_id, role");
+      if (error) throw error;
+      return (data ?? []) as { user_id: string; role: AppRole }[];
+    },
+  });
+  const allUserRoles = rolesQ.data ?? [];
+
+  const setRole = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
+      const del = await supabase.from("user_roles").delete().eq("user_id", userId);
+      if (del.error) throw del.error;
+      const ins = await supabase.from("user_roles").insert({ user_id: userId, role });
+      if (ins.error) throw ins.error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["all_user_roles"] }); toast.success("Papel atualizado"); },
+    onError: (e: unknown) => { console.error("[acessos:setRole]", e); toast.error(describeSupabaseError(e)); },
+  });
+
+  useEffect(() => {
+    if (!focusUserId) return;
+    const el = document.getElementById(`assign-member-${focusUserId}`);
+    if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("ring-2","ring-primary"); setTimeout(() => el.classList.remove("ring-2","ring-primary"), 2500); }
+  }, [focusUserId, rolesQ.data]);
+
 
   const membersQ = useQuery<MemberProfile[]>({
     queryKey: ["team-members-for-assign"],
