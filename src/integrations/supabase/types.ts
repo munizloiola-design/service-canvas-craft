@@ -1598,30 +1598,6 @@ export type Database = {
           },
         ]
       }
-      role_permissions: {
-        Row: {
-          action: string
-          created_at: string
-          id: string
-          resource: string
-          role: Database["public"]["Enums"]["app_role"]
-        }
-        Insert: {
-          action: string
-          created_at?: string
-          id?: string
-          resource: string
-          role: Database["public"]["Enums"]["app_role"]
-        }
-        Update: {
-          action?: string
-          created_at?: string
-          id?: string
-          resource?: string
-          role?: Database["public"]["Enums"]["app_role"]
-        }
-        Relationships: []
-      }
       specialty_field_visibility: {
         Row: {
           can_edit: boolean
@@ -2173,10 +2149,6 @@ export type Database = {
       }
       has_client_access: {
         Args: { _client_id: string; _uid: string }
-        Returns: boolean
-      }
-      has_permission: {
-        Args: { _action: string; _resource: string; _uid: string }
         Returns: boolean
       }
       has_role: {
