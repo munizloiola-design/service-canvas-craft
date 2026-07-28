@@ -1,7 +1,6 @@
 import { createFileRoute, Outlet, Navigate, Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { usePermissions, type Resource } from "@/lib/permissions";
 import { useAccess } from "@/lib/access-context";
 import { useBranding } from "@/lib/branding-context";
 import { LayoutDashboard, FolderKanban, Users, Users2, LogOut, Briefcase, Settings, DollarSign, Calculator, Wrench, CalendarDays, ShieldCheck, Facebook, Sparkles, Plug, Inbox, Palette, Menu, ChevronDown, Building2, Clock, PanelLeftClose, PanelLeft, BarChart3, ClipboardCheck, Handshake } from "lucide-react";
@@ -16,60 +15,59 @@ export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
 
-type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; resource: Resource; masterOnly?: boolean };
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; masterOnly?: boolean };
 type NavGroup = { label?: string; items: NavItem[] };
 
 const navGroups: NavGroup[] = [
-  { items: [{ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, resource: "dashboard" }] },
+  { items: [{ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard }] },
   {
     label: "Operação",
     items: [
-      { to: "/projects", label: "Projetos", icon: FolderKanban, resource: "projects" },
-      { to: "/tickets", label: "Tickets", icon: Inbox, resource: "tickets" },
-      { to: "/calendario", label: "Calendário", icon: CalendarDays, resource: "calendario" },
-      { to: "/equipamentos", label: "Equipamentos", icon: Wrench, resource: "equipamentos" },
-      { to: "/tempo", label: "Tempo", icon: Clock, resource: "time_reports" },
-      { to: "/parceiros", label: "Parceiros", icon: Handshake, resource: "parceiros" },
+      { to: "/projects", label: "Projetos", icon: FolderKanban },
+      { to: "/tickets", label: "Tickets", icon: Inbox },
+      { to: "/calendario", label: "Calendário", icon: CalendarDays },
+      { to: "/equipamentos", label: "Equipamentos", icon: Wrench },
+      { to: "/tempo", label: "Tempo", icon: Clock },
+      { to: "/parceiros", label: "Parceiros", icon: Handshake },
     ],
-
   },
   {
     label: "Cliente",
     items: [
-      { to: "/clientes", label: "Clientes", icon: Building2, resource: "clientes_area" },
-      { to: "/clientes/crm", label: "CRM Prospecção", icon: Sparkles, resource: "clientes_area" },
+      { to: "/clientes", label: "Clientes", icon: Building2 },
+      { to: "/clientes/crm", label: "CRM Prospecção", icon: Sparkles },
     ],
   },
   {
     label: "Financeiro",
     items: [
-      { to: "/financeiro", label: "Financeiro", icon: DollarSign, resource: "financeiro" },
-      { to: "/orcamento", label: "Orçamento", icon: Calculator, resource: "orcamento" },
+      { to: "/financeiro", label: "Financeiro", icon: DollarSign },
+      { to: "/orcamento", label: "Orçamento", icon: Calculator },
     ],
   },
   {
     label: "Marketing",
     items: [
-      { to: "/facebook", label: "Facebook Ads", icon: Facebook, resource: "facebook" },
-      { to: "/diguinho", label: "Diguinho IA", icon: Sparkles, resource: "diguinho" },
+      { to: "/facebook", label: "Facebook Ads", icon: Facebook },
+      { to: "/diguinho", label: "Diguinho IA", icon: Sparkles },
     ],
   },
   {
     label: "Squad",
     items: [
-      { to: "/team", label: "Equipe", icon: Users, resource: "team" },
-      { to: "/squad", label: "Times", icon: Users2, resource: "clientes_area" },
-      { to: "/squad/relatorio", label: "Relatório", icon: BarChart3, resource: "clientes_area" },
-      { to: "/aprovacoes", label: "Aprovações", icon: ClipboardCheck, resource: "aprovacoes" },
-      { to: "/acessos", label: "Perfis e Acessos", icon: ShieldCheck, resource: "cadastros", masterOnly: true },
+      { to: "/team", label: "Equipe", icon: Users },
+      { to: "/squad", label: "Times", icon: Users2 },
+      { to: "/squad/relatorio", label: "Relatório", icon: BarChart3 },
+      { to: "/aprovacoes", label: "Aprovações", icon: ClipboardCheck },
+      { to: "/acessos", label: "Perfis e Acessos", icon: ShieldCheck, masterOnly: true },
     ],
   },
   {
     label: "Configurações",
     items: [
-      { to: "/cadastros", label: "Cadastros", icon: Settings, resource: "cadastros" },
-      { to: "/integracoes", label: "Integrações", icon: Plug, resource: "integracoes" },
-      { to: "/personalizacao", label: "Personalização", icon: Palette, resource: "branding" },
+      { to: "/cadastros", label: "Cadastros", icon: Settings },
+      { to: "/integracoes", label: "Integrações", icon: Plug },
+      { to: "/personalizacao", label: "Personalização", icon: Palette },
     ],
   },
 ];
@@ -78,7 +76,6 @@ function AppLayout() {
   const { user, loading, signOut, roles, isClient, isMaster, isManager } = useAuth();
 
   const { branding } = useBranding();
-  const { can, loading: permsLoading } = usePermissions();
   const { menuAllowed, loading: accessLoading } = useAccess();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -94,7 +91,7 @@ function AppLayout() {
     }
   }, [desktopCollapsed]);
 
-  if (loading || permsLoading || accessLoading) {
+  if (loading || accessLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -110,7 +107,6 @@ function AppLayout() {
       ...g,
       items: g.items.filter((item) => {
         if (item.masterOnly && !isMaster) return false;
-        if (!can(item.resource, "view")) return false;
         return menuAllowed(item.to);
       }),
     }))

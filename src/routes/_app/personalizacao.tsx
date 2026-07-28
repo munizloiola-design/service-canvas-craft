@@ -2,7 +2,7 @@ import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranding, type LoginBoxPosition } from "@/lib/branding-context";
-import { usePermissions } from "@/lib/permissions";
+import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,8 @@ const INVOME_PRESET = {
 };
 
 function PersonalizacaoPage() {
-  const { can, loading: pLoading } = usePermissions();
+  const { isMaster, roles } = useAuth();
+  const isAdmin = isMaster || roles.includes("admin" as any);
   const { branding, refresh } = useBranding();
 
   const [brandName, setBrandName] = useState(branding.brand_name);
@@ -92,8 +93,7 @@ function PersonalizacaoPage() {
       .then(({ data }) => setTemplates((data ?? []) as EmailTpl[]));
   }, []);
 
-  if (pLoading) return <div className="p-4 md:p-8">Carregando...</div>;
-  if (!can("branding" as any, "manage")) return <Navigate to="/dashboard" />;
+  if (!isAdmin) return <Navigate to="/dashboard" />;
 
   const upload = async (file: File, kind: "logo" | "favicon" | "background") => {
     const ext = file.name.split(".").pop() ?? "png";

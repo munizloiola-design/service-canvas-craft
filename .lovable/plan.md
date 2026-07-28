@@ -1,58 +1,47 @@
-
 ## Objetivo
 
-1. Descobrir por que menus somem para alguns usuários.
-2. Consolidar toda a configuração de acesso em **Perfis e Acessos** (`/acessos`) e eliminar a tela antiga **`/permissoes`**.
+Deixar o controle de acessos **exclusivamente em "Perfis e Acessos"** (áreas → menus, especialidades → campos, mais gestão de papéis/funções). Remover a camada paralela baseada em `role_permissions` (tabela + aba "Permissões por papel" + contexto `usePermissions`) que hoje concorre com essa tela.
 
-## Diagnóstico dos menus sumindo
+## Como fica o modelo final
 
-Um item do menu lateral só aparece se **três** filtros passarem (`src/routes/_app.tsx` linhas 112–114):
+- **Admin / Admin master / Gerente**: acesso total (bypass), como já é hoje via `isPrivileged` em `AccessProvider`.
+- **Demais usuários (membro, cliente-interno, fornecedor)**: acesso a menu e campos vem 100% de:
+  - `provider_areas` + `area_menu_visibility` (quais menus a área enxerga)
+  - `provider_specialties` + `specialty_field_visibility` (quais campos vê/edita)
+  - `user_specialties` (o vínculo do usuário)
+- Sem especialidade cadastrada = **sem menus** (hoje virava "libera tudo" por fallback em `role_permissions`). Admin precisa liberar explicitamente em Perfis e Acessos.
 
-```text
-masterOnly? → precisa ser admin
-can(resource, "view") → precisa existir linha em role_permissions
-menuAllowed(to)       → área do usuário precisa liberar aquele menu
-```
+## Mudanças no frontend
 
-Ou seja, hoje o acesso é decidido por **duas fontes ao mesmo tempo**:
+1. `src/routes/_app.tsx`
+   - Remover `usePermissions` / `can(item.resource, "view")` do filtro de menu.
+   - Filtro fica: `masterOnly` + `menuAllowed(item.to)`.
+   - Remover `permsLoading` do gate de loading.
 
-- `role_permissions` (papel × recurso × ação) — editada pela tela antiga `/permissoes`.
-- `area_menu_visibility` (área do usuário × menu) — editada em `/acessos`.
+2. `src/routes/_app/acessos.tsx`
+   - Remover a aba **"Permissões por papel"** (TabsTrigger + TabsContent + componente `RolePermissionsMatrix` + constante `ROLE_RESOURCES`).
+   - Manter apenas: Áreas, Especialidades, Menus por área, Campos por especialidade, Vínculo usuário↔especialidade e gestão de papéis do usuário (papel continua servindo para hierarquia — admin/gerente/membro/cliente — mas não decide mais menu/campo).
 
-Se em `/acessos` você marcar um menu para a Área do usuário, mas o **papel** dele (ex.: `membro`) não tiver a linha `view` correspondente em `role_permissions`, o menu **continua oculto** — e a tela onde isso se ajusta está fora do menu (`/permissoes`), o que gera a sensação de "não consigo acesso".
+3. `src/routes/_app/personalizacao.tsx`
+   - Trocar o gate `can("branding","manage")` por `isMaster` (via `useAuth()`), já que branding é decisão de administrador.
 
-## Plano
+4. `src/routes/__root.tsx`
+   - Remover `PermissionsProvider` (import + wrapper). `AccessProvider` continua.
 
-### 1. Unificar a configuração em `/acessos`
+5. `src/lib/permissions.tsx`
+   - Excluir o arquivo.
 
-Adicionar uma nova aba **"Permissões por papel"** em `src/routes/_app/acessos.tsx`, que substitui a `/permissoes` antiga:
+## Mudanças no backend (migration)
 
-- Matriz Papel (Admin / Gerente / Colaborador) × Recurso × Ação (Ver / Criar / Editar / Excluir), lendo e gravando em `role_permissions`.
-- Após qualquer toggle, chamar `usePermissions().refresh()` para o menu atualizar sem F5.
-- Fonte única de recursos: usar `MENU_REGISTRY` de `src/lib/access-registry.ts` (já existe) para manter os nomes idênticos aos menus reais e evitar recursos "fantasmas".
+- Dropar policies, tabela `public.role_permissions` e a função `public.has_permission(...)` (nada no backend depende dela hoje — confirmado por `rg has_permission`).
+- Manter `user_roles`, `has_role`, `is_manager`, `is_master`, `role_rank` (usados por RLS de projetos, financeiro, etc.). Papel continua existindo para hierarquia e RLS; só a matriz de "papel × recurso × ação" some.
 
-Estrutura final da tela `/acessos` (3 abas):
-- Áreas & Especialidades (existente)
-- Atribuição de usuários (existente)
-- **Permissões por papel** (nova, migrada de `/permissoes`)
+## Impacto para usuários existentes
 
-### 2. Remover a tela antiga
+- Usuários sem especialidade que hoje viam tudo pelo fallback vão parar de ver menus até serem vinculados a uma área/especialidade em Perfis e Acessos. Isso é o comportamento pedido ("desativar completamente a lógica remanescente"). Admin/gerente/master seguem com acesso total automaticamente.
 
-- Excluir `src/routes/_app/permissoes.tsx` (não está no menu, mas ainda é acessível pela URL).
-- Rodar o gerador de rotas para atualizar `src/routeTree.gen.ts` (automático no dev-server).
+## Arquivos tocados
 
-### 3. Corrigir o caso do usuário atual sem menu
-
-Depois que a nova aba estiver disponível, o próprio admin usa a matriz para dar `view` ao papel afetado nos recursos desejados. Nenhuma migração de dados é necessária — `role_permissions` já existe e tem dados para `admin` e `gerente`; provavelmente falta cobertura para `membro`.
-
-### Fora do escopo (mantém como está)
-
-- **Equipe** continua sendo onde se define o papel (admin/gerente/colaborador) e as funções do usuário.
-- **Times** continua só organizando usuários em times de cliente.
-- Regra de visibilidade por **especialidade** (menus/campos por área) permanece em `/acessos` como hoje.
-
-## Detalhes técnicos
-
-- Arquivos alterados: `src/routes/_app/acessos.tsx` (nova aba + hooks de `role_permissions`), `src/routes/_app/permissoes.tsx` (deletar).
-- Sem migração SQL — reaproveita `role_permissions` existente e as RLS já configuradas.
-- Sem mudanças em `src/routes/_app.tsx`: a lógica de filtragem do menu não muda, apenas passa a ser toda editada em um só lugar.
+- Editar: `src/routes/__root.tsx`, `src/routes/_app.tsx`, `src/routes/_app/acessos.tsx`, `src/routes/_app/personalizacao.tsx`
+- Excluir: `src/lib/permissions.tsx`
+- Migration: drop `role_permissions` + `has_permission`

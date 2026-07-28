@@ -10,7 +10,7 @@ import {
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth-context";
-import { PermissionsProvider } from "@/lib/permissions";
+
 import { AccessProvider } from "@/lib/access-context";
 import { BrandingProvider } from "@/lib/branding-context";
 import { FieldVisibilityProvider } from "@/lib/field-visibility";
@@ -112,14 +112,12 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrandingProvider>
-          <PermissionsProvider>
-            <AccessProvider>
-              <FieldVisibilityProvider>
-                <Outlet />
-                <Toaster richColors position="top-right" />
-              </FieldVisibilityProvider>
-            </AccessProvider>
-          </PermissionsProvider>
+          <AccessProvider>
+            <FieldVisibilityProvider>
+              <Outlet />
+              <Toaster richColors position="top-right" />
+            </FieldVisibilityProvider>
+          </AccessProvider>
         </BrandingProvider>
       </AuthProvider>
     </QueryClientProvider>
