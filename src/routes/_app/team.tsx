@@ -279,12 +279,10 @@ function TeamPage() {
           memberId={openMember}
           onClose={() => setOpenMember(null)}
           profile={data.profiles.find((p) => p.id === openMember)!}
-          roles={data.roles.filter((r) => r.user_id === openMember).map((r) => r.role as AppRole)}
-          allFunctions={data.functions}
-          memberFunctionIds={data.userFunctions.filter((u) => u.user_id === openMember).map((u) => u.function_id)}
           onSaved={() => qc.invalidateQueries({ queryKey: ["team-overview"] })}
         />
       )}
+
     </div>
   );
 }
@@ -306,24 +304,13 @@ function Stat({ icon: Icon, value, label, tone }: { icon: React.ElementType; val
 }
 
 function MemberDialog({
-  memberId, onClose, profile, roles, allFunctions, memberFunctionIds, onSaved,
+  memberId, onClose, profile, onSaved,
 }: {
   memberId: string;
   onClose: () => void;
   profile: Profile;
-  roles: AppRole[];
-  allFunctions: { id: string; name: string }[];
-  memberFunctionIds: string[];
   onSaved: () => void;
 }) {
-  const { roles: actorRoles, isMaster } = useAuth();
-  const actorRank = maxRank(actorRoles);
-  const targetRank = maxRank(roles);
-  const canManageThisUser = isMaster || actorRank > targetRank;
-  const allowedRoles = isMaster ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
-
-  const [primaryRole, setPrimaryRole] = useState<AppRole>(roles[0] ?? "membro");
-  const [selectedFns, setSelectedFns] = useState<string[]>(memberFunctionIds);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar_url ?? null);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
@@ -368,22 +355,12 @@ function MemberDialog({
       };
       const { error } = await supabase.from("profiles").update(payload).eq("id", memberId);
       if (error) throw error;
-
-      // role — master can set any role; others only roles below their rank
-      if (canManageThisUser && (isMaster || ROLE_RANK[primaryRole] < actorRank)) {
-        await supabase.from("user_roles").delete().eq("user_id", memberId);
-        await supabase.from("user_roles").insert({ user_id: memberId, role: primaryRole });
-      }
-
-      // functions
-      await supabase.from("user_functions").delete().eq("user_id", memberId);
-      if (selectedFns.length > 0) {
-        await supabase.from("user_functions").insert(selectedFns.map((function_id) => ({ user_id: memberId, function_id })));
-      }
     },
     onSuccess: () => { toast.success("Salvo"); onSaved(); },
     onError: (e: Error) => toast.error(e.message),
   });
+
+
 
   const saveNote = useMutation({
     mutationFn: async () => {
@@ -432,10 +409,18 @@ function MemberDialog({
           <DialogTitle>{profile.full_name || "Membro"}</DialogTitle>
         </DialogHeader>
 
+        <div className="rounded-md border bg-muted/30 p-3 text-xs flex items-center justify-between gap-2">
+          <span className="text-muted-foreground">
+            O papel principal e os cargos (subfunções) agora são geridos em <b>Perfis e Acessos</b>.
+          </span>
+          <Button asChild variant="outline" size="sm">
+            <a href={`/acessos?tab=assign&user=${memberId}`}>Gerenciar em Perfis e Acessos →</a>
+          </Button>
+        </div>
+
         <Tabs defaultValue="ficha">
           <TabsList>
             <TabsTrigger value="ficha">Ficha</TabsTrigger>
-            <TabsTrigger value="funcoes">Papel & Funções</TabsTrigger>
             <TabsTrigger value="notas"><ShieldAlert className="h-3.5 w-3.5 mr-1" />Anotações privadas</TabsTrigger>
           </TabsList>
 
@@ -490,41 +475,6 @@ function MemberDialog({
             </div>
           </TabsContent>
 
-          <TabsContent value="funcoes" className="space-y-4 mt-4">
-            <div>
-              <Label className="text-xs">Papel principal</Label>
-              <Select value={primaryRole} onValueChange={(v) => setPrimaryRole(v as AppRole)} disabled={!canManageThisUser || allowedRoles.length === 0}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {allowedRoles.map((r) => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {!canManageThisUser && (
-                <p className="text-[11px] text-muted-foreground mt-1">Você não tem permissão para alterar o papel deste membro (papel igual ou superior ao seu).</p>
-              )}
-              {canManageThisUser && allowedRoles.length === 0 && (
-                <p className="text-[11px] text-muted-foreground mt-1">Seu papel não permite atribuir nenhum nível.</p>
-              )}
-            </div>
-            <div>
-              <Label className="text-xs mb-2 block">Subfunções (colaborador)</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {allFunctions.map((f) => (
-                  <label key={f.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted cursor-pointer">
-                    <Checkbox
-                      checked={selectedFns.includes(f.id)}
-                      onCheckedChange={(v) => {
-                        if (v) setSelectedFns([...selectedFns, f.id]);
-                        else setSelectedFns(selectedFns.filter((id) => id !== f.id));
-                      }}
-                    />
-                    <span className="text-sm">{f.name}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </TabsContent>
-
           <TabsContent value="notas" className="space-y-3 mt-4">
             <p className="text-xs text-muted-foreground">
               Apenas o Administrador Master pode ver ou editar estas anotações.
@@ -544,8 +494,9 @@ function MemberDialog({
         <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
           <Button variant="outline" onClick={onClose}>Fechar</Button>
           <Button onClick={() => saveProfile.mutate()} disabled={saveProfile.isPending}>
-            Salvar ficha e funções
+            Salvar ficha
           </Button>
+
         </div>
       </DialogContent>
     </Dialog>

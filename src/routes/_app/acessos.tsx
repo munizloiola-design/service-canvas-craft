@@ -19,16 +19,31 @@ import { describeSupabaseError } from "@/lib/supabase-error";
 
 export const Route = createFileRoute("/_app/acessos")({
   head: () => ({ meta: [{ title: "Perfis e Acessos" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    tab: (s.tab as string) || undefined,
+    user: (s.user as string) || undefined,
+  }),
   component: AcessosPage,
 });
 
 type Area = { id: string; name: string; sort_order: number };
 type Specialty = { id: string; area_id: string; name: string; sort_order: number };
 type MemberProfile = { id: string; full_name: string | null };
+type AppRole = "admin" | "gerente" | "membro" | "cliente";
+
+const ROLE_LABELS: Record<AppRole, string> = {
+  admin: "Administrador",
+  gerente: "Gerente",
+  membro: "Colaborador",
+  cliente: "Cliente",
+};
+const ASSIGNABLE_ROLES: AppRole[] = ["admin", "gerente", "membro"];
+const ROLE_RANK: Record<AppRole, number> = { admin: 3, gerente: 2, membro: 1, cliente: 0 };
 
 function AcessosPage() {
   const { isMaster, roles } = useAuth();
   const isAdmin = isMaster || roles.includes("admin" as any);
+  const search = Route.useSearch();
   if (!isAdmin) return <Navigate to="/dashboard" />;
 
   return (
@@ -38,18 +53,19 @@ function AcessosPage() {
         <p className="text-sm text-muted-foreground">Configure as Áreas de atuação, Especialidades e o que cada uma enxerga no sistema.</p>
       </div>
 
-      <Tabs defaultValue="hierarchy" className="space-y-4">
+      <Tabs defaultValue={search.tab === "assign" ? "assign" : "hierarchy"} className="space-y-4">
         <TabsList>
           <TabsTrigger value="hierarchy">Áreas & Especialidades</TabsTrigger>
           <TabsTrigger value="assign">Atribuição de usuários</TabsTrigger>
         </TabsList>
 
         <TabsContent value="hierarchy"><HierarchyTab /></TabsContent>
-        <TabsContent value="assign"><AssignTab /></TabsContent>
+        <TabsContent value="assign"><AssignTab focusUserId={search.user} /></TabsContent>
       </Tabs>
     </div>
   );
 }
+
 
 function HierarchyTab() {
   const qc = useQueryClient();
@@ -375,8 +391,38 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
   );
 }
 
-function AssignTab() {
+function AssignTab({ focusUserId }: { focusUserId?: string }) {
   const qc = useQueryClient();
+  const { isMaster, roles: actorRoles } = useAuth();
+  const actorRank = Math.max(-1, ...actorRoles.map((r) => ROLE_RANK[r as AppRole] ?? -1));
+
+  const rolesQ = useQuery({
+    queryKey: ["all_user_roles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_roles").select("user_id, role");
+      if (error) throw error;
+      return (data ?? []) as { user_id: string; role: AppRole }[];
+    },
+  });
+  const allUserRoles = rolesQ.data ?? [];
+
+  const setRole = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
+      const del = await supabase.from("user_roles").delete().eq("user_id", userId);
+      if (del.error) throw del.error;
+      const ins = await supabase.from("user_roles").insert({ user_id: userId, role });
+      if (ins.error) throw ins.error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["all_user_roles"] }); toast.success("Papel atualizado"); },
+    onError: (e: unknown) => { console.error("[acessos:setRole]", e); toast.error(describeSupabaseError(e)); },
+  });
+
+  useEffect(() => {
+    if (!focusUserId) return;
+    const el = document.getElementById(`assign-member-${focusUserId}`);
+    if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("ring-2","ring-primary"); setTimeout(() => el.classList.remove("ring-2","ring-primary"), 2500); }
+  }, [focusUserId, rolesQ.data]);
+
 
   const membersQ = useQuery<MemberProfile[]>({
     queryKey: ["team-members-for-assign"],
@@ -494,10 +540,18 @@ function AssignTab() {
         {members.map((m) => {
           const mine = userSpecs.filter((u) => u.user_id === m.id).map((u) => u.specialty_id);
           const mineSet = new Set(mine);
+          const memberRoles = allUserRoles.filter((r) => r.user_id === m.id).map((r) => r.role);
+          const primaryRole: AppRole = memberRoles[0] ?? "membro";
+          const targetRank = Math.max(-1, ...memberRoles.map((r) => ROLE_RANK[r] ?? -1));
+          const canManageRole = isMaster || actorRank > targetRank;
+          const allowedRoles = isMaster ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
           return (
-            <div key={m.id} className="border rounded-md p-3 space-y-3">
+            <div key={m.id} id={`assign-member-${m.id}`} className="border rounded-md p-3 space-y-3 transition-shadow">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <p className="font-medium">{m.full_name ?? m.id}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-medium">{m.full_name ?? m.id}</p>
+                  <Badge variant="outline" className="text-[10px] uppercase">{ROLE_LABELS[primaryRole]}</Badge>
+                </div>
                 <div className="flex gap-1 flex-wrap">
                   {mine.length === 0 && <span className="text-xs text-muted-foreground">Sem cargos atribuídos</span>}
                   {mine.map((sid) => {
@@ -520,34 +574,50 @@ function AssignTab() {
                   })}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground whitespace-nowrap">Adicionar cargo:</Label>
-                <Select
-                  value=""
-                  onValueChange={(val) => { if (val) assign.mutate({ userId: m.id, specId: val }); }}
-                >
-                  <SelectTrigger className="max-w-sm">
-                    <SelectValue placeholder="Selecionar subfunção…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {specsByArea.map(({ area, specs: aSpecs }) => {
-                      const available = aSpecs.filter((s) => !mineSet.has(s.id));
-                      if (available.length === 0) return null;
-                      return (
-                        <SelectGroup key={area.id}>
-                          <SelSelectLabel>{area.name}</SelSelectLabel>
-                          {available.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                          ))}
-                        </SelectGroup>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Papel principal:</Label>
+                  <Select
+                    value={primaryRole}
+                    onValueChange={(v) => setRole.mutate({ userId: m.id, role: v as AppRole })}
+                    disabled={!canManageRole || allowedRoles.length === 0}
+                  >
+                    <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {allowedRoles.map((r) => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Adicionar cargo:</Label>
+                  <Select
+                    value=""
+                    onValueChange={(val) => { if (val) assign.mutate({ userId: m.id, specId: val }); }}
+                  >
+                    <SelectTrigger className="max-w-sm">
+                      <SelectValue placeholder="Selecionar subfunção…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {specsByArea.map(({ area, specs: aSpecs }) => {
+                        const available = aSpecs.filter((s) => !mineSet.has(s.id));
+                        if (available.length === 0) return null;
+                        return (
+                          <SelectGroup key={area.id}>
+                            <SelSelectLabel>{area.name}</SelSelectLabel>
+                            {available.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                            ))}
+                          </SelectGroup>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           );
         })}
+
       </CardContent>
     </Card>
   );
