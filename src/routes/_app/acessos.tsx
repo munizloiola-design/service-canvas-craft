@@ -38,12 +38,14 @@ function AcessosPage() {
         <p className="text-sm text-muted-foreground">Configure as Áreas de atuação, Especialidades e o que cada uma enxerga no sistema.</p>
       </div>
 
-      <Tabs defaultValue="hierarchy" className="space-y-4">
+      <Tabs defaultValue="roles" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="roles">Permissões por papel</TabsTrigger>
           <TabsTrigger value="hierarchy">Áreas & Especialidades</TabsTrigger>
           <TabsTrigger value="assign">Atribuição de usuários</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="roles"><RolePermissionsTab /></TabsContent>
         <TabsContent value="hierarchy"><HierarchyTab /></TabsContent>
         <TabsContent value="assign"><AssignTab /></TabsContent>
       </Tabs>
