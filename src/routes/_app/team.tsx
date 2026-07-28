@@ -304,24 +304,13 @@ function Stat({ icon: Icon, value, label, tone }: { icon: React.ElementType; val
 }
 
 function MemberDialog({
-  memberId, onClose, profile, roles, allFunctions, memberFunctionIds, onSaved,
+  memberId, onClose, profile, onSaved,
 }: {
   memberId: string;
   onClose: () => void;
   profile: Profile;
-  roles: AppRole[];
-  allFunctions: { id: string; name: string }[];
-  memberFunctionIds: string[];
   onSaved: () => void;
 }) {
-  const { roles: actorRoles, isMaster } = useAuth();
-  const actorRank = maxRank(actorRoles);
-  const targetRank = maxRank(roles);
-  const canManageThisUser = isMaster || actorRank > targetRank;
-  const allowedRoles = isMaster ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
-
-  const [primaryRole, setPrimaryRole] = useState<AppRole>(roles[0] ?? "membro");
-  const [selectedFns, setSelectedFns] = useState<string[]>(memberFunctionIds);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar_url ?? null);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
@@ -366,22 +355,12 @@ function MemberDialog({
       };
       const { error } = await supabase.from("profiles").update(payload).eq("id", memberId);
       if (error) throw error;
-
-      // role — master can set any role; others only roles below their rank
-      if (canManageThisUser && (isMaster || ROLE_RANK[primaryRole] < actorRank)) {
-        await supabase.from("user_roles").delete().eq("user_id", memberId);
-        await supabase.from("user_roles").insert({ user_id: memberId, role: primaryRole });
-      }
-
-      // functions
-      await supabase.from("user_functions").delete().eq("user_id", memberId);
-      if (selectedFns.length > 0) {
-        await supabase.from("user_functions").insert(selectedFns.map((function_id) => ({ user_id: memberId, function_id })));
-      }
     },
     onSuccess: () => { toast.success("Salvo"); onSaved(); },
     onError: (e: Error) => toast.error(e.message),
   });
+
+
 
   const saveNote = useMutation({
     mutationFn: async () => {
