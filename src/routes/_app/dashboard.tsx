@@ -569,3 +569,166 @@ function RecentProjects() {
     </div>
   );
 }
+
+function MyProjects() {
+  const { user } = useAuth();
+  const { data: mine = [] } = useQuery({
+    queryKey: ["my-projects", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data: pa } = await supabase.from("project_assignees").select("project_id").eq("user_id", user!.id);
+      const ids = (pa ?? []).map((r) => r.project_id);
+      const { data } = await supabase
+        .from("projects")
+        .select("id, title, due_date, status_id, assigned_to")
+        .order("due_date", { ascending: true })
+        .limit(50);
+      return (data ?? []).filter((p) => p.assigned_to === user!.id || ids.includes(p.id)).slice(0, 6);
+    },
+  });
+  const { data: statuses = [] } = useQuery({
+    queryKey: ["workflow_statuses"],
+    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color, is_final")).data ?? [],
+  });
+  const smap = new Map(statuses.map((s) => [s.id, s]));
+  const open = mine.filter((p) => !p.status_id || !smap.get(p.status_id)?.is_final);
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><FolderKanban className="h-4 w-4 text-primary" /> Minhas demandas</h3>
+      {open.length === 0 ? <p className="text-xs text-muted-foreground">Nenhuma demanda atribuída a você.</p> : (
+        <div className="divide-y">
+          {open.map((p) => {
+            const st = p.status_id ? smap.get(p.status_id) : null;
+            return (
+              <Link key={p.id} to="/projects" className="py-2 flex items-center justify-between gap-2 hover:bg-muted/40 rounded px-1">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{p.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {p.due_date ? format(new Date(p.due_date + "T00:00:00"), "dd MMM", { locale: ptBR }) : "sem prazo"}
+                  </p>
+                </div>
+                {st && <Badge className="border-0 text-xs" style={{ background: `${st.color}25`, color: st.color }}>{st.name}</Badge>}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PendingTickets() {
+  const { data: tickets = [] } = useQuery({
+    queryKey: ["dash-tickets-pending"],
+    queryFn: async () =>
+      (await supabase.from("ticket_requests").select("id, title, requester_name, created_at, status").eq("status", "pendente").order("created_at", { ascending: false }).limit(6)).data ?? [],
+  });
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" /> Tickets pendentes</h3>
+      {tickets.length === 0 ? <p className="text-xs text-muted-foreground">Nenhum ticket aguardando triagem.</p> : (
+        <div className="divide-y">
+          {tickets.map((t) => (
+            <div key={t.id} className="py-2">
+              <p className="text-sm font-medium truncate">{t.title}</p>
+              <p className="text-xs text-muted-foreground truncate">{t.requester_name}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PendingApprovals() {
+  const { data: projects = [] } = useQuery({
+    queryKey: ["dash-approvals"],
+    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, client_decision").limit(200)).data ?? [],
+  });
+  const { data: statuses = [] } = useQuery({
+    queryKey: ["workflow_statuses"],
+    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color, is_client_validation")).data ?? [],
+  });
+  const validation = new Set(statuses.filter((s) => s.is_client_validation).map((s) => s.id));
+  const list = projects.filter((p) => p.status_id && validation.has(p.status_id) && !p.client_decision).slice(0, 6);
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary" /> Aprovações do cliente</h3>
+      {list.length === 0 ? <p className="text-xs text-muted-foreground">Nada aguardando aprovação.</p> : (
+        <div className="divide-y">
+          {list.map((p) => (
+            <div key={p.id} className="py-2 flex items-center justify-between gap-2">
+              <p className="text-sm font-medium truncate">{p.title}</p>
+              <Badge variant="secondary" className="shrink-0 text-xs">Aguardando</Badge>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CrmFunnel() {
+  const { data: stages = [] } = useQuery({
+    queryKey: ["crm_stages"],
+    queryFn: async () => (await supabase.from("crm_stages").select("id, name, color, sort_order").order("sort_order")).data ?? [],
+  });
+  const { data: clients = [] } = useQuery({
+    queryKey: ["dash-prospects"],
+    queryFn: async () => (await supabase.from("clients").select("id, prospect_stage, prospect_value").eq("status", "prospect")).data ?? [],
+  });
+  const rows = stages.map((s) => {
+    const items = clients.filter((c) => (c.prospect_stage ?? "").trim() === s.name);
+    return { name: s.name, color: s.color ?? "#6b7280", count: items.length, value: items.reduce((sum, c) => sum + Number(c.prospect_value ?? 0), 0) };
+  });
+  const max = Math.max(1, ...rows.map((r) => r.count));
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> Funil de prospecção</h3>
+      {rows.length === 0 ? <p className="text-xs text-muted-foreground">Nenhum estágio cadastrado.</p> : (
+        <div className="space-y-2">
+          {rows.map((r) => (
+            <div key={r.name} className="flex items-center gap-2 text-sm">
+              <span className="flex-1 truncate">{r.name}</span>
+              <div className="h-2 rounded-full" style={{ width: `${(r.count / max) * 40 + 4}%`, background: `${r.color}55` }} />
+              <span className="text-xs text-muted-foreground w-24 text-right">{r.count} · {fmt(r.value)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FinanceRequests() {
+  const { data: reqs = [] } = useQuery({
+    queryKey: ["dash-finance-requests"],
+    queryFn: async () =>
+      (await supabase.from("financial_entry_requests").select("id, description, amount, kind, requester_name, status").eq("status", "pendente").order("created_at", { ascending: false }).limit(6)).data ?? [],
+  });
+  const total = reqs.reduce((s, r) => s + Number(r.amount ?? 0), 0);
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><DollarSign className="h-4 w-4 text-primary" /> Autorizações financeiras</h3>
+      {reqs.length === 0 ? <p className="text-xs text-muted-foreground">Nenhuma solicitação pendente.</p> : (
+        <>
+          <p className="text-xs text-muted-foreground mb-2">{reqs.length} pendente(s) · {fmt(total)}</p>
+          <div className="divide-y">
+            {reqs.map((r) => (
+              <div key={r.id} className="py-2 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{r.description}</p>
+                  <p className="text-xs text-muted-foreground truncate">{r.requester_name}</p>
+                </div>
+                <span className={`text-sm shrink-0 ${r.kind === "entrada" ? "text-emerald-600" : "text-destructive"}`}>{fmt(Number(r.amount ?? 0))}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
