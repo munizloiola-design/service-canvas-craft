@@ -535,7 +535,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
   const [lastAutoFilledTeam, setLastAutoFilledTeam] = useState<string>(editProject?.team_id ?? "");
 
   // Members of the selected internal team (Equipe responsável)
-  const { data: internalTeamMemberIds = [] } = useQuery({
+  const { data: internalTeamMemberIds = [], isFetching: fetchingTeamMembers } = useQuery({
     queryKey: ["team_members_for_team", teamId],
     enabled: !!teamId,
     queryFn: async () => {
@@ -548,6 +548,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
   // Auto-fill assignees when the responsible team changes (keeps manual picks).
   useEffect(() => {
     if (!teamId || teamId === lastAutoFilledTeam) return;
+    if (fetchingTeamMembers) return; // wait for members to load before deciding
     if (!internalTeamMemberIds.length) { setLastAutoFilledTeam(teamId); return; }
     setAssignees((cur) => {
       const existingIds = new Set(cur.filter((a) => a.user_id).map((a) => a.user_id));
@@ -560,7 +561,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
     });
     setLastAutoFilledTeam(teamId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId, internalTeamMemberIds.join(",")]);
+  }, [teamId, fetchingTeamMembers, internalTeamMemberIds.join(",")]);
 
   // Load the default team assigned to the selected client (client_teams)
   const { data: clientTeamId } = useQuery({
