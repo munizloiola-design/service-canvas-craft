@@ -23,21 +23,27 @@ export const Route = createFileRoute("/_app/dashboard")({ component: DashboardPa
 
 const fmt = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 
-// Widget catalog
+// Widget catalog — `menu` é a chave de menu (Perfis e Acessos) exigida para ver o widget.
 const WIDGETS = {
-  stats_overview: { label: "Indicadores gerais", size: "lg" as const },
-  cash_flow: { label: "Fluxo de caixa (12 meses)", size: "lg" as const },
-  projects_by_status: { label: "Projetos por etapa", size: "md" as const },
-  status_timer: { label: "Tempo médio por etapa", size: "md" as const },
-  upcoming_deadlines: { label: "Próximos prazos", size: "md" as const },
-  recurring_revenue: { label: "Receitas recorrentes", size: "md" as const },
-  team_load: { label: "Carga por profissional", size: "md" as const },
-  equipment_depreciated: { label: "Depreciação de equipamentos", size: "md" as const },
-  recent_projects: { label: "Projetos recentes", size: "md" as const },
+  stats_overview: { label: "Indicadores gerais", size: "lg" as const, menu: null },
+  cash_flow: { label: "Fluxo de caixa (12 meses)", size: "lg" as const, menu: "/financeiro" },
+  projects_by_status: { label: "Projetos por etapa", size: "md" as const, menu: "/projects" },
+  status_timer: { label: "Tempo médio por etapa", size: "md" as const, menu: "/tempo" },
+  upcoming_deadlines: { label: "Próximos prazos", size: "md" as const, menu: "/projects" },
+  recurring_revenue: { label: "Receitas recorrentes", size: "md" as const, menu: "/financeiro" },
+  team_load: { label: "Carga por profissional", size: "md" as const, menu: "/team" },
+  equipment_depreciated: { label: "Depreciação de equipamentos", size: "md" as const, menu: "/equipamentos" },
+  recent_projects: { label: "Projetos recentes", size: "md" as const, menu: "/projects" },
+  my_projects: { label: "Minhas demandas", size: "md" as const, menu: null },
+  pending_tickets: { label: "Tickets pendentes", size: "md" as const, menu: "/tickets" },
+  pending_approvals: { label: "Aprovações do cliente", size: "md" as const, menu: "/aprovacoes" },
+  crm_funnel: { label: "Funil de prospecção", size: "md" as const, menu: "/clientes/crm" },
+  finance_requests: { label: "Autorizações financeiras", size: "md" as const, menu: "/financeiro" },
 } as const;
 
 type WidgetKey = keyof typeof WIDGETS;
 const DEFAULT_WIDGETS: WidgetKey[] = ["stats_overview", "cash_flow", "projects_by_status", "upcoming_deadlines"];
+
 
 type WidgetRow = { id: string; widget_key: string; position: number; size: string };
 
