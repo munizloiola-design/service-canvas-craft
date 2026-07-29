@@ -1,56 +1,26 @@
-## Situação atual (verificada)
+## Objetivo
 
-**1. Menus faltando no controle de acesso**
-A lista da sidebar (`src/routes/_app.tsx`) tem 5 itens que **não existem** no registro usado pela tela Perfis e Acessos (`src/lib/access-registry.ts`). Como o menu só aparece se `menuAllowed(item.to)` for verdadeiro, esses itens hoje são invisíveis para todos, sem opção de liberar:
+No formulário de demanda (Nova/Editar demanda), ao selecionar uma **Equipe responsável**, os membros dessa equipe devem aparecer automaticamente na lista de **Responsáveis**.
 
-- `/clientes/crm` — CRM Prospecção
-- `/parceiros` — Parceiros
-- `/squad` — Times
-- `/squad/relatorio` — Relatório do Squad
-- `/acessos` — Perfis e Acessos
+## Situação atual
 
-Também os agrupamentos do registro estão desatualizados em relação à sidebar (Clientes e Squad viraram grupos próprios).
-
-**2. Dashboard**
-`src/routes/_app/dashboard.tsx` tem 9 widgets no catálogo (`WIDGETS`) e nenhum deles respeita permissão: qualquer usuário pode adicionar "Fluxo de caixa", "Receitas recorrentes", "Depreciação de equipamentos" etc., mesmo sem acesso a Financeiro ou Equipamentos. Os dados em si continuam protegidos por RLS, mas o widget aparece vazio/quebrado e expõe informação que não deveria estar disponível.
+Hoje o auto-preenchimento de Responsáveis só acontece quando se escolhe o **Cliente** (usa o time padrão do cliente em `client_teams` / `client_team_members`). O campo **Equipe responsável** (tabela `teams`) apenas grava `projects.team_id` — não mexe nos Responsáveis.
 
 ## O que será feito
 
-### Parte 1 — Registro de menus completo
-- Adicionar as 5 chaves faltantes ao `MENU_REGISTRY`, com os grupos alinhados à sidebar: Operação, Cliente, Financeiro, Marketing, Squad, Configurações.
-- Revisar item a item para garantir paridade 1:1 entre sidebar e registro (nenhum menu sem chave, nenhuma chave órfã).
-- Na tela **Perfis e Acessos → Menus visíveis**, os novos itens passam a aparecer para liberação por área.
-- Liberar os novos menus para a área "Administração" (que hoje concentra Admins/Masters) para não haver perda de acesso após a mudança.
+Em `src/routes/_app/projects.tsx` (componente do formulário de demanda):
 
-### Parte 2 — Dashboard por permissão
-- Mapear cada widget para a chave de menu correspondente:
-
-```text
-stats_overview          -> sempre (dashboard)
-projects_by_status      -> /projects
-status_timer            -> /tempo
-upcoming_deadlines      -> /projects
-recent_projects         -> /projects
-cash_flow               -> /financeiro
-recurring_revenue       -> /financeiro
-team_load               -> /team
-equipment_depreciated   -> /equipamentos
-```
-
-- Filtrar o diálogo "Adicionar widget" para mostrar apenas widgets permitidos.
-- Não renderizar widgets já salvos que o usuário perdeu permissão (ocultar, sem apagar do banco).
-- Filtrar `DEFAULT_WIDGETS` na primeira carga, para o usuário só receber widgets a que tem direito.
-
-### Parte 3 — Novos widgets sugeridos
-Adicionar ao catálogo, cada um também vinculado a uma permissão:
-
-- **Tickets pendentes** (`/tickets`) — solicitações aguardando triagem.
-- **Aprovações pendentes do cliente** (`/aprovacoes`) — demandas em validação sem decisão.
-- **Funil de prospecção** (`/clientes/crm`) — valor e quantidade por estágio do CRM.
-- **Autorizações financeiras pendentes** (`/financeiro`) — solicitações públicas de lançamento aguardando revisão.
-- **Minhas demandas** (sempre) — projetos onde o usuário logado é responsável.
+1. Buscar os membros da equipe selecionada em `team_members` (por `team_id`), com a query habilitada apenas quando houver uma equipe escolhida.
+2. Ao mudar a equipe selecionada (e somente quando muda, para não sobrescrever edições manuais), acrescentar os membros da equipe à lista de Responsáveis:
+   - mantém as pessoas já escolhidas manualmente;
+   - adiciona apenas quem ainda não está na lista (sem duplicar);
+   - deixa o campo "Função" vazio para os adicionados, editável normalmente;
+   - o usuário continua podendo remover qualquer pessoa com o botão X.
+3. Ao abrir uma demanda existente para edição, não haverá re-preenchimento automático — só quando a equipe for efetivamente trocada.
+4. Exibir uma nota curta abaixo do campo, no mesmo estilo da já existente para o cliente: "Membros da equipe X aplicados automaticamente — você pode adicionar ou remover pessoas."
 
 ## Detalhes técnicos
-- Alterações em `src/lib/access-registry.ts` (chaves + grupos) e `src/routes/_app/dashboard.tsx` (catálogo com campo `menu`, filtragem via `useAccess().menuAllowed`, novos componentes de widget).
-- Uma migração pequena inserindo linhas em `area_menu_visibility` para a área de Administração com as novas chaves.
-- Sem mudança de RLS: os widgets novos usam tabelas já existentes (`ticket_requests`, `projects`, `crm_stages`/`clients`, `financial_entry_requests`).
+
+- Nova `useQuery` `["team_members_for_team", teamId]` lendo `team_members(user_id)` filtrado por `team_id`.
+- Novo estado `lastAutoFilledTeam` espelhando a lógica de `lastAutoFilledClient`, com `useEffect` disparado por `teamId` + lista de membros carregada.
+- Nenhuma alteração de banco de dados, RLS ou lógica de salvamento: os responsáveis continuam sendo gravados em `project_assignees` como hoje.

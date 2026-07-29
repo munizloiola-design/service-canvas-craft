@@ -532,6 +532,35 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
   const [clientId, setClientId] = useState<string>(editProject?.client_id ?? "");
   const [lastAutoFilledClient, setLastAutoFilledClient] = useState<string>(editProject?.client_id ?? "");
   const [teamId, setTeamId] = useState<string>(editProject?.team_id ?? "");
+  const [lastAutoFilledTeam, setLastAutoFilledTeam] = useState<string>(editProject?.team_id ?? "");
+
+  // Members of the selected internal team (Equipe responsável)
+  const { data: internalTeamMemberIds = [] } = useQuery({
+    queryKey: ["team_members_for_team", teamId],
+    enabled: !!teamId,
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from as any)("team_members").select("user_id").eq("team_id", teamId);
+      return ((data ?? []) as { user_id: string }[]).map((x) => x.user_id);
+    },
+  });
+
+  // Auto-fill assignees when the responsible team changes (keeps manual picks).
+  useEffect(() => {
+    if (!teamId || teamId === lastAutoFilledTeam) return;
+    if (!internalTeamMemberIds.length) { setLastAutoFilledTeam(teamId); return; }
+    setAssignees((cur) => {
+      const existingIds = new Set(cur.filter((a) => a.user_id).map((a) => a.user_id));
+      const toAdd = internalTeamMemberIds
+        .filter((id) => !existingIds.has(id))
+        .map((id) => ({ user_id: id, role_id: "" }));
+      const kept = cur.filter((a) => a.user_id);
+      const result = [...kept, ...toAdd];
+      return result.length ? result : [{ user_id: "", role_id: "" }];
+    });
+    setLastAutoFilledTeam(teamId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId, internalTeamMemberIds.join(",")]);
 
   // Load the default team assigned to the selected client (client_teams)
   const { data: clientTeamId } = useQuery({
@@ -717,6 +746,12 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         {clientId && teamMemberIds.length > 0 && (
           <p className="text-xs text-muted-foreground">
             Time do cliente aplicado automaticamente: {teamMemberIds.length} responsável(is) pré-preenchido(s). Você ainda pode adicionar ou remover pessoas manualmente.
+          </p>
+        )}
+
+        {teamId && internalTeamMemberIds.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Membros da equipe selecionada aplicados automaticamente: {internalTeamMemberIds.length} responsável(is). Você pode adicionar ou remover pessoas.
           </p>
         )}
 
