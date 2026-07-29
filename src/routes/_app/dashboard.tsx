@@ -128,8 +128,9 @@ function DashboardPage() {
     reorder.mutate(next);
   };
 
-  const usedKeys = new Set(widgets.map((w) => w.widget_key));
-  const available = (Object.keys(WIDGETS) as WidgetKey[]).filter((k) => !usedKeys.has(k));
+  const usedKeys = new Set(allWidgets.map((w) => w.widget_key));
+  const available = (Object.keys(WIDGETS) as WidgetKey[]).filter((k) => !usedKeys.has(k) && canSee(k));
+
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
