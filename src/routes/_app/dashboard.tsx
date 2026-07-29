@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useAccess } from "@/lib/access-context";
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,30 +25,42 @@ export const Route = createFileRoute("/_app/dashboard")({ component: DashboardPa
 
 const fmt = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 
-// Widget catalog
+// Widget catalog — `menu` é a chave de menu (Perfis e Acessos) exigida para ver o widget.
 const WIDGETS = {
-  stats_overview: { label: "Indicadores gerais", size: "lg" as const },
-  cash_flow: { label: "Fluxo de caixa (12 meses)", size: "lg" as const },
-  projects_by_status: { label: "Projetos por etapa", size: "md" as const },
-  status_timer: { label: "Tempo médio por etapa", size: "md" as const },
-  upcoming_deadlines: { label: "Próximos prazos", size: "md" as const },
-  recurring_revenue: { label: "Receitas recorrentes", size: "md" as const },
-  team_load: { label: "Carga por profissional", size: "md" as const },
-  equipment_depreciated: { label: "Depreciação de equipamentos", size: "md" as const },
-  recent_projects: { label: "Projetos recentes", size: "md" as const },
+  stats_overview: { label: "Indicadores gerais", size: "lg" as const, menu: null },
+  cash_flow: { label: "Fluxo de caixa (12 meses)", size: "lg" as const, menu: "/financeiro" },
+  projects_by_status: { label: "Projetos por etapa", size: "md" as const, menu: "/projects" },
+  status_timer: { label: "Tempo médio por etapa", size: "md" as const, menu: "/tempo" },
+  upcoming_deadlines: { label: "Próximos prazos", size: "md" as const, menu: "/projects" },
+  recurring_revenue: { label: "Receitas recorrentes", size: "md" as const, menu: "/financeiro" },
+  team_load: { label: "Carga por profissional", size: "md" as const, menu: "/team" },
+  equipment_depreciated: { label: "Depreciação de equipamentos", size: "md" as const, menu: "/equipamentos" },
+  recent_projects: { label: "Projetos recentes", size: "md" as const, menu: "/projects" },
+  my_projects: { label: "Minhas demandas", size: "md" as const, menu: null },
+  pending_tickets: { label: "Tickets pendentes", size: "md" as const, menu: "/tickets" },
+  pending_approvals: { label: "Aprovações do cliente", size: "md" as const, menu: "/aprovacoes" },
+  crm_funnel: { label: "Funil de prospecção", size: "md" as const, menu: "/clientes/crm" },
+  finance_requests: { label: "Autorizações financeiras", size: "md" as const, menu: "/financeiro" },
 } as const;
 
 type WidgetKey = keyof typeof WIDGETS;
 const DEFAULT_WIDGETS: WidgetKey[] = ["stats_overview", "cash_flow", "projects_by_status", "upcoming_deadlines"];
 
+
 type WidgetRow = { id: string; widget_key: string; position: number; size: string };
 
 function DashboardPage() {
   const { user } = useAuth();
+  const { menuAllowed } = useAccess();
   const qc = useQueryClient();
   const [editMode, setEditMode] = useState(false);
 
-  const { data: widgets = [], isLoading } = useQuery({
+  const canSee = (k: WidgetKey) => {
+    const m = WIDGETS[k]?.menu;
+    return !m || menuAllowed(m);
+  };
+
+  const { data: allWidgets = [], isLoading } = useQuery({
     queryKey: ["dashboard_widgets", user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -56,20 +70,26 @@ function DashboardPage() {
     },
   });
 
+  // Widgets sem permissão ficam ocultos (não são apagados do banco)
+  const widgets = allWidgets.filter((w) => w.widget_key in WIDGETS && canSee(w.widget_key as WidgetKey));
+
   // Seed defaults on first visit
   useEffect(() => {
     if (!user || isLoading) return;
-    if (widgets.length === 0) {
+    if (allWidgets.length === 0) {
+      const seeds = DEFAULT_WIDGETS.filter(canSee);
+      if (seeds.length === 0) return;
       (async () => {
         await supabase.from("dashboard_widgets").insert(
-          DEFAULT_WIDGETS.map((k, i) => ({
+          seeds.map((k, i) => ({
             user_id: user.id, widget_key: k, position: i, size: WIDGETS[k].size,
           }))
         );
         qc.invalidateQueries({ queryKey: ["dashboard_widgets"] });
       })();
     }
-  }, [user, widgets, isLoading, qc]);
+  }, [user, allWidgets, isLoading, qc]);
+
 
   const reorder = useMutation({
     mutationFn: async (ordered: WidgetRow[]) => {
@@ -108,8 +128,9 @@ function DashboardPage() {
     reorder.mutate(next);
   };
 
-  const usedKeys = new Set(widgets.map((w) => w.widget_key));
-  const available = (Object.keys(WIDGETS) as WidgetKey[]).filter((k) => !usedKeys.has(k));
+  const usedKeys = new Set(allWidgets.map((w) => w.widget_key));
+  const available = (Object.keys(WIDGETS) as WidgetKey[]).filter((k) => !usedKeys.has(k) && canSee(k));
+
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
@@ -186,6 +207,12 @@ function SortableWidget({ widget, editMode, onRemove }: { widget: WidgetRow; edi
 
 function WidgetRenderer({ widgetKey }: { widgetKey: WidgetKey }) {
   switch (widgetKey) {
+    case "my_projects": return <MyProjects />;
+    case "pending_tickets": return <PendingTickets />;
+    case "pending_approvals": return <PendingApprovals />;
+    case "crm_funnel": return <CrmFunnel />;
+    case "finance_requests": return <FinanceRequests />;
+
     case "stats_overview": return <StatsOverview />;
     case "cash_flow": return <CashFlow />;
     case "projects_by_status": return <ProjectsByStatus />;
@@ -539,6 +566,169 @@ function RecentProjects() {
         })}
         {projects.length === 0 && <p className="text-xs text-muted-foreground py-3 text-center">Nenhum projeto.</p>}
       </div>
+    </div>
+  );
+}
+
+function MyProjects() {
+  const { user } = useAuth();
+  const { data: mine = [] } = useQuery({
+    queryKey: ["my-projects", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data: pa } = await supabase.from("project_assignees").select("project_id").eq("user_id", user!.id);
+      const ids = (pa ?? []).map((r) => r.project_id);
+      const { data } = await supabase
+        .from("projects")
+        .select("id, title, due_date, status_id, assigned_to")
+        .order("due_date", { ascending: true })
+        .limit(50);
+      return (data ?? []).filter((p) => p.assigned_to === user!.id || ids.includes(p.id)).slice(0, 6);
+    },
+  });
+  const { data: statuses = [] } = useQuery({
+    queryKey: ["workflow_statuses"],
+    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color, is_final")).data ?? [],
+  });
+  const smap = new Map(statuses.map((s) => [s.id, s]));
+  const open = mine.filter((p) => !p.status_id || !smap.get(p.status_id)?.is_final);
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><FolderKanban className="h-4 w-4 text-primary" /> Minhas demandas</h3>
+      {open.length === 0 ? <p className="text-xs text-muted-foreground">Nenhuma demanda atribuída a você.</p> : (
+        <div className="divide-y">
+          {open.map((p) => {
+            const st = p.status_id ? smap.get(p.status_id) : null;
+            return (
+              <Link key={p.id} to="/projects" className="py-2 flex items-center justify-between gap-2 hover:bg-muted/40 rounded px-1">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{p.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {p.due_date ? format(new Date(p.due_date + "T00:00:00"), "dd MMM", { locale: ptBR }) : "sem prazo"}
+                  </p>
+                </div>
+                {st && <Badge className="border-0 text-xs" style={{ background: `${st.color}25`, color: st.color }}>{st.name}</Badge>}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PendingTickets() {
+  const { data: tickets = [] } = useQuery({
+    queryKey: ["dash-tickets-pending"],
+    queryFn: async () =>
+      (await supabase.from("ticket_requests").select("id, title, requester_name, created_at, status").eq("status", "pendente").order("created_at", { ascending: false }).limit(6)).data ?? [],
+  });
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" /> Tickets pendentes</h3>
+      {tickets.length === 0 ? <p className="text-xs text-muted-foreground">Nenhum ticket aguardando triagem.</p> : (
+        <div className="divide-y">
+          {tickets.map((t) => (
+            <div key={t.id} className="py-2">
+              <p className="text-sm font-medium truncate">{t.title}</p>
+              <p className="text-xs text-muted-foreground truncate">{t.requester_name}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PendingApprovals() {
+  const { data: projects = [] } = useQuery({
+    queryKey: ["dash-approvals"],
+    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, client_decision").limit(200)).data ?? [],
+  });
+  const { data: statuses = [] } = useQuery({
+    queryKey: ["workflow_statuses"],
+    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color, is_client_validation")).data ?? [],
+  });
+  const validation = new Set(statuses.filter((s) => s.is_client_validation).map((s) => s.id));
+  const list = projects.filter((p) => p.status_id && validation.has(p.status_id) && !p.client_decision).slice(0, 6);
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary" /> Aprovações do cliente</h3>
+      {list.length === 0 ? <p className="text-xs text-muted-foreground">Nada aguardando aprovação.</p> : (
+        <div className="divide-y">
+          {list.map((p) => (
+            <div key={p.id} className="py-2 flex items-center justify-between gap-2">
+              <p className="text-sm font-medium truncate">{p.title}</p>
+              <Badge variant="secondary" className="shrink-0 text-xs">Aguardando</Badge>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CrmFunnel() {
+  const { data: stages = [] } = useQuery({
+    queryKey: ["crm_stages"],
+    queryFn: async () => (await supabase.from("crm_stages").select("id, name, color, sort_order").order("sort_order")).data ?? [],
+  });
+  const { data: clients = [] } = useQuery({
+    queryKey: ["dash-prospects"],
+    queryFn: async () => (await supabase.from("clients").select("id, prospect_stage, prospect_value").eq("status", "prospect")).data ?? [],
+  });
+  const rows = stages.map((s) => {
+    const items = clients.filter((c) => (c.prospect_stage ?? "").trim() === s.name);
+    return { name: s.name, color: s.color ?? "#6b7280", count: items.length, value: items.reduce((sum, c) => sum + Number(c.prospect_value ?? 0), 0) };
+  });
+  const max = Math.max(1, ...rows.map((r) => r.count));
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> Funil de prospecção</h3>
+      {rows.length === 0 ? <p className="text-xs text-muted-foreground">Nenhum estágio cadastrado.</p> : (
+        <div className="space-y-2">
+          {rows.map((r) => (
+            <div key={r.name} className="flex items-center gap-2 text-sm">
+              <span className="flex-1 truncate">{r.name}</span>
+              <div className="h-2 rounded-full" style={{ width: `${(r.count / max) * 40 + 4}%`, background: `${r.color}55` }} />
+              <span className="text-xs text-muted-foreground w-24 text-right">{r.count} · {fmt(r.value)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FinanceRequests() {
+  const { data: reqs = [] } = useQuery({
+    queryKey: ["dash-finance-requests"],
+    queryFn: async () =>
+      (await supabase.from("financial_entry_requests").select("id, description, amount, kind, requester_name, status").eq("status", "pendente").order("created_at", { ascending: false }).limit(6)).data ?? [],
+  });
+  const total = reqs.reduce((s, r) => s + Number(r.amount ?? 0), 0);
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><DollarSign className="h-4 w-4 text-primary" /> Autorizações financeiras</h3>
+      {reqs.length === 0 ? <p className="text-xs text-muted-foreground">Nenhuma solicitação pendente.</p> : (
+        <>
+          <p className="text-xs text-muted-foreground mb-2">{reqs.length} pendente(s) · {fmt(total)}</p>
+          <div className="divide-y">
+            {reqs.map((r) => (
+              <div key={r.id} className="py-2 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{r.description}</p>
+                  <p className="text-xs text-muted-foreground truncate">{r.requester_name}</p>
+                </div>
+                <span className={`text-sm shrink-0 ${r.kind === "entrada" ? "text-emerald-600" : "text-destructive"}`}>{fmt(Number(r.amount ?? 0))}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -6,19 +6,25 @@ export const MENU_REGISTRY: { key: string; label: string; group?: string }[] = [
   { key: "/projects", label: "Projetos", group: "Operação" },
   { key: "/tickets", label: "Tickets", group: "Operação" },
   { key: "/calendario", label: "Calendário", group: "Operação" },
-  { key: "/clientes", label: "Clientes", group: "Operação" },
   { key: "/equipamentos", label: "Equipamentos", group: "Operação" },
   { key: "/tempo", label: "Tempo", group: "Operação" },
+  { key: "/parceiros", label: "Parceiros", group: "Operação" },
+  { key: "/clientes", label: "Clientes", group: "Cliente" },
+  { key: "/clientes/crm", label: "CRM Prospecção", group: "Cliente" },
   { key: "/financeiro", label: "Financeiro", group: "Financeiro" },
   { key: "/orcamento", label: "Orçamento", group: "Financeiro" },
   { key: "/facebook", label: "Facebook Ads", group: "Marketing" },
   { key: "/diguinho", label: "Diguinho IA", group: "Marketing" },
-  { key: "/team", label: "Equipe" },
-  { key: "/aprovacoes", label: "Aprovações" },
+  { key: "/team", label: "Equipe", group: "Squad" },
+  { key: "/squad", label: "Times", group: "Squad" },
+  { key: "/squad/relatorio", label: "Relatório do Squad", group: "Squad" },
+  { key: "/aprovacoes", label: "Aprovações", group: "Squad" },
+  { key: "/acessos", label: "Perfis e Acessos", group: "Squad" },
   { key: "/cadastros", label: "Cadastros", group: "Configurações" },
   { key: "/integracoes", label: "Integrações", group: "Configurações" },
   { key: "/personalizacao", label: "Personalização", group: "Configurações" },
 ];
+
 
 export const FIELD_REGISTRY: { key: string; label: string }[] = [
   { key: "title", label: "Título" },
