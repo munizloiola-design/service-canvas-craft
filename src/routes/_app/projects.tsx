@@ -564,7 +564,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
   }, [teamId, fetchingTeamMembers, internalTeamMemberIds.join(",")]);
 
   // Load the default team assigned to the selected client (client_teams)
-  const { data: clientTeamId } = useQuery({
+  const { data: clientTeamId, isFetching: fetchingClientTeam } = useQuery({
     queryKey: ["client_default_team_id", clientId],
     enabled: !!clientId,
     queryFn: async () => {
