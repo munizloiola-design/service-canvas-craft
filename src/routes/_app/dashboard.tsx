@@ -207,6 +207,12 @@ function SortableWidget({ widget, editMode, onRemove }: { widget: WidgetRow; edi
 
 function WidgetRenderer({ widgetKey }: { widgetKey: WidgetKey }) {
   switch (widgetKey) {
+    case "my_projects": return <MyProjects />;
+    case "pending_tickets": return <PendingTickets />;
+    case "pending_approvals": return <PendingApprovals />;
+    case "crm_funnel": return <CrmFunnel />;
+    case "finance_requests": return <FinanceRequests />;
+
     case "stats_overview": return <StatsOverview />;
     case "cash_flow": return <CashFlow />;
     case "projects_by_status": return <ProjectsByStatus />;
