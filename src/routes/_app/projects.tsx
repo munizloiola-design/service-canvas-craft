@@ -579,7 +579,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
   });
 
   // Load members of that client_team
-  const { data: teamMemberIds = [] } = useQuery({
+  const { data: teamMemberIds = [], isFetching: fetchingClientTeamMembers } = useQuery({
     queryKey: ["client_team_members_for_team", clientTeamId],
     enabled: !!clientTeamId,
     queryFn: async () => {
@@ -593,6 +593,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
   // Preserves manual additions and never blocks the user from editing.
   useEffect(() => {
     if (!clientId || clientId === lastAutoFilledClient) return;
+    if (fetchingClientTeam || fetchingClientTeamMembers) return; // wait for data
     if (!teamMemberIds.length) { setLastAutoFilledClient(clientId); return; }
     setAssignees((cur) => {
       const existingIds = new Set(cur.filter((a) => a.user_id).map((a) => a.user_id));
@@ -603,7 +604,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
     });
     setLastAutoFilledClient(clientId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, teamMemberIds.join(",")]);
+  }, [clientId, fetchingClientTeam, fetchingClientTeamMembers, teamMemberIds.join(",")]);
 
   const [hasRef, setHasRef] = useState(!!editProject?.has_reference);
   const [descCards, setDescCards] = useState<DescriptionCard[]>(() => {
