@@ -49,10 +49,16 @@ type WidgetRow = { id: string; widget_key: string; position: number; size: strin
 
 function DashboardPage() {
   const { user } = useAuth();
+  const { menuAllowed } = useAccess();
   const qc = useQueryClient();
   const [editMode, setEditMode] = useState(false);
 
-  const { data: widgets = [], isLoading } = useQuery({
+  const canSee = (k: WidgetKey) => {
+    const m = WIDGETS[k]?.menu;
+    return !m || menuAllowed(m);
+  };
+
+  const { data: allWidgets = [], isLoading } = useQuery({
     queryKey: ["dashboard_widgets", user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -62,20 +68,26 @@ function DashboardPage() {
     },
   });
 
+  // Widgets sem permissão ficam ocultos (não são apagados do banco)
+  const widgets = allWidgets.filter((w) => w.widget_key in WIDGETS && canSee(w.widget_key as WidgetKey));
+
   // Seed defaults on first visit
   useEffect(() => {
     if (!user || isLoading) return;
-    if (widgets.length === 0) {
+    if (allWidgets.length === 0) {
+      const seeds = DEFAULT_WIDGETS.filter(canSee);
+      if (seeds.length === 0) return;
       (async () => {
         await supabase.from("dashboard_widgets").insert(
-          DEFAULT_WIDGETS.map((k, i) => ({
+          seeds.map((k, i) => ({
             user_id: user.id, widget_key: k, position: i, size: WIDGETS[k].size,
           }))
         );
         qc.invalidateQueries({ queryKey: ["dashboard_widgets"] });
       })();
     }
-  }, [user, widgets, isLoading, qc]);
+  }, [user, allWidgets, isLoading, qc]);
+
 
   const reorder = useMutation({
     mutationFn: async (ordered: WidgetRow[]) => {
