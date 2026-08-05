@@ -74,7 +74,6 @@ const FILTER_LABELS: Record<FilterKey, string> = {
 };
 
 function ProjectsPage() {
-  const { isManager } = useAuth();
   const { menuAllowed } = useAccess();
   const canManageProjects = menuAllowed("/projects");
   const navigate = useNavigate();
@@ -677,9 +676,10 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
 
       const validAssignees = assignees.filter((a) => a.user_id);
       if (validAssignees.length) {
-        await supabase.from("project_assignees").insert(
+        const { error } = await supabase.from("project_assignees").insert(
           validAssignees.map((a) => ({ project_id: projectId, user_id: a.user_id, role_id: a.role_id || null }))
         );
+        if (error) throw error;
       }
 
       for (const file of files) {
