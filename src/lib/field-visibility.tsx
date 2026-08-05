@@ -11,6 +11,7 @@ export const PROJECT_FIELDS = [
   { key: "priority", label: "Prioridade" },
   { key: "description", label: "Descrição" },
   { key: "notes", label: "Direção de arte" },
+  { key: "caption", label: "Legenda" },
   { key: "reference_links", label: "Links de referência" },
   { key: "deliverable_path", label: "Entregável" },
   { key: "final_link", label: "Arquivo ou link finalizado" },

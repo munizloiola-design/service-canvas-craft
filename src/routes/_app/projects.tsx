@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuChe
 import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useFieldVisibility } from "@/lib/field-visibility";
+import { useAccess } from "@/lib/access-context";
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import { ProjectChat } from "@/components/ProjectChat";
 
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/_app/projects")({
 type DescriptionCard = { title: string; content: string };
 type Project = {
   id: string; title: string; description: string | null; notes: string | null;
+  caption: string | null;
   description_cards: DescriptionCard[] | null;
   final_link: string | null;
   client_id: string | null; client_name: string | null;
@@ -73,6 +75,8 @@ const FILTER_LABELS: Record<FilterKey, string> = {
 
 function ProjectsPage() {
   const { isManager } = useAuth();
+  const { menuAllowed } = useAccess();
+  const canManageProjects = menuAllowed("/projects");
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [view, setView] = useState<"kanban" | "list">("kanban");
@@ -220,7 +224,7 @@ function ProjectsPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {isManager && (
+          {canManageProjects && (
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditingProject(null); }}>
               <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> Nova demanda</Button></DialogTrigger>
               <NewDemandDialog
@@ -272,7 +276,7 @@ function ProjectsPage() {
         <TabsContent value="list" className="mt-4">
           <ListView projects={filteredProjects} visibleCols={visibleCols} maps={maps}
             assigneesByProject={assigneesByProject} onDetail={setDetailId}
-            canManage={isManager}
+            canManage={canManageProjects}
             onEdit={(p) => { setEditingProject(p); setOpen(true); }} />
         </TabsContent>
 
@@ -282,7 +286,7 @@ function ProjectsPage() {
         project={projects.find((p) => p.id === detailId) ?? null}
         statuses={statuses} priorities={priorities} maps={maps}
         assignees={detailId ? (assigneesByProject.get(detailId) ?? []) : []}
-        onClose={() => { setDetailId(null); if (search.detail) navigate({ to: "/projects", search: {} }); }}
+        onClose={() => { setDetailId(null); if (search.detail) navigate({ to: "/projects", search: { detail: undefined } }); }}
         onEdit={(p) => { setDetailId(null); setEditingProject(p); setOpen(true); }}
       />
     </div>
@@ -640,6 +644,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         description: concatenated || null,
         description_cards: cleanCards,
         notes: String(fd.get("notes") || "") || null,
+        caption: String(fd.get("caption") || "") || null,
         final_link: (finalLink.trim() || null),
         client_id: clientId || null,
         team_id: teamId || null,
@@ -808,6 +813,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         </div>
 
         <Field label="Direção de arte"><Textarea name="notes" rows={2} defaultValue={editProject?.notes ?? ""} /></Field>
+        <Field label="Legenda"><Textarea name="caption" rows={3} defaultValue={editProject?.caption ?? ""} /></Field>
 
         <div className="space-y-2">
           <Label>Briefing / Descrição</Label>
@@ -890,6 +896,8 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
 }) {
   const qc = useQueryClient();
   const { isManager } = useAuth();
+  const { menuAllowed } = useAccess();
+  const canManageProjects = menuAllowed("/projects");
   const { canSee } = useFieldVisibility();
 
   const { data: attachments = [] } = useQuery({
@@ -934,7 +942,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
       <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{project.title}</DialogTitle></DialogHeader>
         <div className="space-y-4 text-sm">
-          {isManager && (
+          {canManageProjects && (
             <div className="flex justify-end">
               <Button size="sm" variant="outline" onClick={() => onEdit(project)}>
                 <Pencil className="h-4 w-4 mr-1" /> Editar demanda
@@ -981,6 +989,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
           </div>
 
           {project.notes && canSee("notes") && <div><Label className="text-xs text-muted-foreground">Direção de arte</Label><p className="mt-1 whitespace-pre-wrap">{project.notes}</p></div>}
+          {project.caption && canSee("caption") && <div><Label className="text-xs text-muted-foreground">Legenda</Label><p className="mt-1 whitespace-pre-wrap">{project.caption}</p></div>}
           {canSee("description") && (
             (project.description_cards && project.description_cards.length > 0) ? (
               <div className="space-y-2">

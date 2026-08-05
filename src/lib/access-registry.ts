@@ -35,6 +35,7 @@ export const FIELD_REGISTRY: { key: string; label: string }[] = [
   { key: "post_date", label: "Data de postagem" },
   { key: "budget", label: "Orçamento / Custo" },
   { key: "notes", label: "Direção de arte" },
+  { key: "caption", label: "Legenda" },
   { key: "description", label: "Descrição" },
   { key: "description_cards", label: "Cards de descrição" },
   { key: "reference_links", label: "Links de referência" },
