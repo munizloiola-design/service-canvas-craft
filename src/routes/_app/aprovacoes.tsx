@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useSectionGate } from "@/lib/access-sections";
 import { approveRegistration, rejectRegistration } from "@/lib/approvals.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
