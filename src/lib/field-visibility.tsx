@@ -30,14 +30,18 @@ const FieldVisibilityContext = createContext<Ctx | null>(null);
 
 export function FieldVisibilityProvider({ children }: { children: ReactNode }) {
   const access = useAccess();
+  // Chaves "menu:*" são seções (abas), não campos — não contam aqui.
+  const viewRules = Array.from(access.fieldView).filter((k) => !k.startsWith("menu:")).length;
+  const editRules = Array.from(access.fieldEdit).filter((k) => !k.startsWith("menu:")).length;
   const value: Ctx = {
     loading: access.loading,
     // Sem regras cadastradas para a especialidade, nada é escondido.
-    canSee: (f) => access.fieldView.size === 0 || access.canViewField(f),
-    canEdit: (f) => access.fieldEdit.size === 0 || access.canEditField(f),
+    canSee: (f) => viewRules === 0 || access.canViewField(f),
+    canEdit: (f) => editRules === 0 || access.canEditField(f),
   };
   return <FieldVisibilityContext.Provider value={value}>{children}</FieldVisibilityContext.Provider>;
 }
+
 
 export function useFieldVisibility() {
   const ctx = useContext(FieldVisibilityContext);
