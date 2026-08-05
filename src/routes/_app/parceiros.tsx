@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Handshake, Plus, Search, Tags, Pencil, Trash2, Mail, Phone, Briefcase } from "lucide-react";
+import { Handshake, Plus, Search, Tags, Pencil, Trash2, Mail, Phone, Briefcase, MessageCircle } from "lucide-react";
 
 export const Route = createFileRoute("/_app/parceiros")({
   component: ParceirosPage,
@@ -26,6 +26,12 @@ export const Route = createFileRoute("/_app/parceiros")({
     ],
   }),
 });
+
+function waLink(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const withCountry = digits.length <= 11 ? `55${digits}` : digits;
+  return `https://wa.me/${withCountry}`;
+}
 
 type Category = { id: string; name: string; created_at: string };
 type Contact = {
@@ -218,6 +224,17 @@ function ParceirosPage() {
 
                 {c.notes && (
                   <p className="text-xs text-muted-foreground line-clamp-3 border-t pt-2">{c.notes}</p>
+                )}
+
+                {c.phone && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full justify-center"
+                    onClick={() => window.open(waLink(c.phone!), "_blank", "noopener,noreferrer")}
+                  >
+                    <MessageCircle className="h-3.5 w-3.5 mr-1.5" /> WhatsApp
+                  </Button>
                 )}
 
                 <div className="flex justify-end gap-1 mt-auto pt-2">

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
@@ -11,7 +11,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/calendario")({ component: CalendarioPage });
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/_app/calendario")({ component: Calendario
 type Project = {
   id: string; title: string; due_date: string | null; post_date: string | null;
   status_id: string | null; client_id: string | null;
+  description: string | null; caption: string | null; notes: string | null;
 };
 type Status = { id: string; name: string; color: string };
 type Client = { id: string; name: string };
@@ -29,13 +31,13 @@ function CalendarioPage() {
   const [view, setView] = useState<"month" | "week">("month");
   const [cursor, setCursor] = useState(new Date());
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [detail, setDetail] = useState<Project | null>(null);
   const qc = useQueryClient();
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-cal"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id");
+      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, description, caption, notes");
       if (error) throw error;
       return data as Project[];
     },
@@ -133,7 +135,7 @@ function CalendarioPage() {
           e.dataTransfer.setData("text/project-id", p.id);
           e.dataTransfer.effectAllowed = "move";
         }}
-        onClick={() => navigate({ to: "/projects", search: { detail: p.id } })}
+        onClick={() => setDetail(p)}
         className="w-full text-left text-[11px] px-1.5 py-1 rounded truncate cursor-grab active:cursor-grabbing hover:opacity-80"
         style={st ? { background: `${st.color}25`, color: st.color } : { background: "var(--muted)" }}
         title={`${p.title}${p.client_id ? ` — ${clientMap.get(p.client_id) ?? ""}` : ""}`}
@@ -251,6 +253,51 @@ function CalendarioPage() {
           })}
         </div>
       </Card>
+
+      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{detail?.title}</DialogTitle></DialogHeader>
+          {detail && (
+            <div className="space-y-3 text-sm">
+              <div className="flex flex-wrap gap-2">
+                {detail.status_id && statusMap.get(detail.status_id) && (
+                  <Badge
+                    className="border-0"
+                    style={{
+                      background: `${statusMap.get(detail.status_id)!.color}25`,
+                      color: statusMap.get(detail.status_id)!.color,
+                    }}
+                  >
+                    {statusMap.get(detail.status_id)!.name}
+                  </Badge>
+                )}
+                {detail.client_id && <Badge variant="secondary">{clientMap.get(detail.client_id) ?? "Cliente"}</Badge>}
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div><span className="text-muted-foreground">Prazo:</span> {detail.due_date ? new Date(detail.due_date + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</div>
+                <div><span className="text-muted-foreground">Postagem:</span> {detail.post_date ? new Date(detail.post_date + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</div>
+              </div>
+              {detail.description && <p className="whitespace-pre-wrap text-muted-foreground">{detail.description}</p>}
+              {detail.notes && (
+                <div><p className="text-xs text-muted-foreground mb-1">Direção de arte</p><p className="whitespace-pre-wrap">{detail.notes}</p></div>
+              )}
+              {detail.caption && (
+                <div><p className="text-xs text-muted-foreground mb-1">Legenda</p><p className="whitespace-pre-wrap">{detail.caption}</p></div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            {detail && (
+              <Button asChild variant="outline">
+                <Link to="/projects" search={{ detail: detail.id }}>
+                  <ExternalLink className="h-4 w-4 mr-1" /> Abrir em Demandas
+                </Link>
+              </Button>
+            )}
+            <Button onClick={() => setDetail(null)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
