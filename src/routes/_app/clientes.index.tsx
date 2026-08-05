@@ -31,15 +31,19 @@ type ClientStatus = "ativo" | "inativo" | "prospeccao";
 
 function ClientesPage() {
   const { isManager } = useAuth();
+  const { menuAllowed } = useAccess();
+  const { can, first } = useSectionGate("/clientes");
   const [selectedClient, setSelectedClient] = useState<string>("");
 
-  if (!isManager) {
+  if (!isManager && !menuAllowed("/clientes")) {
     return (
       <div className="p-8">
-        <p className="text-muted-foreground">Apenas administradores e gerentes podem acessar.</p>
+        <p className="text-muted-foreground">Você não tem acesso a esta área. Peça liberação em Perfis e Acessos.</p>
       </div>
     );
   }
+
+  const initial = first(["diretorio", "acessos", "briefing", "projetos"]);
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
@@ -50,22 +54,23 @@ function ClientesPage() {
         </p>
       </header>
 
-      <Tabs defaultValue="diretorio" className="space-y-4">
+      <Tabs defaultValue={initial} className="space-y-4">
         <TabsList className="bg-card/70 backdrop-blur border">
-          <TabsTrigger value="diretorio" className="gap-1.5"><Users className="h-4 w-4" /> Diretório</TabsTrigger>
-          <TabsTrigger value="acessos" className="gap-1.5"><KeyRound className="h-4 w-4" /> Acessos do Portal</TabsTrigger>
-          <TabsTrigger value="briefing" className="gap-1.5"><FileText className="h-4 w-4" /> Briefing & Estratégia</TabsTrigger>
-          <TabsTrigger value="projetos" className="gap-1.5"><FolderKanban className="h-4 w-4" /> Projetos Ativos</TabsTrigger>
+          {can("diretorio") && <TabsTrigger value="diretorio" className="gap-1.5"><Users className="h-4 w-4" /> Diretório</TabsTrigger>}
+          {can("acessos") && <TabsTrigger value="acessos" className="gap-1.5"><KeyRound className="h-4 w-4" /> Acessos do Portal</TabsTrigger>}
+          {can("briefing") && <TabsTrigger value="briefing" className="gap-1.5"><FileText className="h-4 w-4" /> Briefing & Estratégia</TabsTrigger>}
+          {can("projetos") && <TabsTrigger value="projetos" className="gap-1.5"><FolderKanban className="h-4 w-4" /> Projetos Ativos</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="diretorio"><DirectoryTab onOpenBriefing={setSelectedClient} /></TabsContent>
-        <TabsContent value="acessos"><AccessTab /></TabsContent>
-        <TabsContent value="briefing"><BriefingTab clientId={selectedClient} setClientId={setSelectedClient} /></TabsContent>
-        <TabsContent value="projetos"><ProjectsTab clientId={selectedClient} setClientId={setSelectedClient} /></TabsContent>
+        {can("diretorio") && <TabsContent value="diretorio"><DirectoryTab onOpenBriefing={setSelectedClient} /></TabsContent>}
+        {can("acessos") && <TabsContent value="acessos"><AccessTab /></TabsContent>}
+        {can("briefing") && <TabsContent value="briefing"><BriefingTab clientId={selectedClient} setClientId={setSelectedClient} /></TabsContent>}
+        {can("projetos") && <TabsContent value="projetos"><ProjectsTab clientId={selectedClient} setClientId={setSelectedClient} /></TabsContent>}
       </Tabs>
     </div>
   );
 }
+
 
 /* ============================================================
    ABA 1 — Diretório
