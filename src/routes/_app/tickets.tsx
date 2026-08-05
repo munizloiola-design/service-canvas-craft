@@ -301,9 +301,9 @@ function TicketsPage() {
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
         <TabsList>
-          <TabsTrigger value="pendente">Pendentes</TabsTrigger>
-          <TabsTrigger value="aprovado">Aprovados</TabsTrigger>
-          <TabsTrigger value="recusado">Recusados</TabsTrigger>
+          {sec.can("pendente") && <TabsTrigger value="pendente">Pendentes</TabsTrigger>}
+          {sec.can("aprovado") && <TabsTrigger value="aprovado">Aprovados</TabsTrigger>}
+          {sec.can("recusado") && <TabsTrigger value="recusado">Recusados</TabsTrigger>}
         </TabsList>
 
         <TabsContent value={tab} className="mt-4">
