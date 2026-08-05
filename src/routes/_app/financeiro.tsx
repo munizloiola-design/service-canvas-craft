@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useSectionGate } from "@/lib/access-sections";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,32 +42,32 @@ function useFinancialCategories(kind?: "expense" | "income") {
 }
 
 function FinanceiroPage() {
+  const { can, first } = useSectionGate("/financeiro");
+  const order = ["dashboard", "custos", "recorrentes", "autorizacoes", "lancamentos", "solicitacoes", "relatorio", "config"];
+  const labels: Record<string, string> = {
+    dashboard: "Dashboard", custos: "Custos fixos", recorrentes: "Receitas recorrentes",
+    autorizacoes: "Autorizações", lancamentos: "Lançamentos", solicitacoes: "Solicitações",
+    relatorio: "Relatório", config: "Configurações",
+  };
+  const panes: Record<string, React.ReactNode> = {
+    dashboard: <Dashboard />, custos: <FixedCosts />, recorrentes: <RecurringIncomes />,
+    autorizacoes: <Autorizacoes />, lancamentos: <Entries />, solicitacoes: <Solicitacoes />,
+    relatorio: <Relatorio />, config: <SettingsTab />,
+  };
+  const allowed = order.filter(can);
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-gradient">Financeiro</h1>
         <p className="text-sm text-muted-foreground">Dashboard, cadastros, autorizações, lançamentos e relatório.</p>
       </div>
-      <Tabs defaultValue="dashboard">
+      <Tabs defaultValue={first(order)}>
         <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="custos">Custos fixos</TabsTrigger>
-          <TabsTrigger value="recorrentes">Receitas recorrentes</TabsTrigger>
-          <TabsTrigger value="autorizacoes">Autorizações</TabsTrigger>
-          <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
-          <TabsTrigger value="solicitacoes">Solicitações</TabsTrigger>
-          <TabsTrigger value="relatorio">Relatório</TabsTrigger>
-          <TabsTrigger value="config">Configurações</TabsTrigger>
+          {allowed.map((k) => <TabsTrigger key={k} value={k}>{labels[k]}</TabsTrigger>)}
         </TabsList>
-        <TabsContent value="dashboard" className="mt-6"><Dashboard /></TabsContent>
-        <TabsContent value="custos" className="mt-6"><FixedCosts /></TabsContent>
-        <TabsContent value="recorrentes" className="mt-6"><RecurringIncomes /></TabsContent>
-        <TabsContent value="autorizacoes" className="mt-6"><Autorizacoes /></TabsContent>
-        <TabsContent value="lancamentos" className="mt-6"><Entries /></TabsContent>
-        <TabsContent value="solicitacoes" className="mt-6"><Solicitacoes /></TabsContent>
-        <TabsContent value="relatorio" className="mt-6"><Relatorio /></TabsContent>
-        <TabsContent value="config" className="mt-6"><SettingsTab /></TabsContent>
+        {allowed.map((k) => <TabsContent key={k} value={k} className="mt-6">{panes[k]}</TabsContent>)}
       </Tabs>
+
     </div>
   );
 }

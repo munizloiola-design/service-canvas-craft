@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSectionGate } from "@/lib/access-sections";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
@@ -27,8 +28,9 @@ type Client = { id: string; name: string };
 type DateField = "due_date" | "post_date";
 
 function CalendarioPage() {
-  const [tab, setTab] = useState<"due" | "post">("due");
-  const [view, setView] = useState<"month" | "week">("month");
+  const calSec = useSectionGate("/calendario");
+  const [tab, setTab] = useState<"due" | "post">(calSec.can("due") ? "due" : "post");
+  const [view, setView] = useState<"month" | "week">(calSec.can("month") ? "month" : "week");
   const [cursor, setCursor] = useState(new Date());
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [detail, setDetail] = useState<Project | null>(null);
@@ -162,14 +164,14 @@ function CalendarioPage() {
         <div className="flex gap-2 flex-wrap">
           <Tabs value={view} onValueChange={(v) => setView(v as "month" | "week")}>
             <TabsList>
-              <TabsTrigger value="month">Mês</TabsTrigger>
-              <TabsTrigger value="week">Semana</TabsTrigger>
+              {calSec.can("month") && <TabsTrigger value="month">Mês</TabsTrigger>}
+              {calSec.can("week") && <TabsTrigger value="week">Semana</TabsTrigger>}
             </TabsList>
           </Tabs>
           <Tabs value={tab} onValueChange={(v) => setTab(v as "due" | "post")}>
             <TabsList>
-              <TabsTrigger value="due">Prazos</TabsTrigger>
-              <TabsTrigger value="post">Postagens</TabsTrigger>
+              {calSec.can("due") && <TabsTrigger value="due">Prazos</TabsTrigger>}
+              {calSec.can("post") && <TabsTrigger value="post">Postagens</TabsTrigger>}
             </TabsList>
           </Tabs>
         </div>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useSectionGate } from "@/lib/access-sections";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Clock, Download, Users, FolderKanban, Timer } from "lucide-react";
 import {
@@ -52,6 +53,7 @@ type Row = {
 };
 
 function TempoPage() {
+  const sec = useSectionGate("/tempo");
   const navigate = useNavigate();
   const search = Route.useSearch();
   const from = search.from ?? daysAgo(30);
@@ -338,11 +340,11 @@ function TempoPage() {
             </Card>
           </div>
 
-          <Tabs defaultValue="project">
+          <Tabs defaultValue={sec.first(["project", "user", "detail"])}>
             <TabsList>
-              <TabsTrigger value="project">Por projeto</TabsTrigger>
-              <TabsTrigger value="user">Por usuário</TabsTrigger>
-              <TabsTrigger value="detail">Detalhado</TabsTrigger>
+              {sec.can("project") && <TabsTrigger value="project">Por projeto</TabsTrigger>}
+              {sec.can("user") && <TabsTrigger value="user">Por usuário</TabsTrigger>}
+              {sec.can("detail") && <TabsTrigger value="detail">Detalhado</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="project" className="mt-4">

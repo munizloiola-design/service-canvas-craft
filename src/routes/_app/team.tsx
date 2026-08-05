@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useSectionGate } from "@/lib/access-sections";
 import { AlertCircle, Activity, Clock, Hourglass, ShieldAlert, Pencil, Upload, Trash2, Lock, Unlock, UserPlus, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -311,6 +312,7 @@ function MemberDialog({
   profile: Profile;
   onSaved: () => void;
 }) {
+  const teamSec = useSectionGate("/team");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar_url ?? null);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
@@ -418,10 +420,10 @@ function MemberDialog({
           </Button>
         </div>
 
-        <Tabs defaultValue="ficha">
+        <Tabs defaultValue={teamSec.first(["ficha", "notas"])}>
           <TabsList>
-            <TabsTrigger value="ficha">Ficha</TabsTrigger>
-            <TabsTrigger value="notas"><ShieldAlert className="h-3.5 w-3.5 mr-1" />Anotações privadas</TabsTrigger>
+            {teamSec.can("ficha") && <TabsTrigger value="ficha">Ficha</TabsTrigger>}
+            {teamSec.can("notas") && <TabsTrigger value="notas"><ShieldAlert className="h-3.5 w-3.5 mr-1" />Anotações privadas</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="ficha" className="space-y-3 mt-4">

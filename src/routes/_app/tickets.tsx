@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useSectionGate } from "@/lib/access-sections";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -88,7 +89,10 @@ async function notifyDecision(
 function TicketsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"pendente" | "aprovado" | "recusado">("pendente");
+  const sec = useSectionGate("/tickets");
+  const [tab, setTab] = useState<"pendente" | "aprovado" | "recusado">(
+    (["pendente", "aprovado", "recusado"] as const).find((s) => sec.can(s)) ?? "pendente",
+  );
   const [selected, setSelected] = useState<TicketRequest | null>(null);
   const [rejectNote, setRejectNote] = useState("");
   const [editing, setEditing] = useState(false);
@@ -297,9 +301,9 @@ function TicketsPage() {
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
         <TabsList>
-          <TabsTrigger value="pendente">Pendentes</TabsTrigger>
-          <TabsTrigger value="aprovado">Aprovados</TabsTrigger>
-          <TabsTrigger value="recusado">Recusados</TabsTrigger>
+          {sec.can("pendente") && <TabsTrigger value="pendente">Pendentes</TabsTrigger>}
+          {sec.can("aprovado") && <TabsTrigger value="aprovado">Aprovados</TabsTrigger>}
+          {sec.can("recusado") && <TabsTrigger value="recusado">Recusados</TabsTrigger>}
         </TabsList>
 
         <TabsContent value={tab} className="mt-4">

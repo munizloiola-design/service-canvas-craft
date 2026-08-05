@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useSectionGate } from "@/lib/access-sections";
 import { approveRegistration, rejectRegistration } from "@/lib/approvals.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,8 +34,11 @@ type Registration = {
 
 function AprovacoesPage() {
   const { isManager } = useAuth();
+  const sec = useSectionGate("/aprovacoes");
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"pending" | "approved" | "rejected">("pending");
+  const [tab, setTab] = useState<"pending" | "approved" | "rejected">(
+    (["pending", "approved", "rejected"] as const).find((s) => sec.can(s)) ?? "pending",
+  );
   const [rejectFor, setRejectFor] = useState<Registration | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [linkModal, setLinkModal] = useState<string | null>(null);
@@ -94,9 +98,9 @@ function AprovacoesPage() {
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList>
-          <TabsTrigger value="pending">Pendentes</TabsTrigger>
-          <TabsTrigger value="approved">Aprovados</TabsTrigger>
-          <TabsTrigger value="rejected">Rejeitados</TabsTrigger>
+          {sec.can("pending") && <TabsTrigger value="pending">Pendentes</TabsTrigger>}
+          {sec.can("approved") && <TabsTrigger value="approved">Aprovados</TabsTrigger>}
+          {sec.can("rejected") && <TabsTrigger value="rejected">Rejeitados</TabsTrigger>}
         </TabsList>
         <TabsContent value={tab} className="mt-4 space-y-3">
           {rows.length === 0 && (
