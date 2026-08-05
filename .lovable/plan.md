@@ -1,18 +1,30 @@
 ## Diagnóstico
 
-A busca dos membros da equipe está funcionando — a requisição a `team_members` para a equipe "ROXO" retornou 2 usuários (confirmado nos registros de rede).
+O erro "row-level security policy for table projects" acontece porque a regra de gravação da tabela de demandas ainda exige **papel** de admin/gerente (`is_manager`), enquanto a liberação do sistema já foi migrada para **Perfis e Acessos** (áreas, cargos e menus visíveis).
 
-O problema está na ordem de execução: ao selecionar a equipe, o efeito de preenchimento roda **antes** de os membros chegarem do servidor. Com a lista ainda vazia, o código marca a equipe como "já preenchida" (`lastAutoFilledTeam = teamId`) e sai. Quando os membros finalmente chegam, o efeito roda de novo, vê que a equipe já foi "preenchida" e não faz nada — por isso Responsáveis fica vazio.
+Confirmado no banco:
+- criar demanda: permitido só se `is_manager(auth.uid())`
+- adicionar responsáveis: idem
+- o menu `/projects` já é liberado por área em "Menus visíveis" (ex.: área Geral)
 
-## Correção
+Ou seja: um usuário com acesso ao menu Demandas via Perfis e Acessos consegue abrir a tela, mas o banco recusa o cadastro.
 
-Em `src/routes/_app/projects.tsx` (formulário de demanda):
+## Correção proposta
 
-1. Passar a usar também o estado de carregamento da consulta de membros da equipe (`isFetching`/`isSuccess` do `useQuery`).
-2. Só marcar a equipe como preenchida depois que a consulta terminar de carregar:
-   - enquanto estiver carregando, o efeito não faz nada e não marca nada;
-   - quando os dados chegarem, adiciona os membros aos Responsáveis (sem duplicar, preservando escolhas manuais) e só então grava `lastAutoFilledTeam`;
-   - se a equipe realmente não tiver membros, marca como preenchida e não altera a lista.
-3. Aplicar exatamente o mesmo ajuste ao preenchimento automático a partir do **Cliente** (time padrão do cliente), que tem a mesma condição de corrida.
+1. Criar uma função de verificação no banco que responde "este usuário tem o menu X liberado?", cruzando: usuário → cargos → área → menus visíveis. Administradores continuam com acesso total.
+2. Trocar as regras de gravação para usarem essa função com o menu `/projects`:
+   - criar/editar demanda: quem tem `/projects` liberado (ou é gestor)
+   - editar demanda: também continua permitido a quem é responsável pela demanda
+   - excluir demanda: mantém restrito a gestores
+   - responsáveis da demanda (incluir/remover): mesma regra de criar/editar, mantendo o bloqueio de adicionar perfis de cliente como responsável
+3. Manter tudo o mais como está (visualização, portal do cliente, histórico de status).
 
-Nenhuma mudança de banco de dados, permissões ou gravação: os responsáveis continuam salvos em `project_assignees` como hoje.
+## Detalhes técnicos
+
+- Nova função `public.has_menu_access(_uid uuid, _menu_key text)` — `SECURITY DEFINER`, `STABLE`, `search_path = public` — unindo `user_specialties → provider_specialties → provider_areas → area_menu_visibility`, com atalho `is_master`.
+- Recriar as policies `projects_insert_managers`, `projects_update_managers`, `assignees_insert_mgr`, `assignees_update_mgr`, `assignees_delete_mgr` usando `is_manager(auth.uid()) OR has_menu_access(auth.uid(), '/projects')`.
+- Nenhuma mudança de schema/colunas e nenhuma alteração no front-end; o formulário atual passa a funcionar para os usuários já liberados.
+
+## Verificação
+
+Depois de aplicar, testar criando uma demanda com o usuário que estava recebendo o erro e confirmar que os responsáveis são gravados.
