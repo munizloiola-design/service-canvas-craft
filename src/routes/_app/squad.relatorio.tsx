@@ -73,6 +73,7 @@ type ActivityEvent = {
 };
 
 function SquadRelatorioPage() {
+  const sec = useSectionGate("/squad/relatorio");
   const navigate = useNavigate();
   const search = Route.useSearch();
   const from = search.from ?? daysAgo(30);
