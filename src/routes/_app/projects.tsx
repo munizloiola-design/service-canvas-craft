@@ -288,7 +288,7 @@ function ProjectsPage() {
       )}
 
       <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "list")}>
-        <TabsList><TabsTrigger value="kanban">Kanban</TabsTrigger><TabsTrigger value="list">Lista</TabsTrigger></TabsList>
+        <TabsList>{projSec.can("kanban") && <TabsTrigger value="kanban">Kanban</TabsTrigger>}{projSec.can("list") && <TabsTrigger value="list">Lista</TabsTrigger>}</TabsList>
 
         <TabsContent value="kanban" className="mt-4">
           <KanbanView projects={filteredProjects} statuses={statuses} priorities={priorities}
