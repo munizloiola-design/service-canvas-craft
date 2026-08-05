@@ -94,9 +94,9 @@ function AprovacoesPage() {
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList>
-          <TabsTrigger value="pending">Pendentes</TabsTrigger>
-          <TabsTrigger value="approved">Aprovados</TabsTrigger>
-          <TabsTrigger value="rejected">Rejeitados</TabsTrigger>
+          {sec.can("pending") && <TabsTrigger value="pending">Pendentes</TabsTrigger>}
+          {sec.can("approved") && <TabsTrigger value="approved">Aprovados</TabsTrigger>}
+          {sec.can("rejected") && <TabsTrigger value="rejected">Rejeitados</TabsTrigger>}
         </TabsList>
         <TabsContent value={tab} className="mt-4 space-y-3">
           {rows.length === 0 && (
