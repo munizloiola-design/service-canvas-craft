@@ -338,11 +338,11 @@ function TempoPage() {
             </Card>
           </div>
 
-          <Tabs defaultValue="project">
+          <Tabs defaultValue={sec.first(["project", "user", "detail"])}>
             <TabsList>
-              <TabsTrigger value="project">Por projeto</TabsTrigger>
-              <TabsTrigger value="user">Por usuário</TabsTrigger>
-              <TabsTrigger value="detail">Detalhado</TabsTrigger>
+              {sec.can("project") && <TabsTrigger value="project">Por projeto</TabsTrigger>}
+              {sec.can("user") && <TabsTrigger value="user">Por usuário</TabsTrigger>}
+              {sec.can("detail") && <TabsTrigger value="detail">Detalhado</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="project" className="mt-4">
