@@ -275,6 +275,7 @@ function HierarchyTab() {
 
 function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: () => void }) {
   const qc = useQueryClient();
+  const [search, setSearch] = useState("");
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["area_menu_visibility", areaId],
     queryFn: async () => {
@@ -299,31 +300,74 @@ function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: ()
     onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
-  const grouped = MENU_REGISTRY.reduce<Record<string, typeof MENU_REGISTRY>>((acc, m) => {
+  const bulk = useMutation({
+    mutationFn: async (on: boolean) => {
+      if (on) {
+        const missing = MENU_REGISTRY.filter((m) => !enabled.has(m.key)).map((m) => ({ area_id: areaId, menu_key: m.key }));
+        if (missing.length === 0) return;
+        const { error } = await supabase.from("area_menu_visibility").insert(missing);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("area_menu_visibility").delete().eq("area_id", areaId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["area_menu_visibility", areaId] }),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
+  });
+
+  const term = search.trim().toLowerCase();
+  const visibleMenus = MENU_REGISTRY.filter(
+    (m) => !term || m.label.toLowerCase().includes(term) || m.key.toLowerCase().includes(term),
+  );
+  const grouped = visibleMenus.reduce<Record<string, typeof MENU_REGISTRY>>((acc, m) => {
     const g = m.group ?? "Geral";
     (acc[g] ??= []).push(m);
     return acc;
   }, {});
+  const pending = MENU_REGISTRY.filter((m) => !enabled.has(m.key));
 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>Menus visíveis para esta Área</DialogTitle></DialogHeader>
         {isLoading ? <p className="text-sm text-muted-foreground">Carregando…</p> : (
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {Object.entries(grouped).map(([group, items]) => (
-              <div key={group}>
-                <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">{group}</p>
-                <div className="space-y-1">
-                  {items.map((m) => (
-                    <label key={m.key} className="flex items-center gap-2 rounded-md hover:bg-accent px-2 py-1.5 cursor-pointer">
-                      <Checkbox checked={enabled.has(m.key)} onCheckedChange={(v) => toggle.mutate({ key: m.key, on: !!v })} />
-                      <span className="text-sm">{m.label}</span>
-                    </label>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value="" onValueChange={(v) => toggle.mutate({ key: v, on: true })}>
+                <SelectTrigger className="h-8 flex-1 min-w-48 text-xs">
+                  <SelectValue placeholder={pending.length ? `Liberar menu (${pending.length} disponíveis)` : "Todos os menus liberados"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {pending.map((m) => (
+                    <SelectItem key={m.key} value={m.key}>{m.group ? `${m.group} › ` : ""}{m.label}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate(true)}>Liberar todos</Button>
+              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate(false)}>Bloquear todos</Button>
+            </div>
+            <Input placeholder="Buscar menu…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 text-sm" />
+            <p className="text-xs text-muted-foreground">
+              {enabled.size} de {MENU_REGISTRY.length} menus liberados. Novos menus do sistema aparecem aqui automaticamente, sempre bloqueados até serem liberados.
+            </p>
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+              {Object.entries(grouped).map(([group, items]) => (
+                <div key={group}>
+                  <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">{group}</p>
+                  <div className="space-y-1">
+                    {items.map((m) => (
+                      <label key={m.key} className="flex items-center gap-2 rounded-md hover:bg-accent px-2 py-1.5 cursor-pointer">
+                        <Checkbox checked={enabled.has(m.key)} onCheckedChange={(v) => toggle.mutate({ key: m.key, on: !!v })} />
+                        <span className="text-sm flex-1">{m.label}</span>
+                        <span className="text-[10px] text-muted-foreground">{m.key}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+              {visibleMenus.length === 0 && <p className="text-sm text-muted-foreground">Nenhum menu encontrado.</p>}
+            </div>
           </div>
         )}
         <DialogFooter><Button onClick={onClose}>Concluir</Button></DialogFooter>
@@ -334,6 +378,7 @@ function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: ()
 
 function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; onClose: () => void }) {
   const qc = useQueryClient();
+  const [search, setSearch] = useState("");
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["specialty_field_visibility", specialtyId],
     queryFn: async () => {
@@ -342,6 +387,16 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
       return (data ?? []) as { field_key: string; can_view: boolean; can_edit: boolean }[];
     },
   });
+  // Colunas reais da tabela de demandas: campos novos entram automaticamente.
+  const { data: projectColumns = [] } = useQuery({
+    queryKey: ["projects-columns"],
+    queryFn: async () => {
+      const { data } = await supabase.from("projects").select("*").limit(1);
+      return data && data[0] ? Object.keys(data[0]) : [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const fields = useMemo(() => deriveFieldRegistry(projectColumns), [projectColumns]);
   const map = new Map(rows.map((r) => [r.field_key, r]));
 
   const upsert = useMutation({
@@ -354,35 +409,68 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
     onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
   });
 
+  const bulk = useMutation({
+    mutationFn: async (on: boolean) => {
+      const payload = fields.map((f) => ({ specialty_id: specialtyId, field_key: f.key, can_view: on, can_edit: on }));
+      const { error } = await supabase.from("specialty_field_visibility").upsert(payload, { onConflict: "specialty_id,field_key" });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["specialty_field_visibility", specialtyId] }),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
+  });
+
+  const term = search.trim().toLowerCase();
+  const visibleFields = fields.filter((f) => !term || f.label.toLowerCase().includes(term) || f.key.toLowerCase().includes(term));
+  const undecided = fields.filter((f) => !map.has(f.key));
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-xl">
         <DialogHeader><DialogTitle>Campos da demanda visíveis para esta Especialidade</DialogTitle></DialogHeader>
         {isLoading ? <p className="text-sm text-muted-foreground">Carregando…</p> : (
-          <div className="max-h-[60vh] overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="text-xs uppercase text-muted-foreground border-b">
-                <tr><th className="text-left py-2">Campo</th><th className="w-20 text-center">Ver</th><th className="w-20 text-center">Editar</th></tr>
-              </thead>
-              <tbody>
-                {FIELD_REGISTRY.map((f) => {
-                  const cur = map.get(f.key);
-                  const canView = cur ? cur.can_view : true;
-                  const canEdit = cur ? cur.can_edit : true;
-                  return (
-                    <tr key={f.key} className="border-b last:border-0">
-                      <td className="py-2">{f.label}</td>
-                      <td className="text-center">
-                        <Checkbox checked={canView} onCheckedChange={(v) => upsert.mutate({ key: f.key, can_view: !!v, can_edit: !!v && canEdit })} />
-                      </td>
-                      <td className="text-center">
-                        <Checkbox checked={canEdit} onCheckedChange={(v) => upsert.mutate({ key: f.key, can_view: canView || !!v, can_edit: !!v })} />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value="" onValueChange={(v) => upsert.mutate({ key: v, can_view: true, can_edit: false })}>
+                <SelectTrigger className="h-8 flex-1 min-w-48 text-xs">
+                  <SelectValue placeholder={undecided.length ? `Configurar campo (${undecided.length} sem decisão)` : "Todos os campos configurados"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {undecided.map((f) => <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate(true)}>Liberar todos</Button>
+              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate(false)}>Bloquear todos</Button>
+            </div>
+            <Input placeholder="Buscar campo…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 text-sm" />
+            <div className="max-h-[50vh] overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="text-xs uppercase text-muted-foreground border-b">
+                  <tr><th className="text-left py-2">Campo</th><th className="w-20 text-center">Ver</th><th className="w-20 text-center">Editar</th></tr>
+                </thead>
+                <tbody>
+                  {visibleFields.map((f) => {
+                    const cur = map.get(f.key);
+                    const canView = cur ? cur.can_view : true;
+                    const canEdit = cur ? cur.can_edit : true;
+                    return (
+                      <tr key={f.key} className="border-b last:border-0">
+                        <td className="py-2">
+                          {f.label}
+                          {!cur && <Badge variant="secondary" className="ml-2 text-[10px]">Novo</Badge>}
+                        </td>
+                        <td className="text-center">
+                          <Checkbox checked={canView} onCheckedChange={(v) => upsert.mutate({ key: f.key, can_view: !!v, can_edit: !!v && canEdit })} />
+                        </td>
+                        <td className="text-center">
+                          <Checkbox checked={canEdit} onCheckedChange={(v) => upsert.mutate({ key: f.key, can_view: canView || !!v, can_edit: !!v })} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {visibleFields.length === 0 && <p className="text-sm text-muted-foreground py-2">Nenhum campo encontrado.</p>}
+            </div>
           </div>
         )}
         <DialogFooter><Button onClick={onClose}>Concluir</Button></DialogFooter>
@@ -390,6 +478,7 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
     </Dialog>
   );
 }
+
 
 function AssignTab({ focusUserId }: { focusUserId?: string }) {
   const qc = useQueryClient();
