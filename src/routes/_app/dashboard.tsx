@@ -427,7 +427,7 @@ function UpcomingDeadlines() {
       {projects.length === 0 && <p className="text-xs text-muted-foreground">Nenhum prazo futuro.</p>}
       <div className="divide-y">
         {projects.map((p) => (
-          <Link key={p.id} to="/projects" className="flex items-center justify-between py-2 hover:bg-muted/30 -mx-1 px-1 rounded">
+          <Link key={p.id} to="/projects" search={{ detail: p.id }} className="flex items-center justify-between py-2 hover:bg-muted/30 -mx-1 px-1 rounded">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate">{p.title}</p>
               <p className="text-xs text-muted-foreground truncate">{p.client_id ? cmap.get(p.client_id) : "—"}</p>
@@ -601,7 +601,7 @@ function MyProjects() {
           {open.map((p) => {
             const st = p.status_id ? smap.get(p.status_id) : null;
             return (
-              <Link key={p.id} to="/projects" className="py-2 flex items-center justify-between gap-2 hover:bg-muted/40 rounded px-1">
+              <Link key={p.id} to="/projects" search={{ detail: p.id }} className="py-2 flex items-center justify-between gap-2 hover:bg-muted/40 rounded px-1">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{p.title}</p>
                   <p className="text-xs text-muted-foreground">

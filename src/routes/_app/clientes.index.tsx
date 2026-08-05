@@ -700,7 +700,7 @@ function ProjectsTab({ clientId, setClientId }: { clientId: string; setClientId:
               <FolderKanban className="h-10 w-10 mx-auto text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Nenhum projeto para este cliente.</p>
               <Button asChild size="sm" variant="outline">
-                <Link to="/projects">Ir para projetos</Link>
+                <Link to="/projects" search={{ detail: undefined }}>Ir para projetos</Link>
               </Button>
             </div>
           ) : (
@@ -732,7 +732,7 @@ function ProjectsTab({ clientId, setClientId }: { clientId: string; setClientId:
                     </TableCell>
                     <TableCell className="text-right">
                       <Button asChild variant="ghost" size="sm">
-                        <Link to="/projects/$projectId" params={{ projectId: r.id }}>Abrir</Link>
+                        <Link to="/projects" search={{ detail: r.id }}>Abrir</Link>
                       </Button>
                     </TableCell>
                   </TableRow>
