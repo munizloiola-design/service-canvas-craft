@@ -379,6 +379,7 @@ function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: ()
 function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; onClose: () => void }) {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
+  const [menu, setMenu] = useState<string>(MENU_REGISTRY[0]?.key ?? "/projects");
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["specialty_field_visibility", specialtyId],
     queryFn: async () => {
@@ -396,7 +397,21 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
     },
     staleTime: 5 * 60 * 1000,
   });
-  const fields = useMemo(() => deriveFieldRegistry(projectColumns), [projectColumns]);
+
+  // Itens do menu selecionado: seções (abas) + campos da demanda quando /projects.
+  const items = useMemo(() => {
+    const secs = sectionsForMenu(menu).map((s) => ({
+      key: sectionKey(menu, s.id),
+      label: s.label,
+      kind: "Seção" as const,
+    }));
+    if (menu !== "/projects") return secs;
+    return [
+      ...secs,
+      ...deriveFieldRegistry(projectColumns).map((f) => ({ key: f.key, label: f.label, kind: "Campo" as const })),
+    ];
+  }, [menu, projectColumns]);
+
   const map = new Map(rows.map((r) => [r.field_key, r]));
 
   const upsert = useMutation({
@@ -411,7 +426,7 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
 
   const bulk = useMutation({
     mutationFn: async (on: boolean) => {
-      const payload = fields.map((f) => ({ specialty_id: specialtyId, field_key: f.key, can_view: on, can_edit: on }));
+      const payload = items.map((f) => ({ specialty_id: specialtyId, field_key: f.key, can_view: on, can_edit: on }));
       const { error } = await supabase.from("specialty_field_visibility").upsert(payload, { onConflict: "specialty_id,field_key" });
       if (error) throw error;
     },
@@ -420,41 +435,50 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
   });
 
   const term = search.trim().toLowerCase();
-  const visibleFields = fields.filter((f) => !term || f.label.toLowerCase().includes(term) || f.key.toLowerCase().includes(term));
-  const undecided = fields.filter((f) => !map.has(f.key));
+  const visibleItems = items.filter((f) => !term || f.label.toLowerCase().includes(term) || f.key.toLowerCase().includes(term));
+  const undecided = items.filter((f) => !map.has(f.key));
 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-xl">
-        <DialogHeader><DialogTitle>Campos da demanda visíveis para esta Especialidade</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>O que esta Especialidade pode ver em cada menu</DialogTitle>
+        </DialogHeader>
         {isLoading ? <p className="text-sm text-muted-foreground">Carregando…</p> : (
           <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Select value="" onValueChange={(v) => upsert.mutate({ key: v, can_view: true, can_edit: false })}>
-                <SelectTrigger className="h-8 flex-1 min-w-48 text-xs">
-                  <SelectValue placeholder={undecided.length ? `Configurar campo (${undecided.length} sem decisão)` : "Todos os campos configurados"} />
-                </SelectTrigger>
+            <div>
+              <label className="text-xs text-muted-foreground">Menu</label>
+              <Select value={menu} onValueChange={(v) => { setMenu(v); setSearch(""); }}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {undecided.map((f) => <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>)}
+                  {MENU_REGISTRY.map((m) => (
+                    <SelectItem key={m.key} value={m.key}>{m.group ? `${m.group} › ` : ""}{m.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate(true)}>Liberar todos</Button>
-              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate(false)}>Bloquear todos</Button>
             </div>
-            <Input placeholder="Buscar campo…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 text-sm" />
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs text-muted-foreground flex-1 min-w-40">
+                {items.length - undecided.length} de {items.length} itens configurados neste menu.
+              </p>
+              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate(true)}>Liberar tudo deste menu</Button>
+              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate(false)}>Bloquear tudo</Button>
+            </div>
+            <Input placeholder="Buscar item…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 text-sm" />
             <div className="max-h-[50vh] overflow-y-auto">
               <table className="w-full text-sm">
                 <thead className="text-xs uppercase text-muted-foreground border-b">
-                  <tr><th className="text-left py-2">Campo</th><th className="w-20 text-center">Ver</th><th className="w-20 text-center">Editar</th></tr>
+                  <tr><th className="text-left py-2">Item</th><th className="w-20 text-center">Ver</th><th className="w-20 text-center">Editar</th></tr>
                 </thead>
                 <tbody>
-                  {visibleFields.map((f) => {
+                  {visibleItems.map((f) => {
                     const cur = map.get(f.key);
-                    const canView = cur ? cur.can_view : true;
-                    const canEdit = cur ? cur.can_edit : true;
+                    const canView = cur ? cur.can_view : false;
+                    const canEdit = cur ? cur.can_edit : false;
                     return (
                       <tr key={f.key} className="border-b last:border-0">
                         <td className="py-2">
+                          <span className="text-[10px] uppercase text-muted-foreground mr-2">{f.kind}</span>
                           {f.label}
                           {!cur && <Badge variant="secondary" className="ml-2 text-[10px]">Novo</Badge>}
                         </td>
@@ -469,7 +493,7 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
                   })}
                 </tbody>
               </table>
-              {visibleFields.length === 0 && <p className="text-sm text-muted-foreground py-2">Nenhum campo encontrado.</p>}
+              {visibleItems.length === 0 && <p className="text-sm text-muted-foreground py-2">Nenhum item encontrado.</p>}
             </div>
           </div>
         )}
@@ -478,6 +502,7 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
     </Dialog>
   );
 }
+
 
 
 function AssignTab({ focusUserId }: { focusUserId?: string }) {
