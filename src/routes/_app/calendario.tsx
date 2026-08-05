@@ -276,10 +276,12 @@ function CalendarioPage() {
       </Card>
 
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{detail?.title}</DialogTitle></DialogHeader>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 py-4 shrink-0 border-b">
+            <DialogTitle className="break-words pr-6 text-left">{detail?.title}</DialogTitle>
+          </DialogHeader>
           {detail && (
-            <div className="space-y-3 text-sm">
+            <div className="space-y-3 text-sm overflow-y-auto px-6 py-4 flex-1 min-h-0">
               <div className="flex flex-wrap gap-2">
                 {detail.status_id && statusMap.get(detail.status_id) && (
                   <Badge
@@ -294,20 +296,20 @@ function CalendarioPage() {
                 )}
                 {detail.client_id && <Badge variant="secondary">{clientMap.get(detail.client_id) ?? "Cliente"}</Badge>}
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 <div><span className="text-muted-foreground">Prazo:</span> {detail.due_date ? new Date(detail.due_date + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</div>
                 <div><span className="text-muted-foreground">Postagem:</span> {detail.post_date ? new Date(detail.post_date + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</div>
               </div>
-              {detail.description && <p className="whitespace-pre-wrap text-muted-foreground">{detail.description}</p>}
+              {detail.description && <p className="whitespace-pre-wrap break-words text-muted-foreground">{detail.description}</p>}
               {detail.notes && (
-                <div><p className="text-xs text-muted-foreground mb-1">Direção de arte</p><p className="whitespace-pre-wrap">{detail.notes}</p></div>
+                <div><p className="text-xs text-muted-foreground mb-1">Direção de arte</p><p className="whitespace-pre-wrap break-words">{detail.notes}</p></div>
               )}
               {detail.caption && (
-                <div><p className="text-xs text-muted-foreground mb-1">Legenda</p><p className="whitespace-pre-wrap">{detail.caption}</p></div>
+                <div><p className="text-xs text-muted-foreground mb-1">Legenda</p><p className="whitespace-pre-wrap break-words">{detail.caption}</p></div>
               )}
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 shrink-0 border-t gap-2">
             {detail && (
               <Button asChild variant="outline">
                 <Link to="/projects" search={{ detail: detail.id }}>
