@@ -33,8 +33,11 @@ type Registration = {
 
 function AprovacoesPage() {
   const { isManager } = useAuth();
+  const sec = useSectionGate("/aprovacoes");
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"pending" | "approved" | "rejected">("pending");
+  const [tab, setTab] = useState<"pending" | "approved" | "rejected">(
+    (["pending", "approved", "rejected"] as const).find((s) => sec.can(s)) ?? "pending",
+  );
   const [rejectFor, setRejectFor] = useState<Registration | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [linkModal, setLinkModal] = useState<string | null>(null);
