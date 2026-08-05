@@ -1420,6 +1420,7 @@ export type Database = {
         Row: {
           assigned_to: string | null
           budget: number | null
+          caption: string | null
           client_decided_at: string | null
           client_decision: string | null
           client_feedback: string | null
@@ -1453,6 +1454,7 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           budget?: number | null
+          caption?: string | null
           client_decided_at?: string | null
           client_decision?: string | null
           client_feedback?: string | null
@@ -1486,6 +1488,7 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           budget?: number | null
+          caption?: string | null
           client_decided_at?: string | null
           client_decision?: string | null
           client_feedback?: string | null
