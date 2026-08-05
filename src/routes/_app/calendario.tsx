@@ -183,21 +183,23 @@ function CalendarioPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              setCursor((c) => (view === "month" ? subMonths(c, 1) : subWeeks(c, 1)))
-            }
+            onClick={() => {
+              setExpandedDay(null);
+              setCursor((c) => (view === "month" ? subMonths(c, 1) : subWeeks(c, 1)));
+            }}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <h2 className="text-lg font-semibold capitalize">{rangeLabel}</h2>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setCursor(new Date())}>Hoje</Button>
+            <Button variant="outline" size="sm" onClick={() => { setExpandedDay(null); setCursor(new Date()); }}>Hoje</Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                setCursor((c) => (view === "month" ? addMonths(c, 1) : addWeeks(c, 1)))
-              }
+              onClick={() => {
+                setExpandedDay(null);
+                setCursor((c) => (view === "month" ? addMonths(c, 1) : addWeeks(c, 1)));
+              }}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
