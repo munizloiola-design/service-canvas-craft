@@ -18,6 +18,7 @@ import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Cop
 import { toast } from "sonner";
 import { useFieldVisibility } from "@/lib/field-visibility";
 import { useAccess } from "@/lib/access-context";
+import { useSectionGate } from "@/lib/access-sections";
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import { ProjectChat } from "@/components/ProjectChat";
 
