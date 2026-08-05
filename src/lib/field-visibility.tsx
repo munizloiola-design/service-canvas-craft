@@ -32,8 +32,9 @@ export function FieldVisibilityProvider({ children }: { children: ReactNode }) {
   const access = useAccess();
   const value: Ctx = {
     loading: access.loading,
-    canSee: (f) => access.canViewField(f),
-    canEdit: (f) => access.canEditField(f),
+    // Sem regras cadastradas para a especialidade, nada é escondido.
+    canSee: (f) => access.fieldView.size === 0 || access.canViewField(f),
+    canEdit: (f) => access.fieldEdit.size === 0 || access.canEditField(f),
   };
   return <FieldVisibilityContext.Provider value={value}>{children}</FieldVisibilityContext.Provider>;
 }

@@ -459,7 +459,6 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
   onEdit?: (p: Project) => void;
 }) {
   const qc = useQueryClient();
-  const { canSee } = useFieldVisibility();
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("projects").delete().eq("id", id);
