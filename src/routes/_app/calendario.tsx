@@ -27,8 +27,9 @@ type Client = { id: string; name: string };
 type DateField = "due_date" | "post_date";
 
 function CalendarioPage() {
-  const [tab, setTab] = useState<"due" | "post">("due");
-  const [view, setView] = useState<"month" | "week">("month");
+  const calSec = useSectionGate("/calendario");
+  const [tab, setTab] = useState<"due" | "post">(calSec.can("due") ? "due" : "post");
+  const [view, setView] = useState<"month" | "week">(calSec.can("month") ? "month" : "week");
   const [cursor, setCursor] = useState(new Date());
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [detail, setDetail] = useState<Project | null>(null);
