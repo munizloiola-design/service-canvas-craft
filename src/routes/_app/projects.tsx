@@ -317,7 +317,7 @@ function ProjectsPage() {
   );
 }
 
-function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, onDetail }: {
+function KanbanView({ projects, statuses, priorities, maps, assigneesByProject, onDetail }: {
   projects: Project[]; statuses: Status[]; priorities: Priority[];
   assigneesByProject: Map<string, Assignee[]>;
   maps: ReturnType<typeof Object> & Record<string, Map<string, unknown>>;
@@ -326,6 +326,7 @@ function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, 
   const qc = useQueryClient();
   const { user } = useAuth();
   const { canSee } = useFieldVisibility();
+  const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
   const updateStatus = useMutation({
     mutationFn: async ({ id, status_id, from }: { id: string; status_id: string; from: string | null }) => {
       const { error } = await supabase.rpc("update_project_schedule", { _id: id, _status_id: status_id });
@@ -369,21 +370,36 @@ function KanbanView({ projects, statuses, priorities, assigneesByProject, maps, 
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:[grid-template-columns:repeat(var(--kanban-cols),minmax(0,1fr))] lg:overflow-x-auto"
         style={{ ["--kanban-cols" as never]: Math.min(cols.length, 5) }}>
-        {cols.map((col) => (
-          <KanbanColumn key={col.id} col={col}
-            items={projects.filter((p) => (p.status_id ?? "__none__") === col.id)}
-            statuses={statuses} priorities={priorities} maps={maps}
-            assigneesByProject={assigneesByProject} canSee={canSee}
-            onDetail={onDetail}
-            onStatusChange={(id, status_id, from) => updateStatus.mutate({ id, status_id, from })} />
-        ))}
+        {cols.map((col) => {
+          const items = projects.filter((p) => (p.status_id ?? "__none__") === col.id);
+          return (
+            <KanbanColumn key={col.id} col={col}
+              items={items}
+              visibleItems={items.slice(0, 5)}
+              overflowCount={Math.max(0, items.length - 5)}
+              isExpanded={expandedColumn === col.id}
+              onExpand={() => setExpandedColumn(col.id)}
+              onClose={() => setExpandedColumn(null)}
+              statuses={statuses} priorities={priorities} maps={maps}
+              assigneesByProject={assigneesByProject} canSee={canSee}
+              onDetail={onDetail}
+              onStatusChange={(id, status_id, from) => updateStatus.mutate({ id, status_id, from })} />
+          );
+        })}
       </div>
     </DndContext>
   );
 }
 
-function KanbanColumn({ col, items, statuses, priorities, maps, assigneesByProject, canSee, onDetail, onStatusChange }: {
-  col: Status; items: Project[]; statuses: Status[]; priorities: Priority[];
+function KanbanColumn({ col, items, visibleItems, overflowCount, isExpanded, onExpand, onClose, statuses, priorities, maps, assigneesByProject, canSee, onDetail, onStatusChange }: {
+  col: Status;
+  items: Project[];
+  visibleItems: Project[];
+  overflowCount: number;
+  isExpanded: boolean;
+  onExpand: () => void;
+  onClose: () => void;
+  statuses: Status[]; priorities: Priority[];
   maps: Record<string, Map<string, unknown>>;
   assigneesByProject: Map<string, Assignee[]>;
   canSee: (k: never) => boolean;
@@ -399,13 +415,41 @@ function KanbanColumn({ col, items, statuses, priorities, maps, assigneesByProje
       </div>
       <div ref={setNodeRef}
         className={`bg-card border border-t-0 rounded-b-lg p-2 space-y-2 min-h-[120px] md:min-h-[200px] transition-shadow ${isOver ? "ring-2 ring-primary" : ""}`}>
-        {items.map((p) => (
+        {visibleItems.map((p) => (
           <KanbanCard key={p.id} project={p} statuses={statuses} priorities={priorities}
             maps={maps} assigneesByProject={assigneesByProject} canSee={canSee}
             onDetail={onDetail} onStatusChange={onStatusChange} />
         ))}
+        {overflowCount > 0 && (
+          <button
+            type="button"
+            onClick={onExpand}
+            className="w-full text-xs text-center py-2 rounded-md bg-secondary text-secondary-foreground hover:opacity-80 transition-opacity"
+          >
+            +{overflowCount} demandas
+          </button>
+        )}
         {items.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Vazio</p>}
       </div>
+
+      <Dialog open={isExpanded} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-3xl max-h-[85vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 py-4 shrink-0 border-b">
+            <DialogTitle className="pr-6 text-left">{col.name} — {items.length} demandas</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto px-6 py-4 flex-1 min-h-0 space-y-3">
+            {items.map((p) => (
+              <KanbanCard key={p.id} project={p} statuses={statuses} priorities={priorities}
+                maps={maps} assigneesByProject={assigneesByProject} canSee={canSee}
+                onDetail={(id) => { onClose(); onDetail(id); }}
+                onStatusChange={onStatusChange} />
+            ))}
+          </div>
+          <DialogFooter className="px-6 py-4 shrink-0 border-t gap-2">
+            <Button variant="outline" onClick={onClose}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
