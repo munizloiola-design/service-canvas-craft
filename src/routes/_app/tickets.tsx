@@ -88,7 +88,10 @@ async function notifyDecision(
 function TicketsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"pendente" | "aprovado" | "recusado">("pendente");
+  const sec = useSectionGate("/tickets");
+  const [tab, setTab] = useState<"pendente" | "aprovado" | "recusado">(
+    (["pendente", "aprovado", "recusado"] as const).find((s) => sec.can(s)) ?? "pendente",
+  );
   const [selected, setSelected] = useState<TicketRequest | null>(null);
   const [rejectNote, setRejectNote] = useState("");
   const [editing, setEditing] = useState(false);
