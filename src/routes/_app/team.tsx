@@ -418,10 +418,10 @@ function MemberDialog({
           </Button>
         </div>
 
-        <Tabs defaultValue="ficha">
+        <Tabs defaultValue={teamSec.first(["ficha", "notas"])}>
           <TabsList>
-            <TabsTrigger value="ficha">Ficha</TabsTrigger>
-            <TabsTrigger value="notas"><ShieldAlert className="h-3.5 w-3.5 mr-1" />Anotações privadas</TabsTrigger>
+            {teamSec.can("ficha") && <TabsTrigger value="ficha">Ficha</TabsTrigger>}
+            {teamSec.can("notas") && <TabsTrigger value="notas"><ShieldAlert className="h-3.5 w-3.5 mr-1" />Anotações privadas</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="ficha" className="space-y-3 mt-4">
