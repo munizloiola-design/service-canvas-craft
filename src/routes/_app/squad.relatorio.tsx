@@ -548,12 +548,12 @@ function SquadRelatorioPage() {
             </div>
           )}
 
-          <Tabs defaultValue={noSessions ? "activities" : "teams"}>
+          <Tabs defaultValue={sec.first(noSessions ? ["activities", "teams", "members", "roster"] : ["teams", "members", "activities", "roster"])}>
             <TabsList>
-              <TabsTrigger value="teams">Por time</TabsTrigger>
-              <TabsTrigger value="members">Por membro</TabsTrigger>
-              <TabsTrigger value="activities">Atividades</TabsTrigger>
-              <TabsTrigger value="roster">Composição</TabsTrigger>
+              {sec.can("teams") && <TabsTrigger value="teams">Por time</TabsTrigger>}
+              {sec.can("members") && <TabsTrigger value="members">Por membro</TabsTrigger>}
+              {sec.can("activities") && <TabsTrigger value="activities">Atividades</TabsTrigger>}
+              {sec.can("roster") && <TabsTrigger value="roster">Composição</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="teams" className="mt-4">
