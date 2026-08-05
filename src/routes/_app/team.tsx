@@ -311,6 +311,7 @@ function MemberDialog({
   profile: Profile;
   onSaved: () => void;
 }) {
+  const teamSec = useSectionGate("/team");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar_url ?? null);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
