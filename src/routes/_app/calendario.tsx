@@ -33,6 +33,7 @@ function CalendarioPage() {
   const [view, setView] = useState<"month" | "week">(calSec.can("month") ? "month" : "week");
   const [cursor, setCursor] = useState(new Date());
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  const [expandedDay, setExpandedDay] = useState<string | null>(null);
   const [detail, setDetail] = useState<Project | null>(null);
   const qc = useQueryClient();
 
