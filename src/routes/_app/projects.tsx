@@ -73,8 +73,26 @@ const FILTER_LABELS: Record<FilterKey, string> = {
   post_from: "Postagem a partir de", post_to: "Postagem até",
 };
 
+const COL_TO_FIELD: Record<string, string | null> = {
+  title: null, status: null, assignees: "assignees",
+  client: "client_id", media: "media_type", priority: "priority",
+  due_date: "due_date", post_date: "post_date",
+};
+
+/** Colunas bloqueadas por Perfis e Acessos. Sem regras cadastradas = tudo liberado. */
+function useColumnAccess() {
+  const { fieldView } = useAccess();
+  const hasRules = fieldView.size > 0;
+  return (key: string) => {
+    const field = COL_TO_FIELD[key];
+    if (!field || !hasRules) return false;
+    return !fieldView.has(field);
+  };
+}
+
 function ProjectsPage() {
   const { menuAllowed } = useAccess();
+  const isColBlocked = useColumnAccess();
   const canManageProjects = menuAllowed("/projects");
   const navigate = useNavigate();
   const search = Route.useSearch();
@@ -214,12 +232,17 @@ function ProjectsPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Mostrar colunas</DropdownMenuLabel>
-                {ALL_COLUMNS.map((c) => (
-                  <DropdownMenuCheckboxItem key={c.key} checked={visibleCols.includes(c.key)}
-                    onCheckedChange={(v) => setVisibleCols((cur) => v ? [...cur, c.key] : cur.filter((k) => k !== c.key))}>
-                    {c.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
+                {ALL_COLUMNS.map((c) => {
+                  const blocked = isColBlocked(c.key);
+                  return (
+                    <DropdownMenuCheckboxItem key={c.key} checked={visibleCols.includes(c.key) && !blocked}
+                      disabled={blocked}
+                      title={blocked ? "Bloqueado em Perfis e Acessos" : undefined}
+                      onCheckedChange={(v) => setVisibleCols((cur) => v ? [...cur, c.key] : cur.filter((k) => k !== c.key))}>
+                      {c.label}{blocked ? " (bloqueado)" : ""}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -449,13 +472,8 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
     },
     onError: (e: Error) => toast.error(e.message),
   });
-  const colKeyToField: Record<string, string | null> = {
-    client: "client_id", media: "media_type", priority: "priority",
-    due_date: "due_date", post_date: "post_date",
-  };
-  const allowedCols = visibleCols.filter((k) => {
-    const f = colKeyToField[k]; return !f || canSee(f as never);
-  });
+  const isColBlocked = useColumnAccess();
+  const allowedCols = visibleCols.filter((k) => !isColBlocked(k));
   return (
     <Card className="overflow-x-auto">
       <table className="w-full text-sm">
