@@ -163,13 +163,13 @@ function CalendarioPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Tabs value={view} onValueChange={(v) => setView(v as "month" | "week")}>
+          <Tabs value={view} onValueChange={(v) => { setExpandedDay(null); setView(v as "month" | "week"); }}>
             <TabsList>
               {calSec.can("month") && <TabsTrigger value="month">Mês</TabsTrigger>}
               {calSec.can("week") && <TabsTrigger value="week">Semana</TabsTrigger>}
             </TabsList>
           </Tabs>
-          <Tabs value={tab} onValueChange={(v) => setTab(v as "due" | "post")}>
+          <Tabs value={tab} onValueChange={(v) => { setExpandedDay(null); setTab(v as "due" | "post"); }}>
             <TabsList>
               {calSec.can("due") && <TabsTrigger value="due">Prazos</TabsTrigger>}
               {calSec.can("post") && <TabsTrigger value="post">Postagens</TabsTrigger>}
