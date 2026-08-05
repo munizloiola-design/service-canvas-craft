@@ -71,6 +71,76 @@ function buildMenuRegistry(): MenuEntry[] {
 export const MENU_REGISTRY: MenuEntry[] = buildMenuRegistry();
 
 // ---------------------------------------------------------------------------
+// Seções (abas) de cada menu — liberação por Especialidade
+// ---------------------------------------------------------------------------
+
+export type SectionEntry = { id: string; label: string };
+
+export const SECTION_REGISTRY: Record<string, SectionEntry[]> = {
+  "/clientes": [
+    { id: "diretorio", label: "Diretório" },
+    { id: "acessos", label: "Acessos do portal" },
+    { id: "briefing", label: "Briefing & Estratégia" },
+    { id: "projetos", label: "Projetos ativos" },
+  ],
+  "/financeiro": [
+    { id: "dashboard", label: "Dashboard" },
+    { id: "custos", label: "Custos fixos" },
+    { id: "recorrentes", label: "Receitas recorrentes" },
+    { id: "lancamentos", label: "Lançamentos" },
+    { id: "autorizacoes", label: "Autorizações" },
+    { id: "solicitacoes", label: "Solicitações" },
+    { id: "relatorio", label: "Relatório" },
+    { id: "config", label: "Configurações" },
+  ],
+  "/projects": [
+    { id: "kanban", label: "Kanban" },
+    { id: "list", label: "Lista" },
+  ],
+  "/calendario": [
+    { id: "month", label: "Visão mês" },
+    { id: "week", label: "Visão semana" },
+    { id: "due", label: "Datas de entrega" },
+    { id: "post", label: "Datas de postagem" },
+  ],
+  "/tickets": [
+    { id: "pendente", label: "Pendentes" },
+    { id: "aprovado", label: "Aprovados" },
+    { id: "recusado", label: "Recusados" },
+  ],
+  "/aprovacoes": [
+    { id: "pending", label: "Pendentes" },
+    { id: "approved", label: "Aprovadas" },
+    { id: "rejected", label: "Rejeitadas" },
+  ],
+  "/tempo": [
+    { id: "project", label: "Por projeto" },
+    { id: "user", label: "Por usuário" },
+    { id: "detail", label: "Detalhado" },
+  ],
+  "/squad/relatorio": [
+    { id: "teams", label: "Times" },
+    { id: "members", label: "Membros" },
+    { id: "activities", label: "Atividades" },
+    { id: "roster", label: "Elenco" },
+  ],
+  "/team": [
+    { id: "ficha", label: "Ficha" },
+    { id: "notas", label: "Notas" },
+  ],
+};
+
+/** Chave usada em specialty_field_visibility para uma seção de menu. */
+export function sectionKey(menu: string, section: string) {
+  return `menu:${menu}#${section}`;
+}
+
+/** Seções de um menu; menus sem abas ganham um item único de acesso à página. */
+export function sectionsForMenu(menu: string): SectionEntry[] {
+  return SECTION_REGISTRY[menu] ?? [{ id: "page", label: "Acesso à página" }];
+}
+
+// ---------------------------------------------------------------------------
 // Campos da demanda
 // ---------------------------------------------------------------------------
 
