@@ -2226,6 +2226,10 @@ export type Database = {
         Args: { _client_id: string; _uid: string }
         Returns: boolean
       }
+      has_menu_access: {
+        Args: { _menu_key: string; _uid: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
