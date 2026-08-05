@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { sectionKey } from "@/lib/access-registry";
 
 type Ctx = {
   loading: boolean;
@@ -13,8 +14,11 @@ type Ctx = {
   menuAllowed: (key: string) => boolean;
   canViewField: (key: string) => boolean;
   canEditField: (key: string) => boolean;
+  canViewSection: (menu: string, section: string) => boolean;
+  canEditSection: (menu: string, section: string) => boolean;
   refresh: () => Promise<void>;
 };
+
 
 const AccessContext = createContext<Ctx | null>(null);
 
