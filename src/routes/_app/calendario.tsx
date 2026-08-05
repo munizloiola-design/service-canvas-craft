@@ -215,8 +215,9 @@ function CalendarioPage() {
             const items = eventsByDate.get(key) ?? [];
             const inMonth = view === "week" || isSameMonth(day, cursor);
             const isToday = isSameDay(day, new Date());
-            const maxVisible = view === "week" ? 20 : 3;
-            const minH = view === "week" ? "min-h-[60vh]" : "min-h-[100px]";
+            const isExpanded = expandedDay === key;
+            const maxVisible = isExpanded ? Infinity : view === "week" ? 20 : 3;
+            const minH = isExpanded ? "min-h-[100px] h-auto" : view === "week" ? "min-h-[60vh]" : "min-h-[100px]";
             const highlightWeekToday = view === "week" && isToday;
             const cellStyle: React.CSSProperties | undefined = highlightWeekToday
               ? { background: "color-mix(in oklab, hsl(var(--primary)) 15%, transparent)" }
@@ -247,10 +248,25 @@ function CalendarioPage() {
                     {format(day, view === "week" ? "d/MM" : "d")}
                   </span>
                 </div>
-                <div className="flex-1 space-y-1 overflow-y-auto">
+                <div className={`flex-1 space-y-1 ${isExpanded ? "" : "overflow-y-auto"}`}>
                   {items.slice(0, maxVisible).map(renderCard)}
                   {items.length > maxVisible && (
-                    <Badge variant="secondary" className="text-[9px] h-4">+{items.length - maxVisible}</Badge>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedDay(key)}
+                      className="text-[9px] rounded px-1.5 py-0.5 bg-secondary text-secondary-foreground hover:opacity-80"
+                    >
+                      +{items.length - maxVisible} ver todas
+                    </button>
+                  )}
+                  {isExpanded && (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedDay(null)}
+                      className="text-[9px] text-muted-foreground hover:text-foreground underline"
+                    >
+                      mostrar menos
+                    </button>
                   )}
                 </div>
               </div>
