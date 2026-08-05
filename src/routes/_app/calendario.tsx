@@ -33,6 +33,7 @@ function CalendarioPage() {
   const [view, setView] = useState<"month" | "week">(calSec.can("month") ? "month" : "week");
   const [cursor, setCursor] = useState(new Date());
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  const [expandedDay, setExpandedDay] = useState<string | null>(null);
   const [detail, setDetail] = useState<Project | null>(null);
   const qc = useQueryClient();
 
@@ -162,13 +163,13 @@ function CalendarioPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Tabs value={view} onValueChange={(v) => setView(v as "month" | "week")}>
+          <Tabs value={view} onValueChange={(v) => { setExpandedDay(null); setView(v as "month" | "week"); }}>
             <TabsList>
               {calSec.can("month") && <TabsTrigger value="month">Mês</TabsTrigger>}
               {calSec.can("week") && <TabsTrigger value="week">Semana</TabsTrigger>}
             </TabsList>
           </Tabs>
-          <Tabs value={tab} onValueChange={(v) => setTab(v as "due" | "post")}>
+          <Tabs value={tab} onValueChange={(v) => { setExpandedDay(null); setTab(v as "due" | "post"); }}>
             <TabsList>
               {calSec.can("due") && <TabsTrigger value="due">Prazos</TabsTrigger>}
               {calSec.can("post") && <TabsTrigger value="post">Postagens</TabsTrigger>}
@@ -182,21 +183,23 @@ function CalendarioPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              setCursor((c) => (view === "month" ? subMonths(c, 1) : subWeeks(c, 1)))
-            }
+            onClick={() => {
+              setExpandedDay(null);
+              setCursor((c) => (view === "month" ? subMonths(c, 1) : subWeeks(c, 1)));
+            }}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <h2 className="text-lg font-semibold capitalize">{rangeLabel}</h2>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setCursor(new Date())}>Hoje</Button>
+            <Button variant="outline" size="sm" onClick={() => { setExpandedDay(null); setCursor(new Date()); }}>Hoje</Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                setCursor((c) => (view === "month" ? addMonths(c, 1) : addWeeks(c, 1)))
-              }
+              onClick={() => {
+                setExpandedDay(null);
+                setCursor((c) => (view === "month" ? addMonths(c, 1) : addWeeks(c, 1)));
+              }}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -212,8 +215,9 @@ function CalendarioPage() {
             const items = eventsByDate.get(key) ?? [];
             const inMonth = view === "week" || isSameMonth(day, cursor);
             const isToday = isSameDay(day, new Date());
-            const maxVisible = view === "week" ? 20 : 3;
-            const minH = view === "week" ? "min-h-[60vh]" : "min-h-[100px]";
+            const isExpanded = expandedDay === key;
+            const maxVisible = isExpanded ? Infinity : view === "week" ? 20 : 3;
+            const minH = isExpanded ? "min-h-[100px] h-auto" : view === "week" ? "min-h-[60vh]" : "min-h-[100px]";
             const highlightWeekToday = view === "week" && isToday;
             const cellStyle: React.CSSProperties | undefined = highlightWeekToday
               ? { background: "color-mix(in oklab, hsl(var(--primary)) 15%, transparent)" }
@@ -244,10 +248,25 @@ function CalendarioPage() {
                     {format(day, view === "week" ? "d/MM" : "d")}
                   </span>
                 </div>
-                <div className="flex-1 space-y-1 overflow-y-auto">
+                <div className={`flex-1 space-y-1 ${isExpanded ? "" : "overflow-y-auto"}`}>
                   {items.slice(0, maxVisible).map(renderCard)}
                   {items.length > maxVisible && (
-                    <Badge variant="secondary" className="text-[9px] h-4">+{items.length - maxVisible}</Badge>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedDay(key)}
+                      className="text-[9px] rounded px-1.5 py-0.5 bg-secondary text-secondary-foreground hover:opacity-80"
+                    >
+                      +{items.length - maxVisible} ver todas
+                    </button>
+                  )}
+                  {isExpanded && (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedDay(null)}
+                      className="text-[9px] text-muted-foreground hover:text-foreground underline"
+                    >
+                      mostrar menos
+                    </button>
                   )}
                 </div>
               </div>
@@ -257,10 +276,12 @@ function CalendarioPage() {
       </Card>
 
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{detail?.title}</DialogTitle></DialogHeader>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 py-4 shrink-0 border-b">
+            <DialogTitle className="break-words pr-6 text-left">{detail?.title}</DialogTitle>
+          </DialogHeader>
           {detail && (
-            <div className="space-y-3 text-sm">
+            <div className="space-y-3 text-sm overflow-y-auto px-6 py-4 flex-1 min-h-0">
               <div className="flex flex-wrap gap-2">
                 {detail.status_id && statusMap.get(detail.status_id) && (
                   <Badge
@@ -275,20 +296,20 @@ function CalendarioPage() {
                 )}
                 {detail.client_id && <Badge variant="secondary">{clientMap.get(detail.client_id) ?? "Cliente"}</Badge>}
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 <div><span className="text-muted-foreground">Prazo:</span> {detail.due_date ? new Date(detail.due_date + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</div>
                 <div><span className="text-muted-foreground">Postagem:</span> {detail.post_date ? new Date(detail.post_date + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</div>
               </div>
-              {detail.description && <p className="whitespace-pre-wrap text-muted-foreground">{detail.description}</p>}
+              {detail.description && <p className="whitespace-pre-wrap break-words text-muted-foreground">{detail.description}</p>}
               {detail.notes && (
-                <div><p className="text-xs text-muted-foreground mb-1">Direção de arte</p><p className="whitespace-pre-wrap">{detail.notes}</p></div>
+                <div><p className="text-xs text-muted-foreground mb-1">Direção de arte</p><p className="whitespace-pre-wrap break-words">{detail.notes}</p></div>
               )}
               {detail.caption && (
-                <div><p className="text-xs text-muted-foreground mb-1">Legenda</p><p className="whitespace-pre-wrap">{detail.caption}</p></div>
+                <div><p className="text-xs text-muted-foreground mb-1">Legenda</p><p className="whitespace-pre-wrap break-words">{detail.caption}</p></div>
               )}
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 shrink-0 border-t gap-2">
             {detail && (
               <Button asChild variant="outline">
                 <Link to="/projects" search={{ detail: detail.id }}>
