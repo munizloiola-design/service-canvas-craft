@@ -52,6 +52,7 @@ type Row = {
 };
 
 function TempoPage() {
+  const sec = useSectionGate("/tempo");
   const navigate = useNavigate();
   const search = Route.useSearch();
   const from = search.from ?? daysAgo(30);
