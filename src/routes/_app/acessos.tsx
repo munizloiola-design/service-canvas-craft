@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { MENU_REGISTRY, deriveFieldRegistry, sectionKey, sectionsForMenu } from "@/lib/access-registry";
+import { MENU_REGISTRY, deriveFieldRegistry, menuHierarchy, sectionKey, sectionsForMenu } from "@/lib/access-registry";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -256,7 +256,9 @@ function HierarchyTab() {
       </Card>
 
       {menuAreaId && <MenuVisibilityDialog areaId={menuAreaId} onClose={() => setMenuAreaId(null)} />}
-      {fieldSpecId && <FieldVisibilityDialog specialtyId={fieldSpecId} onClose={() => setFieldSpecId(null)} />}
+      {fieldSpecId && activeArea && (
+        <FieldVisibilityDialog specialtyId={fieldSpecId} areaId={activeArea} onClose={() => setFieldSpecId(null)} />
+      )}
       {renameTarget && (
         <Dialog open onOpenChange={() => setRenameTarget(null)}>
           <DialogContent>
@@ -326,6 +328,7 @@ function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: ()
     return acc;
   }, {});
   const pending = MENU_REGISTRY.filter((m) => !enabled.has(m.key));
+  const pendingGroups = menuHierarchy(new Set(pending.map((m) => m.key)));
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -339,8 +342,28 @@ function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: ()
                   <SelectValue placeholder={pending.length ? `Liberar menu (${pending.length} disponíveis)` : "Todos os menus liberados"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {pending.map((m) => (
-                    <SelectItem key={m.key} value={m.key}>{m.group ? `${m.group} › ` : ""}{m.label}</SelectItem>
+                  {pendingGroups.map((g) => (
+                    <SelectGroup key={g.group}>
+                      <SelSelectLabel>{g.group}</SelSelectLabel>
+                      {g.items.map((n) =>
+                        n.selectable ? (
+                          <SelectItem key={n.entry.key} value={n.entry.key}>
+                            <span style={{ paddingLeft: n.depth * 12 }}>
+                              {n.depth > 0 ? "└ " : ""}
+                              {n.entry.label}
+                            </span>
+                          </SelectItem>
+                        ) : (
+                          <div
+                            key={n.entry.key}
+                            className="px-2 py-1.5 text-xs text-muted-foreground"
+                            style={{ paddingLeft: 8 + n.depth * 12 }}
+                          >
+                            {n.entry.label}
+                          </div>
+                        ),
+                      )}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>
@@ -376,10 +399,29 @@ function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: ()
   );
 }
 
-function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; onClose: () => void }) {
+function FieldVisibilityDialog({ specialtyId, areaId, onClose }: { specialtyId: string; areaId: string; onClose: () => void }) {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
-  const [menu, setMenu] = useState<string>(MENU_REGISTRY[0]?.key ?? "/projects");
+  const [menu, setMenu] = useState<string>("");
+
+  // Menus liberados para a Área desta Especialidade
+  const { data: allowedMenus = [] } = useQuery({
+    queryKey: ["area_menu_visibility", areaId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("area_menu_visibility").select("menu_key").eq("area_id", areaId);
+      if (error) throw error;
+      return (data ?? []).map((r) => r.menu_key as string);
+    },
+  });
+  const allowedSet = useMemo(() => new Set(allowedMenus), [allowedMenus]);
+  const menuGroups = useMemo(() => menuHierarchy(allowedSet), [allowedSet]);
+  const firstAllowed = useMemo(
+    () => menuGroups.flatMap((g) => g.items).find((n) => n.selectable)?.entry.key ?? "",
+    [menuGroups],
+  );
+  useEffect(() => {
+    if (!menu || !allowedSet.has(menu)) setMenu(firstAllowed);
+  }, [firstAllowed, allowedSet, menu]);
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["specialty_field_visibility", specialtyId],
     queryFn: async () => {
@@ -400,6 +442,7 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
 
   // Itens do menu selecionado: seções (abas) + campos da demanda quando /projects.
   const items = useMemo(() => {
+    if (!menu) return [];
     const secs = sectionsForMenu(menu).map((s) => ({
       key: sectionKey(menu, s.id),
       label: s.label,
@@ -448,14 +491,41 @@ function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; 
           <div className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground">Menu</label>
-              <Select value={menu} onValueChange={(v) => { setMenu(v); setSearch(""); }}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <Select value={menu} onValueChange={(v) => { setMenu(v); setSearch(""); }} disabled={!firstAllowed}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder={firstAllowed ? "Selecione um menu" : "Libere menus para esta Área primeiro"} />
+                </SelectTrigger>
                 <SelectContent>
-                  {MENU_REGISTRY.map((m) => (
-                    <SelectItem key={m.key} value={m.key}>{m.group ? `${m.group} › ` : ""}{m.label}</SelectItem>
+                  {menuGroups.map((g) => (
+                    <SelectGroup key={g.group}>
+                      <SelSelectLabel>{g.group}</SelSelectLabel>
+                      {g.items.map((n) =>
+                        n.selectable ? (
+                          <SelectItem key={n.entry.key} value={n.entry.key}>
+                            <span style={{ paddingLeft: n.depth * 12 }}>
+                              {n.depth > 0 ? "└ " : ""}
+                              {n.entry.label}
+                            </span>
+                          </SelectItem>
+                        ) : (
+                          <div
+                            key={n.entry.key}
+                            className="px-2 py-1.5 text-xs text-muted-foreground"
+                            style={{ paddingLeft: 8 + n.depth * 12 }}
+                          >
+                            {n.entry.label}
+                          </div>
+                        ),
+                      )}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>
+              {!firstAllowed && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Nenhum menu liberado para esta Área. Libere em “Menus visíveis”.
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-xs text-muted-foreground flex-1 min-w-40">
