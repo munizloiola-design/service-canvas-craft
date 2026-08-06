@@ -71,6 +71,40 @@ function buildMenuRegistry(): MenuEntry[] {
 export const MENU_REGISTRY: MenuEntry[] = buildMenuRegistry();
 
 // ---------------------------------------------------------------------------
+// Hierarquia de menus (pai › submenus) para seletores
+// ---------------------------------------------------------------------------
+
+export type MenuNode = { entry: MenuEntry; depth: number; selectable: boolean };
+export type MenuGroupNodes = { group: string; items: MenuNode[] };
+
+/**
+ * Monta a lista de menus agrupada por grupo, com submenus logo abaixo do pai
+ * e recuados. Quando `allowed` é informado, apenas menus liberados ficam
+ * selecionáveis; pais não liberados aparecem só como rótulo quando algum
+ * filho está liberado.
+ */
+export function menuHierarchy(allowed?: Set<string> | null): MenuGroupNodes[] {
+  const keys = MENU_REGISTRY.map((m) => m.key);
+  const depthOf = (key: string) => keys.filter((k) => k !== key && key.startsWith(k + "/")).length;
+
+  const ordered = [...MENU_REGISTRY].sort((a, b) => a.key.localeCompare(b.key));
+  const groups = new Map<string, MenuNode[]>();
+
+  for (const entry of ordered) {
+    const selectable = !allowed || allowed.has(entry.key);
+    const hasAllowedChild =
+      !allowed || keys.some((k) => k.startsWith(entry.key + "/") && allowed.has(k));
+    if (!selectable && !hasAllowedChild) continue;
+    const group = entry.group ?? "Geral";
+    const list = groups.get(group) ?? [];
+    list.push({ entry, depth: depthOf(entry.key), selectable });
+    groups.set(group, list);
+  }
+
+  return Array.from(groups.entries()).map(([group, items]) => ({ group, items }));
+}
+
+// ---------------------------------------------------------------------------
 // Seções (abas) de cada menu — liberação por Especialidade
 // ---------------------------------------------------------------------------
 
