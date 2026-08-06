@@ -378,10 +378,29 @@ function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: ()
   );
 }
 
-function FieldVisibilityDialog({ specialtyId, onClose }: { specialtyId: string; onClose: () => void }) {
+function FieldVisibilityDialog({ specialtyId, areaId, onClose }: { specialtyId: string; areaId: string; onClose: () => void }) {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
-  const [menu, setMenu] = useState<string>(MENU_REGISTRY[0]?.key ?? "/projects");
+  const [menu, setMenu] = useState<string>("");
+
+  // Menus liberados para a Área desta Especialidade
+  const { data: allowedMenus = [] } = useQuery({
+    queryKey: ["area_menu_visibility", areaId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("area_menu_visibility").select("menu_key").eq("area_id", areaId);
+      if (error) throw error;
+      return (data ?? []).map((r) => r.menu_key as string);
+    },
+  });
+  const allowedSet = useMemo(() => new Set(allowedMenus), [allowedMenus]);
+  const menuGroups = useMemo(() => menuHierarchy(allowedSet), [allowedSet]);
+  const firstAllowed = useMemo(
+    () => menuGroups.flatMap((g) => g.items).find((n) => n.selectable)?.entry.key ?? "",
+    [menuGroups],
+  );
+  useEffect(() => {
+    if (!menu || !allowedSet.has(menu)) setMenu(firstAllowed);
+  }, [firstAllowed, allowedSet, menu]);
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["specialty_field_visibility", specialtyId],
     queryFn: async () => {
