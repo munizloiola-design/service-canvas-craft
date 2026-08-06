@@ -71,7 +71,7 @@ async function notifyDecision(
   const templateData: Record<string, unknown> = {
     requesterName: t.requester_name,
     ticketTitle: t.title,
-    brandName: brand?.brand_name ?? "Equipe.io",
+    brandName: brand?.brand_name ?? "Dig.Workflow",
     brandLogoUrl: brand?.logo_url ?? null,
     primaryColor: brand?.primary_color ?? "#3b82f6",
   };

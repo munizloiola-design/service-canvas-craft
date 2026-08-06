@@ -37,7 +37,7 @@ export type Branding = {
 };
 
 const DEFAULT: Branding = {
-  brand_name: "Equipe.io",
+  brand_name: "Dig.Workflow",
   logo_url: null,
   favicon_url: null,
   primary_color: "#1a936f",

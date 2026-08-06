@@ -113,7 +113,7 @@ function PersonalizacaoPage() {
     try {
       const { error } = await supabase.from("app_branding").upsert({
         id: true,
-        brand_name: brandName.trim() || "Equipe.io",
+        brand_name: brandName.trim() || "Dig.Workflow",
         logo_url: logoUrl || null,
         favicon_url: faviconUrl || null,
         primary_color: primary,
