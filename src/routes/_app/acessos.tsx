@@ -256,7 +256,9 @@ function HierarchyTab() {
       </Card>
 
       {menuAreaId && <MenuVisibilityDialog areaId={menuAreaId} onClose={() => setMenuAreaId(null)} />}
-      {fieldSpecId && <FieldVisibilityDialog specialtyId={fieldSpecId} onClose={() => setFieldSpecId(null)} />}
+      {fieldSpecId && activeArea && (
+        <FieldVisibilityDialog specialtyId={fieldSpecId} areaId={activeArea} onClose={() => setFieldSpecId(null)} />
+      )}
       {renameTarget && (
         <Dialog open onOpenChange={() => setRenameTarget(null)}>
           <DialogContent>
