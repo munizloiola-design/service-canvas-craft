@@ -469,14 +469,41 @@ function FieldVisibilityDialog({ specialtyId, areaId, onClose }: { specialtyId: 
           <div className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground">Menu</label>
-              <Select value={menu} onValueChange={(v) => { setMenu(v); setSearch(""); }}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <Select value={menu} onValueChange={(v) => { setMenu(v); setSearch(""); }} disabled={!firstAllowed}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder={firstAllowed ? "Selecione um menu" : "Libere menus para esta Área primeiro"} />
+                </SelectTrigger>
                 <SelectContent>
-                  {MENU_REGISTRY.map((m) => (
-                    <SelectItem key={m.key} value={m.key}>{m.group ? `${m.group} › ` : ""}{m.label}</SelectItem>
+                  {menuGroups.map((g) => (
+                    <SelectGroup key={g.group}>
+                      <SelSelectLabel>{g.group}</SelSelectLabel>
+                      {g.items.map((n) =>
+                        n.selectable ? (
+                          <SelectItem key={n.entry.key} value={n.entry.key}>
+                            <span style={{ paddingLeft: n.depth * 12 }}>
+                              {n.depth > 0 ? "└ " : ""}
+                              {n.entry.label}
+                            </span>
+                          </SelectItem>
+                        ) : (
+                          <div
+                            key={n.entry.key}
+                            className="px-2 py-1.5 text-xs text-muted-foreground"
+                            style={{ paddingLeft: 8 + n.depth * 12 }}
+                          >
+                            {n.entry.label}
+                          </div>
+                        ),
+                      )}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>
+              {!firstAllowed && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Nenhum menu liberado para esta Área. Libere em “Menus visíveis”.
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-xs text-muted-foreground flex-1 min-w-40">
