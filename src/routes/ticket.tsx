@@ -307,7 +307,7 @@ function PublicTicketPage() {
           )}
 
           <p className="text-center text-xs text-muted-foreground mt-6">
-            Equipe.io · Solicitações são revisadas pela equipe antes de virarem projeto.
+            Dig.Workflow · Solicitações são revisadas pela equipe antes de virarem projeto.
           </p>
         </div>
       </div>

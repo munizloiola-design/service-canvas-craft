@@ -14,7 +14,7 @@ interface Props {
 const TicketRejectedEmail = ({
   requesterName, ticketTitle, reviewNotes, brandName, brandLogoUrl,
 }: Props) => {
-  const brand = brandName || 'Equipe.io'
+  const brand = brandName || 'Dig.Workflow'
   return (
     <Html lang="pt-BR" dir="ltr">
       <Head />
@@ -51,13 +51,13 @@ const TicketRejectedEmail = ({
 export const template = {
   component: TicketRejectedEmail,
   subject: (d: Record<string, any>) =>
-    `Sua solicitação não foi aprovada · ${d?.brandName || 'Equipe.io'}`,
+    `Sua solicitação não foi aprovada · ${d?.brandName || 'Dig.Workflow'}`,
   displayName: 'Ticket recusado',
   previewData: {
     requesterName: 'João',
     ticketTitle: 'Banner promocional',
     reviewNotes: 'Precisamos de mais informações sobre o público-alvo e o prazo desejado.',
-    brandName: 'Equipe.io',
+    brandName: 'Dig.Workflow',
   },
 } satisfies TemplateEntry
 
