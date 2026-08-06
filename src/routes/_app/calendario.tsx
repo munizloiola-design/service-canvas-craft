@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_app/calendario")({ component: Calendario
 
 type Project = {
   id: string; title: string; due_date: string | null; post_date: string | null;
-  status_id: string | null; client_id: string | null;
+  status_id: string | null; client_id: string | null; assigned_to: string | null;
   description: string | null; caption: string | null; notes: string | null;
 };
 type Status = { id: string; name: string; color: string };
