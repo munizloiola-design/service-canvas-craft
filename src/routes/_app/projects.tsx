@@ -42,6 +42,7 @@ type Project = {
   budget: number | null; deliverable_path: string | null;
   client_token: string | null; client_decision: string | null; client_feedback: string | null;
   created_at: string;
+  assigned_to?: string | null;
   team_id?: string | null;
 };
 type Client = { id: string; name: string };
@@ -92,6 +93,7 @@ function useColumnAccess() {
 }
 
 function ProjectsPage() {
+  const { user, isManager } = useAuth();
   const { menuAllowed } = useAccess();
   const isColBlocked = useColumnAccess();
   const canManageProjects = menuAllowed("/projects");
@@ -166,8 +168,18 @@ function ProjectsPage() {
     return m;
   }, [allAssignees]);
 
+  // Visibilidade: usuários comuns veem apenas demandas onde estão marcados
+  const visibleProjects = useMemo(() => {
+    if (isManager || !user) return projects;
+    return projects.filter(
+      (p) =>
+        p.assigned_to === user.id ||
+        (assigneesByProject.get(p.id) ?? []).some((a) => a.user_id === user.id),
+    );
+  }, [projects, assigneesByProject, isManager, user]);
+
   const filteredProjects = useMemo(() => {
-    return projects.filter((p) => {
+    return visibleProjects.filter((p) => {
       for (const f of filters) {
         if (!f.value) continue;
         switch (f.key) {
@@ -189,7 +201,8 @@ function ProjectsPage() {
       }
       return true;
     });
-  }, [projects, filters, assigneesByProject]);
+  }, [visibleProjects, filters, assigneesByProject]);
+
 
   const filterOptions: Record<FilterKey, { value: string; label: string }[]> = {
     client: clients.map((c) => ({ value: c.id, label: c.name })),

@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSectionGate } from "@/lib/access-sections";
+import { useAuth } from "@/lib/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/_app/calendario")({ component: Calendario
 
 type Project = {
   id: string; title: string; due_date: string | null; post_date: string | null;
-  status_id: string | null; client_id: string | null;
+  status_id: string | null; client_id: string | null; assigned_to: string | null;
   description: string | null; caption: string | null; notes: string | null;
 };
 type Status = { id: string; name: string; color: string };
@@ -28,6 +29,7 @@ type Client = { id: string; name: string };
 type DateField = "due_date" | "post_date";
 
 function CalendarioPage() {
+  const { user, isManager } = useAuth();
   const calSec = useSectionGate("/calendario");
   const [tab, setTab] = useState<"due" | "post">(calSec.can("due") ? "due" : "post");
   const [view, setView] = useState<"month" | "week">(calSec.can("month") ? "month" : "week");
@@ -37,14 +39,26 @@ function CalendarioPage() {
   const [detail, setDetail] = useState<Project | null>(null);
   const qc = useQueryClient();
 
-  const { data: projects = [] } = useQuery({
+  const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-cal"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, description, caption, notes");
+      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, description, caption, notes");
       if (error) throw error;
       return data as Project[];
     },
   });
+  const { data: assignees = [] } = useQuery({
+    queryKey: ["project_assignees_cal"],
+    queryFn: async () =>
+      ((await supabase.from("project_assignees").select("project_id, user_id")).data ?? []) as { project_id: string; user_id: string }[],
+  });
+  // Visibilidade: usuários comuns veem apenas demandas onde estão marcados
+  const projects = useMemo(() => {
+    if (isManager || !user) return allProjects;
+    const mine = new Set(assignees.filter((a) => a.user_id === user.id).map((a) => a.project_id));
+    return allProjects.filter((p) => p.assigned_to === user.id || mine.has(p.id));
+  }, [allProjects, assignees, isManager, user]);
+
   const { data: statuses = [] } = useQuery({
     queryKey: ["workflow_statuses"],
     queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color")).data as Status[] ?? [],
