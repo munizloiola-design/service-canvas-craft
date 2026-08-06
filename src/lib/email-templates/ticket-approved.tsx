@@ -15,7 +15,7 @@ interface Props {
 const TicketApprovedEmail = ({
   requesterName, ticketTitle, brandName, brandLogoUrl, primaryColor, trackUrl,
 }: Props) => {
-  const brand = brandName || 'Equipe.io'
+  const brand = brandName || 'Dig.Workflow'
   const color = primaryColor || '#3b82f6'
   return (
     <Html lang="pt-BR" dir="ltr">
@@ -54,12 +54,12 @@ const TicketApprovedEmail = ({
 export const template = {
   component: TicketApprovedEmail,
   subject: (d: Record<string, any>) =>
-    `Sua solicitação foi aprovada · ${d?.brandName || 'Equipe.io'}`,
+    `Sua solicitação foi aprovada · ${d?.brandName || 'Dig.Workflow'}`,
   displayName: 'Ticket aprovado',
   previewData: {
     requesterName: 'Maria',
     ticketTitle: 'Vídeo institucional',
-    brandName: 'Equipe.io',
+    brandName: 'Dig.Workflow',
     primaryColor: '#3b82f6',
     trackUrl: 'https://example.com/v/abc',
   },
