@@ -167,8 +167,18 @@ function ProjectsPage() {
     return m;
   }, [allAssignees]);
 
+  // Visibilidade: usuários comuns veem apenas demandas onde estão marcados
+  const visibleProjects = useMemo(() => {
+    if (isManager || !user) return projects;
+    return projects.filter(
+      (p) =>
+        p.assigned_to === user.id ||
+        (assigneesByProject.get(p.id) ?? []).some((a) => a.user_id === user.id),
+    );
+  }, [projects, assigneesByProject, isManager, user]);
+
   const filteredProjects = useMemo(() => {
-    return projects.filter((p) => {
+    return visibleProjects.filter((p) => {
       for (const f of filters) {
         if (!f.value) continue;
         switch (f.key) {
@@ -190,7 +200,8 @@ function ProjectsPage() {
       }
       return true;
     });
-  }, [projects, filters, assigneesByProject]);
+  }, [visibleProjects, filters, assigneesByProject]);
+
 
   const filterOptions: Record<FilterKey, { value: string; label: string }[]> = {
     client: clients.map((c) => ({ value: c.id, label: c.name })),
