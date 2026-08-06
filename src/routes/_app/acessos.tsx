@@ -421,6 +421,7 @@ function FieldVisibilityDialog({ specialtyId, areaId, onClose }: { specialtyId: 
 
   // Itens do menu selecionado: seções (abas) + campos da demanda quando /projects.
   const items = useMemo(() => {
+    if (!menu) return [];
     const secs = sectionsForMenu(menu).map((s) => ({
       key: sectionKey(menu, s.id),
       label: s.label,
