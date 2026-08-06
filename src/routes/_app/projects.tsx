@@ -42,6 +42,7 @@ type Project = {
   budget: number | null; deliverable_path: string | null;
   client_token: string | null; client_decision: string | null; client_feedback: string | null;
   created_at: string;
+  assigned_to?: string | null;
   team_id?: string | null;
 };
 type Client = { id: string; name: string };
