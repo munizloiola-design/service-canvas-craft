@@ -92,6 +92,7 @@ function useColumnAccess() {
 }
 
 function ProjectsPage() {
+  const { user, isManager } = useAuth();
   const { menuAllowed } = useAccess();
   const isColBlocked = useColumnAccess();
   const canManageProjects = menuAllowed("/projects");
