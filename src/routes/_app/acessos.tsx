@@ -328,6 +328,7 @@ function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: ()
     return acc;
   }, {});
   const pending = MENU_REGISTRY.filter((m) => !enabled.has(m.key));
+  const pendingGroups = menuHierarchy(new Set(pending.map((m) => m.key)));
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -341,8 +342,28 @@ function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: ()
                   <SelectValue placeholder={pending.length ? `Liberar menu (${pending.length} disponíveis)` : "Todos os menus liberados"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {pending.map((m) => (
-                    <SelectItem key={m.key} value={m.key}>{m.group ? `${m.group} › ` : ""}{m.label}</SelectItem>
+                  {pendingGroups.map((g) => (
+                    <SelectGroup key={g.group}>
+                      <SelSelectLabel>{g.group}</SelSelectLabel>
+                      {g.items.map((n) =>
+                        n.selectable ? (
+                          <SelectItem key={n.entry.key} value={n.entry.key}>
+                            <span style={{ paddingLeft: n.depth * 12 }}>
+                              {n.depth > 0 ? "└ " : ""}
+                              {n.entry.label}
+                            </span>
+                          </SelectItem>
+                        ) : (
+                          <div
+                            key={n.entry.key}
+                            className="px-2 py-1.5 text-xs text-muted-foreground"
+                            style={{ paddingLeft: 8 + n.depth * 12 }}
+                          >
+                            {n.entry.label}
+                          </div>
+                        ),
+                      )}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>
