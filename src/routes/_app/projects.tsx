@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter, Pencil } from "lucide-react";
+import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter, Pencil, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { useFieldVisibility } from "@/lib/field-visibility";
 import { useAccess } from "@/lib/access-context";
@@ -78,6 +78,22 @@ const ALL_COLUMNS = [
   { key: "due_date", label: "Prazo" },
   { key: "post_date", label: "Postagem" },
 ] as const;
+
+function priorityLevelOf(p: Project, maps: Record<string, Map<string, unknown>>): number {
+  if (!p.priority_id) return -Infinity;
+  const pr = maps.priority?.get(p.priority_id) as { level?: number } | undefined;
+  return pr?.level ?? -Infinity;
+}
+
+function comparePriorityThenDue(a: Project, b: Project, maps: Record<string, Map<string, unknown>>): number {
+  const la = priorityLevelOf(a, maps);
+  const lb = priorityLevelOf(b, maps);
+  if (la !== lb) return lb - la;
+  const da = a.due_date ?? "9999-12-31";
+  const db = b.due_date ?? "9999-12-31";
+  if (da !== db) return da < db ? -1 : 1;
+  return a.title.localeCompare(b.title, "pt-BR");
+}
 
 type FilterKey = "client" | "assignee" | "status" | "priority" | "media" | "decision" | "due_from" | "due_to" | "post_from" | "post_to";
 type ActiveFilter = { key: FilterKey; value: string };
@@ -448,7 +464,9 @@ function KanbanView({ projects, statuses, priorities, maps, assigneesByProject, 
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:[grid-template-columns:repeat(var(--kanban-cols),minmax(0,1fr))] lg:overflow-x-auto"
         style={{ ["--kanban-cols" as never]: Math.min(cols.length, 5) }}>
         {cols.map((col) => {
-          const items = projects.filter((p) => (p.status_id ?? "__none__") === col.id);
+          const items = projects
+            .filter((p) => (p.status_id ?? "__none__") === col.id)
+            .sort((a, b) => comparePriorityThenDue(a, b, maps));
           return (
             <KanbanColumn key={col.id} col={col}
               items={items}
