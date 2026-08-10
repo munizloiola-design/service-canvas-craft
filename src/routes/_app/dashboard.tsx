@@ -346,7 +346,8 @@ function StatsOverview() {
             <Link
               key={s.label}
               to={s.to}
-              search={s.to === "/projects" ? { detail: undefined, quick: s.quick } : undefined}
+              search={{ detail: undefined, quick: s.quick }}
+
               className="group bg-muted/40 rounded-md p-3 text-left transition-all hover:bg-muted hover:shadow-sm hover:-translate-y-0.5 relative"
             >
               {inner}
