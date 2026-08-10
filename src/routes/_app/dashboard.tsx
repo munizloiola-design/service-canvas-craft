@@ -619,13 +619,14 @@ function TeamLoad() {
     queryFn: async () => (await supabase.from("internal_profiles").select("id, full_name")).data ?? [],
   });
 
+  const scopeUserId = useScopeUserId();
   const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));
   const openProjectIds = new Set(projects.filter((p) => !p.status_id || !finalIds.has(p.status_id)).map((p) => p.id));
   const counts = new Map<string, number>();
   for (const a of assignees) {
     if (openProjectIds.has(a.project_id)) counts.set(a.user_id, (counts.get(a.user_id) ?? 0) + 1);
   }
-  const list = members.map((m) => ({ name: m.full_name, count: counts.get(m.id ?? "") ?? 0 }))
+  const list = members.map((m) => ({ id: m.id, name: m.full_name, count: counts.get(m.id ?? "") ?? 0 }))
     .filter((m) => m.count > 0).sort((a, b) => b.count - a.count).slice(0, 6);
 
   return (
@@ -633,16 +634,20 @@ function TeamLoad() {
       <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Carga por profissional</h3>
       {list.length === 0 ? <p className="text-xs text-muted-foreground">Nenhum responsável atribuído.</p> : (
         <div className="space-y-2">
-          {list.map((m) => (
-            <div key={m.name} className="flex items-center gap-2 text-sm">
-              <span className="flex-1 truncate">{m.name}</span>
-              <div className="bg-primary/15 h-2 rounded-full" style={{ width: `${m.count * 14}px`, maxWidth: "60%" }} />
-              <span className="text-xs text-muted-foreground w-6 text-right">{m.count}</span>
-            </div>
-          ))}
+          {list.map((m) => {
+            const active = !!scopeUserId && m.id === scopeUserId;
+            return (
+              <div key={m.name} className={`flex items-center gap-2 text-sm rounded px-1 ${active ? "bg-primary/10 font-medium" : ""}`}>
+                <span className="flex-1 truncate">{m.name}</span>
+                <div className={`h-2 rounded-full ${active ? "bg-primary" : "bg-primary/15"}`} style={{ width: `${m.count * 14}px`, maxWidth: "60%" }} />
+                <span className="text-xs text-muted-foreground w-6 text-right">{m.count}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
+
   );
 }
 
