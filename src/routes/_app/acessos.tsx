@@ -40,6 +40,14 @@ const ROLE_LABELS: Record<AppRole, string> = {
 };
 const ASSIGNABLE_ROLES: AppRole[] = ["admin", "gerente", "membro"];
 const ROLE_RANK: Record<AppRole, number> = { admin: 3, gerente: 2, membro: 1, cliente: 0 };
+const ROLE_HINTS: Record<AppRole, string> = {
+  admin: "Acesso total — ignora as permissões por função.",
+  gerente: "Vê todas as demandas e relatórios da agência.",
+  membro: "Vê apenas o que a função dele libera.",
+  cliente: "Acesso restrito ao portal do cliente.",
+};
+
+
 
 function AcessosPage() {
   const { isMaster, roles } = useAuth();
