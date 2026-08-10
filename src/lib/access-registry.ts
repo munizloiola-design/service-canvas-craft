@@ -169,6 +169,12 @@ export function sectionKey(menu: string, section: string) {
   return `menu:${menu}#${section}`;
 }
 
+/** Chave de permissão de uma fase (etapa) do Kanban de Demandas. */
+export function stageKey(statusId: string) {
+  return sectionKey("/projects", `stage:${statusId}`);
+}
+
+
 /** Seções de um menu; menus sem abas ganham um item único de acesso à página. */
 export function sectionsForMenu(menu: string): SectionEntry[] {
   return SECTION_REGISTRY[menu] ?? [{ id: "page", label: "Acesso à página" }];
