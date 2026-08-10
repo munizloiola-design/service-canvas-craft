@@ -201,10 +201,7 @@ function ProjectsPage() {
   // Fases liberadas para a especialidade (Perfis e Acessos → Demandas → Fase)
   const allowedStatuses = useMemo(() => statuses.filter((s) => canSeeStage(s.id)), [statuses, canSeeStage]);
   const allowedStatusIds = useMemo(() => new Set(allowedStatuses.map((s) => s.id)), [allowedStatuses]);
-  const kanbanProjects = useMemo(
-    () => filteredProjectsForKanban.filter((p) => !p.status_id || allowedStatusIds.has(p.status_id)),
-    [filteredProjectsForKanban, allowedStatusIds],
-  );
+
 
   const finalStatusIds = useMemo(() => new Set(statuses.filter((s) => s.is_final).map((s) => s.id)), [statuses]);
 
