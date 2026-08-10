@@ -548,6 +548,7 @@ function KanbanCard({ project: p, statuses, priorities: _priorities, maps, assig
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     opacity: isDragging ? 0.5 : 1,
     touchAction: "none",
+    ...(pr?.color ? { background: `${pr.color}80`, borderLeft: `3px solid ${pr.color}` } : {}),
   };
   return (
     <Card ref={setNodeRef} style={style} {...attributes} {...listeners}
