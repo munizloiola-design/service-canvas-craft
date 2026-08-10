@@ -53,12 +53,14 @@ function AcessosPage() {
         <p className="text-sm text-muted-foreground">Configure as Áreas de atuação, Especialidades e o que cada uma enxerga no sistema.</p>
       </div>
 
-      <Tabs defaultValue={search.tab === "assign" ? "assign" : "hierarchy"} className="space-y-4">
+      <Tabs defaultValue={search.tab === "assign" ? "assign" : search.tab === "hierarchy" ? "hierarchy" : "perms"} className="space-y-4">
         <TabsList>
+          <TabsTrigger value="perms">Permissões</TabsTrigger>
           <TabsTrigger value="hierarchy">Áreas & Especialidades</TabsTrigger>
           <TabsTrigger value="assign">Atribuição de usuários</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="perms"><PermissionsTab /></TabsContent>
         <TabsContent value="hierarchy"><HierarchyTab /></TabsContent>
         <TabsContent value="assign"><AssignTab focusUserId={search.user} /></TabsContent>
       </Tabs>
