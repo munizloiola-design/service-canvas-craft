@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel as SelSelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PermissionTree } from "@/components/PermissionTree";
-import { Plus, Settings, Trash2, Pencil, X } from "lucide-react";
+import { Plus, Trash2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { describeSupabaseError } from "@/lib/supabase-error";
 
