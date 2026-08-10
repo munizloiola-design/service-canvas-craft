@@ -119,10 +119,16 @@ function ProjectsPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [visibleCols, setVisibleCols] = useState<string[]>(ALL_COLUMNS.map((c) => c.key));
   const [filters, setFilters] = useState<ActiveFilter[]>([]);
+  const [quick, setQuick] = useState<QuickFilter | undefined>(search.quick);
 
   useEffect(() => {
     if (search.detail) setDetailId(search.detail);
   }, [search.detail]);
+
+  useEffect(() => {
+    setQuick(search.quick);
+  }, [search.quick]);
+
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
