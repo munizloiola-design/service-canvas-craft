@@ -220,6 +220,8 @@ function WidgetRenderer({ widgetKey }: { widgetKey: WidgetKey }) {
     case "projects_by_status": return <ProjectsByStatus />;
     case "status_timer": return <StatusTimer />;
     case "upcoming_deadlines": return <UpcomingDeadlines />;
+    case "overdue_projects": return <OverdueProjects />;
+
     case "recurring_revenue": return <RecurringRevenue />;
     case "team_load": return <TeamLoad />;
     case "equipment_depreciated": return <EquipmentDepreciated />;
