@@ -3,7 +3,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { MENU_REGISTRY, deriveFieldRegistry, menuHierarchy, sectionKey, sectionsForMenu } from "@/lib/access-registry";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel as SelSelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PermissionTree } from "@/components/PermissionTree";
 import { Plus, Settings, Trash2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { describeSupabaseError } from "@/lib/supabase-error";
@@ -135,8 +135,6 @@ function PermissionsTab() {
 function HierarchyTab() {
   const qc = useQueryClient();
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
-  const [menuAreaId, setMenuAreaId] = useState<string | null>(null);
-  const [fieldSpecId, setFieldSpecId] = useState<string | null>(null);
   const [renameTarget, setRenameTarget] = useState<{ type: "area" | "spec"; id: string; name: string } | null>(null);
   const [newAreaOpen, setNewAreaOpen] = useState(false);
   const [newSpecOpen, setNewSpecOpen] = useState(false);
@@ -260,7 +258,6 @@ function HierarchyTab() {
               return (
                 <div key={a.id} className={`flex items-center gap-2 rounded-md border px-3 py-2 ${active ? "bg-accent" : ""}`}>
                   <button className="flex-1 text-left text-sm font-medium" onClick={() => setSelectedArea(a.id)}>{a.name}</button>
-                  <Button variant="ghost" size="icon" title="Menus" onClick={() => setMenuAreaId(a.id)}><Settings className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon" title="Renomear" onClick={() => setRenameTarget({ type: "area", id: a.id, name: a.name })}><Pencil className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon" title="Excluir" onClick={() => { if (confirm(`Excluir área "${a.name}"?`)) deleteArea.mutate(a.id); }}><Trash2 className="h-4 w-4" /></Button>
                 </div>
@@ -306,7 +303,6 @@ function HierarchyTab() {
                 {areaSpecs.map((s) => (
                   <div key={s.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
                     <span className="flex-1 text-sm">{s.name}</span>
-                    <Button variant="ghost" size="icon" title="Campos" onClick={() => setFieldSpecId(s.id)}><Settings className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" title="Renomear" onClick={() => setRenameTarget({ type: "spec", id: s.id, name: s.name })}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" title="Excluir" onClick={() => { if (confirm(`Excluir especialidade "${s.name}"?`)) deleteSpec.mutate(s.id); }}><Trash2 className="h-4 w-4" /></Button>
                   </div>
@@ -320,10 +316,6 @@ function HierarchyTab() {
         </CardContent>
       </Card>
 
-      {menuAreaId && <MenuVisibilityDialog areaId={menuAreaId} onClose={() => setMenuAreaId(null)} />}
-      {fieldSpecId && activeArea && (
-        <FieldVisibilityDialog specialtyId={fieldSpecId} areaId={activeArea} onClose={() => setFieldSpecId(null)} />
-      )}
       {renameTarget && (
         <Dialog open onOpenChange={() => setRenameTarget(null)}>
           <DialogContent>
