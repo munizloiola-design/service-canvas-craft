@@ -244,11 +244,17 @@ function ProjectsPage() {
   }, [visibleProjects, filters, assigneesByProject, quick, finalStatusIds, topPriorityId]);
 
 
+  // No Kanban só entram demandas em fases liberadas
+  const kanbanProjects = useMemo(
+    () => filteredProjects.filter((p) => !p.status_id || allowedStatusIds.has(p.status_id)),
+    [filteredProjects, allowedStatusIds],
+  );
 
   const filterOptions: Record<FilterKey, { value: string; label: string }[]> = {
     client: clients.map((c) => ({ value: c.id, label: c.name })),
     assignee: members.map((m) => ({ value: m.id, label: m.full_name })),
-    status: statuses.map((s) => ({ value: s.id, label: s.name })),
+    status: allowedStatuses.map((s) => ({ value: s.id, label: s.name })),
+
     priority: priorities.map((p) => ({ value: p.id, label: p.name })),
     media: mediaTypes.map((m) => ({ value: m.id, label: m.name })),
     decision: [
