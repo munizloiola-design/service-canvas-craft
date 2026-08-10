@@ -24,13 +24,14 @@ import { ProjectChat } from "@/components/ProjectChat";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { detail?: string; quick?: QuickFilter } => ({
     detail: typeof s.detail === "string" ? s.detail : undefined,
     quick:
       s.quick === "abertas" || s.quick === "concluidas" || s.quick === "urgentes" || s.quick === "atrasadas"
         ? (s.quick as QuickFilter)
         : undefined,
   }),
+
 });
 
 type QuickFilter = "abertas" | "concluidas" | "urgentes" | "atrasadas";
