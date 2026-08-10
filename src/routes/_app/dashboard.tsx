@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, createContext, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAccess } from "@/lib/access-context";
@@ -16,6 +16,8 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, 
 import { format, subMonths, startOfMonth, endOfMonth, differenceInYears, differenceInSeconds } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -24,6 +26,11 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_app/dashboard")({ component: DashboardPage });
 
 const fmt = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+
+// Escopo do dashboard: null = toda a equipe (só gestores); caso contrário, id da pessoa.
+const DashboardScopeContext = createContext<string | null>(null);
+const useScopeUserId = () => useContext(DashboardScopeContext);
+
 
 // Widget catalog — `menu` é a chave de menu (Perfis e Acessos) exigida para ver o widget.
 const WIDGETS = {
@@ -52,10 +59,21 @@ const DEFAULT_WIDGETS: WidgetKey[] = ["stats_overview", "cash_flow", "projects_b
 type WidgetRow = { id: string; widget_key: string; position: number; size: string };
 
 function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isManager } = useAuth();
   const { menuAllowed } = useAccess();
   const qc = useQueryClient();
   const [editMode, setEditMode] = useState(false);
+  const [scopeUser, setScopeUser] = useState<string>("all");
+
+  const { data: members = [] } = useQuery({
+    queryKey: ["dash-members"],
+    enabled: !!isManager,
+    queryFn: async () => (await supabase.from("internal_profiles").select("id, full_name").order("full_name")).data ?? [],
+  });
+
+  // Colaborador só enxerga o próprio escopo.
+  const scopeUserId = isManager ? (scopeUser === "all" ? null : scopeUser) : (user?.id ?? null);
+
 
   const canSee = (k: WidgetKey) => {
     const m = WIDGETS[k]?.menu;
@@ -141,7 +159,22 @@ function DashboardPage() {
           <h1 className="text-3xl font-semibold tracking-tight text-gradient">Dashboard</h1>
           <p className="text-muted-foreground mt-1">Visão geral da operação. Personalize os widgets.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {isManager && (
+            <Select value={scopeUser} onValueChange={setScopeUser}>
+              <SelectTrigger className="w-[220px] h-9">
+                <Users className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                <SelectValue placeholder="Toda a equipe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toda a equipe</SelectItem>
+                {members.map((m) => (
+                  <SelectItem key={m.id!} value={m.id!}>{m.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           {editMode && available.length > 0 && (
             <Dialog>
               <DialogTrigger asChild>
@@ -165,16 +198,19 @@ function DashboardPage() {
         </div>
       </header>
 
-      <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {widgets.map((w) => (
-              <SortableWidget key={w.id} widget={w} editMode={editMode}
-                onRemove={() => remove.mutate(w.id)} />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
+      <DashboardScopeContext.Provider value={scopeUserId}>
+        <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {widgets.map((w) => (
+                <SortableWidget key={w.id} widget={w} editMode={editMode}
+                  onRemove={() => remove.mutate(w.id)} />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </DashboardScopeContext.Provider>
+
 
       {widgets.length === 0 && !isLoading && (
         <Card className="p-12 text-center text-muted-foreground">Carregando widgets padrão...</Card>
@@ -233,20 +269,20 @@ function WidgetRenderer({ widgetKey }: { widgetKey: WidgetKey }) {
 
 type QuickFilter = "abertas" | "concluidas" | "urgentes" | "atrasadas";
 
-// Demandas visíveis ao usuário atual (gestores veem tudo).
+// Demandas do escopo atual (null = toda a equipe, só para gestores).
 function useVisibleProjects<T extends { id: string; assigned_to?: string | null }>(rows: T[]) {
-  const { user, isManager } = useAuth();
+  const scopeUserId = useScopeUserId();
   const { data: assignees = [] } = useQuery({
     queryKey: ["project_assignees_dash"],
     queryFn: async () => (await supabase.from("project_assignees").select("project_id, user_id")).data ?? [],
-    enabled: !!user,
   });
   return useMemo(() => {
-    if (isManager || !user) return rows;
-    const mine = new Set(assignees.filter((a) => a.user_id === user.id).map((a) => a.project_id));
-    return rows.filter((p) => p.assigned_to === user.id || mine.has(p.id));
-  }, [rows, assignees, isManager, user]);
+    if (!scopeUserId) return rows;
+    const mine = new Set(assignees.filter((a) => a.user_id === scopeUserId).map((a) => a.project_id));
+    return rows.filter((p) => p.assigned_to === scopeUserId || mine.has(p.id));
+  }, [rows, assignees, scopeUserId]);
 }
+
 
 function StatsOverview() {
   const { menuAllowed } = useAccess();
@@ -263,10 +299,6 @@ function StatsOverview() {
     queryKey: ["priorities"],
     queryFn: async () => (await supabase.from("priorities").select("id, name, level")).data ?? [],
   });
-  const { data: teamCount = 0 } = useQuery({
-    queryKey: ["team-count"],
-    queryFn: async () => (await supabase.from("internal_profiles").select("id", { count: "exact", head: true })).count ?? 0,
-  });
 
   const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));
   const urgentId = [...priorities].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0]?.id;
@@ -279,25 +311,24 @@ function StatsOverview() {
   const overdue = projects.filter((p) => !isDone(p) && p.due_date && p.due_date < today).length;
 
   const canProjects = menuAllowed("/projects");
-  const canTeam = menuAllowed("/team");
 
   const stats: {
     label: string; value: number; icon: typeof Clock; color: string;
-    to?: "/projects" | "/team"; quick?: QuickFilter;
+    to?: "/projects"; quick?: QuickFilter;
   }[] = [
     { label: "Total", value: total, icon: FolderKanban, color: "text-info", to: canProjects ? "/projects" : undefined },
     { label: "Em aberto", value: open, icon: Clock, color: "text-warning", to: canProjects ? "/projects" : undefined, quick: "abertas" },
     { label: "Concluídos", value: done, icon: CheckCircle2, color: "text-success", to: canProjects ? "/projects" : undefined, quick: "concluidas" },
     { label: "Urgentes", value: urgent, icon: AlertTriangle, color: "text-destructive", to: canProjects ? "/projects" : undefined, quick: "urgentes" },
     { label: "Atrasados", value: overdue, icon: AlertTriangle, color: "text-destructive", to: canProjects ? "/projects" : undefined, quick: "atrasadas" },
-    { label: "Equipe", value: teamCount, icon: Users, color: "text-primary", to: canTeam ? "/team" : undefined },
   ];
 
   return (
     <div>
       <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">Indicadores gerais</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {stats.map((s) => {
+
           const Icon = s.icon;
           const inner = (
             <>
@@ -315,7 +346,8 @@ function StatsOverview() {
             <Link
               key={s.label}
               to={s.to}
-              search={s.to === "/projects" ? { detail: undefined, quick: s.quick } : undefined}
+              search={{ detail: undefined, quick: s.quick }}
+
               className="group bg-muted/40 rounded-md p-3 text-left transition-all hover:bg-muted hover:shadow-sm hover:-translate-y-0.5 relative"
             >
               {inner}
@@ -426,10 +458,12 @@ function CashFlow() {
 }
 
 function ProjectsByStatus() {
-  const { data: projects = [] } = useQuery({
-    queryKey: ["projects"],
-    queryFn: async () => (await supabase.from("projects").select("status_id")).data ?? [],
+  const { data: allProjects = [] } = useQuery({
+    queryKey: ["projects-by-status"],
+    queryFn: async () => (await supabase.from("projects").select("id, status_id, assigned_to")).data ?? [],
   });
+  const projects = useVisibleProjects(allProjects);
+
   const { data: statuses = [] } = useQuery({
     queryKey: ["workflow_statuses"],
     queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color, sort_order").order("sort_order")).data ?? [],
@@ -511,13 +545,15 @@ function StatusTimer() {
 }
 
 function UpcomingDeadlines() {
-  const { data: projects = [] } = useQuery({
+  const { data: allProjects = [] } = useQuery({
     queryKey: ["upcoming"],
     queryFn: async () => (await supabase.from("projects")
-      .select("id, title, due_date, client_id, status_id")
+      .select("id, title, due_date, client_id, status_id, assigned_to")
       .gte("due_date", format(new Date(), "yyyy-MM-dd"))
-      .order("due_date").limit(8)).data ?? [],
+      .order("due_date").limit(60)).data ?? [],
   });
+  const projects = useVisibleProjects(allProjects).slice(0, 8);
+
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
     queryFn: async () => (await supabase.from("clients").select("id, name")).data ?? [],
@@ -583,13 +619,14 @@ function TeamLoad() {
     queryFn: async () => (await supabase.from("internal_profiles").select("id, full_name")).data ?? [],
   });
 
+  const scopeUserId = useScopeUserId();
   const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));
   const openProjectIds = new Set(projects.filter((p) => !p.status_id || !finalIds.has(p.status_id)).map((p) => p.id));
   const counts = new Map<string, number>();
   for (const a of assignees) {
     if (openProjectIds.has(a.project_id)) counts.set(a.user_id, (counts.get(a.user_id) ?? 0) + 1);
   }
-  const list = members.map((m) => ({ name: m.full_name, count: counts.get(m.id ?? "") ?? 0 }))
+  const list = members.map((m) => ({ id: m.id, name: m.full_name, count: counts.get(m.id ?? "") ?? 0 }))
     .filter((m) => m.count > 0).sort((a, b) => b.count - a.count).slice(0, 6);
 
   return (
@@ -597,16 +634,20 @@ function TeamLoad() {
       <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Carga por profissional</h3>
       {list.length === 0 ? <p className="text-xs text-muted-foreground">Nenhum responsável atribuído.</p> : (
         <div className="space-y-2">
-          {list.map((m) => (
-            <div key={m.name} className="flex items-center gap-2 text-sm">
-              <span className="flex-1 truncate">{m.name}</span>
-              <div className="bg-primary/15 h-2 rounded-full" style={{ width: `${m.count * 14}px`, maxWidth: "60%" }} />
-              <span className="text-xs text-muted-foreground w-6 text-right">{m.count}</span>
-            </div>
-          ))}
+          {list.map((m) => {
+            const active = !!scopeUserId && m.id === scopeUserId;
+            return (
+              <div key={m.name} className={`flex items-center gap-2 text-sm rounded px-1 ${active ? "bg-primary/10 font-medium" : ""}`}>
+                <span className="flex-1 truncate">{m.name}</span>
+                <div className={`h-2 rounded-full ${active ? "bg-primary" : "bg-primary/15"}`} style={{ width: `${m.count * 14}px`, maxWidth: "60%" }} />
+                <span className="text-xs text-muted-foreground w-6 text-right">{m.count}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
+
   );
 }
 
@@ -636,10 +677,12 @@ function EquipmentDepreciated() {
 }
 
 function RecentProjects() {
-  const { data: projects = [] } = useQuery({
+  const { data: allProjects = [] } = useQuery({
     queryKey: ["recent-projects"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, client_id, due_date, status_id").order("created_at", { ascending: false }).limit(5)).data ?? [],
+    queryFn: async () => (await supabase.from("projects").select("id, title, client_id, due_date, status_id, assigned_to").order("created_at", { ascending: false }).limit(60)).data ?? [],
   });
+  const projects = useVisibleProjects(allProjects).slice(0, 5);
+
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
     queryFn: async () => (await supabase.from("clients").select("id, name")).data ?? [],
