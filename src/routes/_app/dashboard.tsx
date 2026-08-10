@@ -198,16 +198,19 @@ function DashboardPage() {
         </div>
       </header>
 
-      <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {widgets.map((w) => (
-              <SortableWidget key={w.id} widget={w} editMode={editMode}
-                onRemove={() => remove.mutate(w.id)} />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
+      <DashboardScopeContext.Provider value={scopeUserId}>
+        <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {widgets.map((w) => (
+                <SortableWidget key={w.id} widget={w} editMode={editMode}
+                  onRemove={() => remove.mutate(w.id)} />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </DashboardScopeContext.Provider>
+
 
       {widgets.length === 0 && !isLoading && (
         <Card className="p-12 text-center text-muted-foreground">Carregando widgets padrão...</Card>
