@@ -90,14 +90,9 @@ function CalendarioPage() {
       if (!m.has(key)) m.set(key, []);
       m.get(key)!.push(p);
     }
-    const level = (p: Project) => (p.priority_id ? priorityMap.get(p.priority_id)?.level ?? -Infinity : -Infinity);
+    const level = (p: Project) => (p.priority_id ? priorityMap.get(p.priority_id)?.level ?? -1e9 : -1e9);
     for (const list of m.values()) {
-      list.sort((a, b) => {
-        const diff = level(b) - level(a);
-        if (diff !== 0 && Number.isFinite(diff)) return diff;
-        if (level(a) !== level(b)) return level(b) === Infinity || level(a) === -Infinity ? 1 : -1;
-        return a.title.localeCompare(b.title, "pt-BR");
-      });
+      list.sort((a, b) => level(b) - level(a) || a.title.localeCompare(b.title, "pt-BR"));
     }
     return m;
   }, [projects, dateField, priorityMap]);
@@ -161,6 +156,7 @@ function CalendarioPage() {
 
   const renderCard = (p: Project) => {
     const st = p.status_id ? statusMap.get(p.status_id) : null;
+    const pr = p.priority_id ? priorityMap.get(p.priority_id) : null;
     return (
       <div
         key={p.id}
@@ -170,11 +166,12 @@ function CalendarioPage() {
           e.dataTransfer.effectAllowed = "move";
         }}
         onClick={() => setDetail(p)}
-        className="w-full text-left text-[11px] px-1.5 py-1 rounded truncate cursor-grab active:cursor-grabbing hover:opacity-80"
+        className="w-full text-left text-[11px] px-1.5 py-1 rounded truncate cursor-grab active:cursor-grabbing hover:opacity-80 flex items-center gap-1"
         style={st ? { background: `${st.color}25`, color: st.color } : { background: "var(--muted)" }}
-        title={`${p.title}${p.client_id ? ` — ${clientMap.get(p.client_id) ?? ""}` : ""}`}
+        title={`${p.title}${p.client_id ? ` — ${clientMap.get(p.client_id) ?? ""}` : ""}${pr ? ` — ${pr.name}` : ""}`}
       >
-        {p.title}
+        {pr && <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: pr.color }} />}
+        <span className="truncate">{p.title}</span>
       </div>
     );
   };
