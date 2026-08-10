@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   FolderKanban, Clock, CheckCircle2, AlertTriangle, Users, DollarSign, TrendingUp, Calendar,
-  Plus, X, Pencil, GripVertical, Wrench, Repeat,
+  Plus, X, Pencil, GripVertical, Wrench, Repeat, ArrowUpRight,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, Cell } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth, differenceInYears, differenceInSeconds } from "date-fns";
