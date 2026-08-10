@@ -169,6 +169,12 @@ export function sectionKey(menu: string, section: string) {
   return `menu:${menu}#${section}`;
 }
 
+/** Chave de permissão de uma fase (etapa) do Kanban de Demandas. */
+export function stageKey(statusId: string) {
+  return sectionKey("/projects", `stage:${statusId}`);
+}
+
+
 /** Seções de um menu; menus sem abas ganham um item único de acesso à página. */
 export function sectionsForMenu(menu: string): SectionEntry[] {
   return SECTION_REGISTRY[menu] ?? [{ id: "page", label: "Acesso à página" }];
@@ -258,7 +264,7 @@ export function deriveFieldRegistry(columns: string[] | null | undefined): Field
 // Árvore única de permissões (menu → seções → campos)
 // ---------------------------------------------------------------------------
 
-export type PermItem = { key: string; label: string; kind: "Seção" | "Campo" };
+export type PermItem = { key: string; label: string; kind: "Seção" | "Campo" | "Fase" };
 export type PermMenu = {
   entry: MenuEntry;
   depth: number;
@@ -273,11 +279,12 @@ const FIELD_MENU = "/projects";
 /**
  * Monta a árvore completa usada na tela de Perfis e Acessos: todos os menus
  * (com indicação de liberado ou não para a Área) e, dentro de cada um, as
- * abas/seções e — em Demandas — os campos da demanda.
+ * abas/seções e — em Demandas — as fases do Kanban e os campos da demanda.
  */
 export function permissionTree(
   areaAllowed: Set<string>,
   projectColumns?: string[] | null,
+  stages?: { id: string; name: string }[] | null,
 ): PermGroup[] {
   const keys = MENU_REGISTRY.map((m) => m.key);
   const depthOf = (key: string) => keys.filter((k) => k !== key && key.startsWith(k + "/")).length;
@@ -290,6 +297,9 @@ export function permissionTree(
       kind: "Seção",
     }));
     if (entry.key === FIELD_MENU) {
+      for (const s of stages ?? []) {
+        items.push({ key: stageKey(s.id), label: `Fase: ${s.name}`, kind: "Fase" });
+      }
       for (const f of deriveFieldRegistry(projectColumns)) {
         items.push({ key: f.key, label: f.label, kind: "Campo" });
       }
@@ -301,3 +311,4 @@ export function permissionTree(
   }
   return Array.from(groups.entries()).map(([group, menus]) => ({ group, menus }));
 }
+

@@ -54,7 +54,14 @@ export function PermissionTree({ areaId, specialtyId }: { areaId: string; specia
     staleTime: 5 * 60 * 1000,
   });
 
-  const tree = useMemo(() => permissionTree(allowedSet, projectColumns), [allowedSet, projectColumns]);
+  const { data: stages = [] } = useQuery({
+    queryKey: ["workflow_statuses"],
+    queryFn: async () =>
+      ((await supabase.from("workflow_statuses").select("id, name").order("sort_order")).data ?? []) as { id: string; name: string }[],
+  });
+
+  const tree = useMemo(() => permissionTree(allowedSet, projectColumns, stages), [allowedSet, projectColumns, stages]);
+
 
   const setMenu = useMutation({
     mutationFn: async ({ key, on }: { key: string; on: boolean }) => {

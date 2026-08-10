@@ -13,3 +13,11 @@ export function useSectionGate(menu: string) {
     sections.find((s) => can(s)) ?? fallback ?? sections[0];
   return { can, canEdit, first };
 }
+
+/** Gate das fases (etapas) do Kanban de Demandas. */
+export function useStageGate() {
+  const { canViewSection } = useAccess();
+  return (statusId: string | null | undefined) =>
+    !statusId || canViewSection("/projects", `stage:${statusId}`);
+}
+
