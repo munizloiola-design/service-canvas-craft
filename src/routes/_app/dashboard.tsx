@@ -269,20 +269,20 @@ function WidgetRenderer({ widgetKey }: { widgetKey: WidgetKey }) {
 
 type QuickFilter = "abertas" | "concluidas" | "urgentes" | "atrasadas";
 
-// Demandas visíveis ao usuário atual (gestores veem tudo).
+// Demandas do escopo atual (null = toda a equipe, só para gestores).
 function useVisibleProjects<T extends { id: string; assigned_to?: string | null }>(rows: T[]) {
-  const { user, isManager } = useAuth();
+  const scopeUserId = useScopeUserId();
   const { data: assignees = [] } = useQuery({
     queryKey: ["project_assignees_dash"],
     queryFn: async () => (await supabase.from("project_assignees").select("project_id, user_id")).data ?? [],
-    enabled: !!user,
   });
   return useMemo(() => {
-    if (isManager || !user) return rows;
-    const mine = new Set(assignees.filter((a) => a.user_id === user.id).map((a) => a.project_id));
-    return rows.filter((p) => p.assigned_to === user.id || mine.has(p.id));
-  }, [rows, assignees, isManager, user]);
+    if (!scopeUserId) return rows;
+    const mine = new Set(assignees.filter((a) => a.user_id === scopeUserId).map((a) => a.project_id));
+    return rows.filter((p) => p.assigned_to === scopeUserId || mine.has(p.id));
+  }, [rows, assignees, scopeUserId]);
 }
+
 
 function StatsOverview() {
   const { menuAllowed } = useAccess();
