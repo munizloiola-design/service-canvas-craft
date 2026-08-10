@@ -57,10 +57,21 @@ const DEFAULT_WIDGETS: WidgetKey[] = ["stats_overview", "cash_flow", "projects_b
 type WidgetRow = { id: string; widget_key: string; position: number; size: string };
 
 function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isManager } = useAuth();
   const { menuAllowed } = useAccess();
   const qc = useQueryClient();
   const [editMode, setEditMode] = useState(false);
+  const [scopeUser, setScopeUser] = useState<string>("all");
+
+  const { data: members = [] } = useQuery({
+    queryKey: ["dash-members"],
+    enabled: !!isManager,
+    queryFn: async () => (await supabase.from("internal_profiles").select("id, full_name").order("full_name")).data ?? [],
+  });
+
+  // Colaborador só enxerga o próprio escopo.
+  const scopeUserId = isManager ? (scopeUser === "all" ? null : scopeUser) : (user?.id ?? null);
+
 
   const canSee = (k: WidgetKey) => {
     const m = WIDGETS[k]?.menu;
