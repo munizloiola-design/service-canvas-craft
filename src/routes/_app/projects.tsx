@@ -26,8 +26,21 @@ export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
   validateSearch: (s: Record<string, unknown>) => ({
     detail: typeof s.detail === "string" ? s.detail : undefined,
+    quick:
+      s.quick === "abertas" || s.quick === "concluidas" || s.quick === "urgentes" || s.quick === "atrasadas"
+        ? (s.quick as QuickFilter)
+        : undefined,
   }),
 });
+
+type QuickFilter = "abertas" | "concluidas" | "urgentes" | "atrasadas";
+const QUICK_LABELS: Record<QuickFilter, string> = {
+  abertas: "Em aberto",
+  concluidas: "Concluídas",
+  urgentes: "Urgentes",
+  atrasadas: "Atrasadas",
+};
+
 
 type DescriptionCard = { title: string; content: string };
 type Project = {
