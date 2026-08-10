@@ -615,19 +615,77 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
   });
   const isColBlocked = useColumnAccess();
   const allowedCols = visibleCols.filter((k) => !isColBlocked(k));
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
+
+  const toggleSort = (key: string) => {
+    setSort((cur) => {
+      if (!cur || cur.key !== key) return { key, dir: "asc" };
+      if (cur.dir === "asc") return { key, dir: "desc" };
+      return null;
+    });
+  };
+
+  const sortedProjects = useMemo(() => {
+    const list = [...projects];
+    if (!sort) return list.sort((a, b) => comparePriorityThenDue(a, b, maps));
+    const txt = (v: unknown) => (typeof v === "string" ? v : "");
+    const valueOf = (p: Project): string | number => {
+      switch (sort.key) {
+        case "title": return p.title ?? "";
+        case "client": return p.client_id ? txt(maps.client.get(p.client_id)) : "";
+        case "media": return p.media_type_id ? txt(maps.media.get(p.media_type_id)) : "";
+        case "status": {
+          const st = p.status_id ? (maps.status.get(p.status_id) as { sort_order?: number } | undefined) : undefined;
+          return st?.sort_order ?? Number.POSITIVE_INFINITY;
+        }
+        case "priority": {
+          const lv = priorityLevelOf(p, maps);
+          return lv === -Infinity ? Number.NEGATIVE_INFINITY : lv;
+        }
+        case "assignees":
+          return (assigneesByProject.get(p.id) ?? []).map((a) => txt(maps.member.get(a.user_id))).sort().join(", ");
+        case "due_date": return p.due_date ?? "";
+        case "post_date": return p.post_date ?? "";
+        default: return "";
+      }
+    };
+    const emptyLast = (v: string | number) =>
+      v === "" || v === Number.POSITIVE_INFINITY || v === Number.NEGATIVE_INFINITY;
+    const mul = sort.dir === "asc" ? 1 : -1;
+    return list.sort((a, b) => {
+      const va = valueOf(a); const vb = valueOf(b);
+      const ea = emptyLast(va); const eb = emptyLast(vb);
+      if (ea !== eb) return ea ? 1 : -1;
+      if (ea && eb) return a.title.localeCompare(b.title, "pt-BR");
+      if (typeof va === "number" && typeof vb === "number") return (va - vb) * mul;
+      return String(va).localeCompare(String(vb), "pt-BR") * mul;
+    });
+  }, [projects, sort, maps, assigneesByProject]);
+
   return (
     <Card className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-muted/40 border-b">
           <tr>
-            {ALL_COLUMNS.filter((c) => allowedCols.includes(c.key)).map((c) => (
-              <th key={c.key} className="text-left px-3 py-2 font-medium text-xs uppercase text-muted-foreground">{c.label}</th>
-            ))}
+            {ALL_COLUMNS.filter((c) => allowedCols.includes(c.key)).map((c) => {
+              const active = sort?.key === c.key;
+              const Icon = active ? (sort!.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+              return (
+                <th key={c.key} className="text-left px-3 py-2 font-medium text-xs uppercase text-muted-foreground">
+                  <button type="button" onClick={() => toggleSort(c.key)}
+                    className={`inline-flex items-center gap-1 hover:text-foreground transition-colors ${active ? "text-foreground" : ""}`}
+                    title="Ordenar por esta coluna">
+                    {c.label}
+                    <Icon className={`h-3 w-3 ${active ? "opacity-100" : "opacity-40"}`} />
+                  </button>
+                </th>
+              );
+            })}
             <th className="w-32"></th>
           </tr>
         </thead>
         <tbody>
-          {projects.map((p) => {
+          {sortedProjects.map((p) => {
             const ass = assigneesByProject.get(p.id) ?? [];
             const pr = p.priority_id ? (maps.priority.get(p.priority_id) as Priority | undefined) : null;
             const st = p.status_id ? (maps.status.get(p.status_id) as Status | undefined) : null;
