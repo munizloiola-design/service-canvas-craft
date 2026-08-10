@@ -672,10 +672,12 @@ function EquipmentDepreciated() {
 }
 
 function RecentProjects() {
-  const { data: projects = [] } = useQuery({
+  const { data: allProjects = [] } = useQuery({
     queryKey: ["recent-projects"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, client_id, due_date, status_id").order("created_at", { ascending: false }).limit(5)).data ?? [],
+    queryFn: async () => (await supabase.from("projects").select("id, title, client_id, due_date, status_id, assigned_to").order("created_at", { ascending: false }).limit(60)).data ?? [],
   });
+  const projects = useVisibleProjects(allProjects).slice(0, 5);
+
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
     queryFn: async () => (await supabase.from("clients").select("id, name")).data ?? [],
