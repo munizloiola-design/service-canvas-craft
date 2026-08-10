@@ -69,6 +69,69 @@ function AcessosPage() {
 }
 
 
+function PermissionsTab() {
+  const [areaId, setAreaId] = useState<string>("");
+  const [specId, setSpecId] = useState<string>("");
+
+  const { data: areas = [] } = useQuery<Area[]>({
+    queryKey: ["provider_areas"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("provider_areas").select("*").order("sort_order").order("name");
+      if (error) throw error;
+      return (data ?? []) as Area[];
+    },
+  });
+  const { data: specs = [] } = useQuery<Specialty[]>({
+    queryKey: ["provider_specialties"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("provider_specialties").select("*").order("sort_order").order("name");
+      if (error) throw error;
+      return (data ?? []) as Specialty[];
+    },
+  });
+
+  const activeArea = areaId || areas[0]?.id || "";
+  const areaSpecs = specs.filter((s) => s.area_id === activeArea);
+  const activeSpec = areaSpecs.some((s) => s.id === specId) ? specId : (areaSpecs[0]?.id ?? "");
+
+  return (
+    <Card>
+      <CardHeader className="space-y-3">
+        <CardTitle className="text-base">Permissões</CardTitle>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs text-muted-foreground">Área (libera os menus)</Label>
+            <Select value={activeArea} onValueChange={(v) => { setAreaId(v); setSpecId(""); }}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione uma área" /></SelectTrigger>
+              <SelectContent>
+                {areas.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Especialidade (o que vê dentro de cada menu)</Label>
+            <Select value={activeSpec} onValueChange={setSpecId} disabled={areaSpecs.length === 0}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder={areaSpecs.length ? "Selecione uma especialidade" : "Nenhuma especialidade nesta área"} />
+              </SelectTrigger>
+              <SelectContent>
+                {areaSpecs.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {activeArea ? (
+          <PermissionTree key={activeArea + activeSpec} areaId={activeArea} specialtyId={activeSpec || null} />
+        ) : (
+          <p className="text-sm text-muted-foreground">Cadastre uma área em “Áreas & Especialidades”.</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function HierarchyTab() {
   const qc = useQueryClient();
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
