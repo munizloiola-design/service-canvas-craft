@@ -157,7 +157,22 @@ function DashboardPage() {
           <h1 className="text-3xl font-semibold tracking-tight text-gradient">Dashboard</h1>
           <p className="text-muted-foreground mt-1">Visão geral da operação. Personalize os widgets.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {isManager && (
+            <Select value={scopeUser} onValueChange={setScopeUser}>
+              <SelectTrigger className="w-[220px] h-9">
+                <Users className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                <SelectValue placeholder="Toda a equipe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toda a equipe</SelectItem>
+                {members.map((m) => (
+                  <SelectItem key={m.id!} value={m.id!}>{m.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           {editMode && available.length > 0 && (
             <Dialog>
               <DialogTrigger asChild>
