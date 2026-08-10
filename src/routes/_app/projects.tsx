@@ -309,6 +309,23 @@ function ProjectsPage() {
         </div>
       </header>
 
+      {quick && (
+        <div className="mb-4 flex items-center gap-2">
+          <Badge variant="secondary" className="gap-1">
+            {QUICK_LABELS[quick]}
+            <button
+              type="button"
+              className="ml-1 opacity-70 hover:opacity-100"
+              onClick={() => { setQuick(undefined); navigate({ to: "/projects", search: (p) => ({ ...p, quick: undefined }) }); }}
+              aria-label="Remover filtro"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        </div>
+      )}
+
+
       {filters.length > 0 && (
         <Card className="p-3 mb-4 flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground mr-1">Filtros:</span>
