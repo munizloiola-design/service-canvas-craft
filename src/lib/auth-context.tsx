@@ -27,13 +27,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
         // Defer to avoid deadlock
         setTimeout(() => loadRoles(s.user.id), 0);
-      } else {
+      } else if (event === "SIGNED_OUT") {
         setRoles([]);
       }
     });
@@ -45,13 +45,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       else setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    const onFocus = () => {
+      supabase.auth.getSession().then(({ data: { session: s } }) => {
+        if (s?.user) loadRoles(s.user.id);
+      });
+    };
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
-  async function loadRoles(uid: string) {
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+  async function loadRoles(uid: string, isRetry = false): Promise<void> {
+    const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+    if (error) {
+      const expired = /jwt|token|expired|401/i.test(`${error.message} ${error.code ?? ""}`);
+      if (expired && !isRetry) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        if (!refreshError && refreshed.session?.user) {
+          return loadRoles(refreshed.session.user.id, true);
+        }
+        // Sessão irrecuperável: encerra para o usuário logar de novo
+        toast.error("Sua sessão expirou. Entre novamente.");
+        await supabase.auth.signOut();
+        setRoles([]);
+        return;
+      }
+      console.error("[auth:loadRoles]", error);
+      // Não rebaixar o usuário silenciosamente: mantém os papéis anteriores
+      return;
+    }
     setRoles((data ?? []).map((r) => r.role as AppRole));
   }
+
 
   const signIn: AuthState["signIn"] = async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
