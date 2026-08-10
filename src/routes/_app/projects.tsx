@@ -60,7 +60,7 @@ type Project = {
 };
 type Client = { id: string; name: string };
 type MediaType = { id: string; name: string };
-type Status = { id: string; name: string; color: string; sort_order: number };
+type Status = { id: string; name: string; color: string; sort_order: number; is_final?: boolean };
 type Priority = { id: string; name: string; color: string; level: number };
 type Role = { id: string; name: string };
 type Profile = { id: string; full_name: string };
