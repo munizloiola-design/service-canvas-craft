@@ -483,9 +483,24 @@ function AssignTab({ focusUserId }: { focusUserId?: string }) {
     );
   }
 
+  if (rolesQ.isError) {
+    return (
+      <Card>
+        <CardContent className="p-6 space-y-3 text-sm">
+          <p className="text-destructive font-medium">Não foi possível carregar os papéis dos usuários.</p>
+          <p className="text-muted-foreground">
+            Sua sessão pode ter expirado. Recarregue a página ou entre novamente — nenhum papel foi alterado.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => rolesQ.refetch()}>Tentar novamente</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (members.length === 0) {
     return <Card><CardContent className="p-6 text-sm text-muted-foreground">Nenhum membro interno encontrado.</CardContent></Card>;
   }
+
 
   const term = memberSearch.trim().toLowerCase();
   const roleOf = (id: string): AppRole => (allUserRoles.find((r) => r.user_id === id)?.role ?? "membro");
