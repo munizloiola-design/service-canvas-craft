@@ -474,93 +474,154 @@ function AssignTab({ focusUserId }: { focusUserId?: string }) {
     return <Card><CardContent className="p-6 text-sm text-muted-foreground">Nenhum membro interno encontrado.</CardContent></Card>;
   }
 
+  const term = memberSearch.trim().toLowerCase();
+  const roleOf = (id: string): AppRole => (allUserRoles.find((r) => r.user_id === id)?.role ?? "membro");
+  const filtered = members.filter((m) => !term || (m.full_name ?? "").toLowerCase().includes(term));
+  const sections: { role: AppRole; title: string; hint: string }[] = [
+    { role: "admin", title: "Administradores", hint: "Acesso total — não depende de função." },
+    { role: "gerente", title: "Gerentes", hint: "Veem todas as demandas e relatórios da agência." },
+    { role: "membro", title: "Colaboradores", hint: "Veem apenas o que a função libera." },
+  ];
+
+  const MemberCard = ({ m }: { m: MemberProfile }) => {
+    const mine = userSpecs.filter((u) => u.user_id === m.id).map((u) => u.specialty_id);
+    const mineSet = new Set(mine);
+    const memberRoles = allUserRoles.filter((r) => r.user_id === m.id).map((r) => r.role);
+    const primaryRole: AppRole = memberRoles[0] ?? "membro";
+    const targetRank = Math.max(-1, ...memberRoles.map((r) => ROLE_RANK[r] ?? -1));
+    const canManageRole = isMaster || actorRank > targetRank;
+    const allowedRoles = isMaster ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
+    const privileged = primaryRole === "admin" || primaryRole === "gerente";
+    const open = expanded.has(m.id);
+    const showFunctions = !privileged || open;
+
+    return (
+      <div id={`assign-member-${m.id}`} className="border rounded-lg p-3 space-y-2 transition-shadow">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <p className="font-medium">{m.full_name ?? m.id}</p>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground whitespace-nowrap">Nível de acesso</Label>
+            <Select
+              value={primaryRole}
+              onValueChange={(v) => setRole.mutate({ userId: m.id, role: v as AppRole })}
+              disabled={!canManageRole || allowedRoles.length === 0}
+            >
+              <SelectTrigger className="h-8 w-44 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {allowedRoles.map((r) => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground">{ROLE_HINTS[primaryRole]}</p>
+
+        {privileged && !open && (
+          <button
+            type="button"
+            className="text-xs text-muted-foreground underline underline-offset-2"
+            onClick={() => setExpanded((p) => new Set(p).add(m.id))}
+          >
+            Acesso total — não depende de função. Mostrar funções ({mine.length})
+          </button>
+        )}
+
+        {showFunctions && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Label className="text-xs text-muted-foreground">Função:</Label>
+            {mine.length === 0 && !privileged && (
+              <span className="text-xs text-destructive">Sem acesso a nenhum menu — escolha uma função.</span>
+            )}
+            {mine.length === 0 && privileged && (
+              <span className="text-xs text-muted-foreground">Nenhuma função.</span>
+            )}
+            {mine.map((sid) => {
+              const s = specs.find((x) => x.id === sid);
+              if (!s) return null;
+              const a = areaOf(sid);
+              return (
+                <Badge key={sid} variant="secondary" className="gap-1">
+                  {a?.name ? `${a.name} › ` : ""}{s.name}
+                  <button
+                    type="button"
+                    className="ml-1 opacity-70 hover:opacity-100"
+                    onClick={() => unassign.mutate({ userId: m.id, specId: sid })}
+                    title="Remover função"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              );
+            })}
+            <Popover open={pickerFor === m.id} onOpenChange={(o) => setPickerFor(o ? m.id : null)}>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                  <Plus className="h-3 w-3" /> adicionar função
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-72" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar função…" />
+                  <CommandList>
+                    <CommandEmpty>Nenhuma função disponível.</CommandEmpty>
+                    {specsByArea.map(({ area, specs: aSpecs }) => {
+                      const available = aSpecs.filter((s) => !mineSet.has(s.id));
+                      if (available.length === 0) return null;
+                      return (
+                        <CommandGroup key={area.id} heading={area.name}>
+                          {available.map((s) => (
+                            <CommandItem
+                              key={s.id}
+                              value={`${area.name} ${s.name}`}
+                              onSelect={() => { assign.mutate({ userId: m.id, specId: s.id }); setPickerFor(null); }}
+                            >
+                              {s.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      );
+                    })}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">Atribuir cargos aos usuários</CardTitle></CardHeader>
-      <CardContent className="space-y-4">
-        {members.map((m) => {
-          const mine = userSpecs.filter((u) => u.user_id === m.id).map((u) => u.specialty_id);
-          const mineSet = new Set(mine);
-          const memberRoles = allUserRoles.filter((r) => r.user_id === m.id).map((r) => r.role);
-          const primaryRole: AppRole = memberRoles[0] ?? "membro";
-          const targetRank = Math.max(-1, ...memberRoles.map((r) => ROLE_RANK[r] ?? -1));
-          const canManageRole = isMaster || actorRank > targetRank;
-          const allowedRoles = isMaster ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
+      <CardHeader className="space-y-3">
+        <CardTitle className="text-base">Usuários</CardTitle>
+        <Input
+          placeholder="Buscar pessoa…"
+          value={memberSearch}
+          onChange={(e) => setMemberSearch(e.target.value)}
+          className="h-9 max-w-sm text-sm"
+        />
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {sections.map((sec) => {
+          const list = filtered.filter((m) => roleOf(m.id) === sec.role);
+          if (list.length === 0) return null;
           return (
-            <div key={m.id} id={`assign-member-${m.id}`} className="border rounded-md p-3 space-y-3 transition-shadow">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-medium">{m.full_name ?? m.id}</p>
-                  <Badge variant="outline" className="text-[10px] uppercase">{ROLE_LABELS[primaryRole]}</Badge>
-                </div>
-                <div className="flex gap-1 flex-wrap">
-                  {mine.length === 0 && <span className="text-xs text-muted-foreground">Sem cargos atribuídos</span>}
-                  {mine.map((sid) => {
-                    const s = specs.find((x) => x.id === sid);
-                    if (!s) return null;
-                    const a = areaOf(sid);
-                    return (
-                      <Badge key={sid} variant="secondary" className="gap-1">
-                        {a?.name ? `${a.name} · ` : ""}{s.name}
-                        <button
-                          type="button"
-                          className="ml-1 opacity-70 hover:opacity-100"
-                          onClick={() => unassign.mutate({ userId: m.id, specId: sid })}
-                          title="Remover cargo"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    );
-                  })}
-                </div>
+            <div key={sec.role} className="space-y-2">
+              <div>
+                <p className="text-xs font-semibold uppercase text-muted-foreground">{sec.title}</p>
+                <p className="text-[11px] text-muted-foreground">{sec.hint}</p>
               </div>
-              <div className="grid md:grid-cols-2 gap-3">
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Papel principal:</Label>
-                  <Select
-                    value={primaryRole}
-                    onValueChange={(v) => setRole.mutate({ userId: m.id, role: v as AppRole })}
-                    disabled={!canManageRole || allowedRoles.length === 0}
-                  >
-                    <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {allowedRoles.map((r) => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Adicionar cargo:</Label>
-                  <Select
-                    value=""
-                    onValueChange={(val) => { if (val) assign.mutate({ userId: m.id, specId: val }); }}
-                  >
-                    <SelectTrigger className="max-w-sm">
-                      <SelectValue placeholder="Selecionar subfunção…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {specsByArea.map(({ area, specs: aSpecs }) => {
-                        const available = aSpecs.filter((s) => !mineSet.has(s.id));
-                        if (available.length === 0) return null;
-                        return (
-                          <SelectGroup key={area.id}>
-                            <SelSelectLabel>{area.name}</SelSelectLabel>
-                            {available.map((s) => (
-                              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                            ))}
-                          </SelectGroup>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                {list.map((m) => <MemberCard key={m.id} m={m} />)}
               </div>
             </div>
           );
         })}
-
+        {filtered.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma pessoa encontrada.</p>}
       </CardContent>
     </Card>
   );
 }
+
 
