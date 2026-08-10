@@ -25,6 +25,11 @@ export const Route = createFileRoute("/_app/dashboard")({ component: DashboardPa
 
 const fmt = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 
+// Escopo do dashboard: null = toda a equipe (só gestores); caso contrário, id da pessoa.
+const DashboardScopeContext = createContext<string | null>(null);
+const useScopeUserId = () => useContext(DashboardScopeContext);
+
+
 // Widget catalog — `menu` é a chave de menu (Perfis e Acessos) exigida para ver o widget.
 const WIDGETS = {
   stats_overview: { label: "Indicadores gerais", size: "lg" as const, menu: null },
