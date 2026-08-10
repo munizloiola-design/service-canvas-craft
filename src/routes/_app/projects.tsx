@@ -315,7 +315,7 @@ function ProjectsPage() {
                 key={editingProject?.id ?? "new"}
                 editProject={editingProject}
                 onClose={() => { setOpen(false); setEditingProject(null); }}
-                clients={clients} mediaTypes={mediaTypes} statuses={statuses} priorities={priorities}
+                clients={clients} mediaTypes={mediaTypes} statuses={allowedStatuses} priorities={priorities}
                 roles={roles} members={members} teams={teams}
                 existingAssignees={editingProject ? (assigneesByProject.get(editingProject.id) ?? []) : []}
               />
@@ -370,7 +370,7 @@ function ProjectsPage() {
         <TabsList>{projSec.can("kanban") && <TabsTrigger value="kanban">Kanban</TabsTrigger>}{projSec.can("list") && <TabsTrigger value="list">Lista</TabsTrigger>}</TabsList>
 
         <TabsContent value="kanban" className="mt-4">
-          <KanbanView projects={filteredProjects} statuses={statuses} priorities={priorities}
+          <KanbanView projects={kanbanProjects} statuses={allowedStatuses} priorities={priorities}
             assigneesByProject={assigneesByProject} maps={maps} onDetail={setDetailId} />
         </TabsContent>
 
@@ -385,7 +385,7 @@ function ProjectsPage() {
 
       <ProjectDetail
         project={projects.find((p) => p.id === detailId) ?? null}
-        statuses={statuses} priorities={priorities} maps={maps}
+        statuses={allowedStatuses} priorities={priorities} maps={maps}
         assignees={detailId ? (assigneesByProject.get(detailId) ?? []) : []}
         onClose={() => { setDetailId(null); if (search.detail) navigate({ to: "/projects", search: { detail: undefined } }); }}
         onEdit={(p) => { setDetailId(null); setEditingProject(p); setOpen(true); }}
