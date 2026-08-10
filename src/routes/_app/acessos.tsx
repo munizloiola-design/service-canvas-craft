@@ -1,19 +1,18 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { MENU_REGISTRY, deriveFieldRegistry, menuHierarchy, sectionKey, sectionsForMenu } from "@/lib/access-registry";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel as SelSelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Settings, Trash2, Pencil, X } from "lucide-react";
+import { PermissionTree } from "@/components/PermissionTree";
+import { Plus, Trash2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { describeSupabaseError } from "@/lib/supabase-error";
 
@@ -53,12 +52,14 @@ function AcessosPage() {
         <p className="text-sm text-muted-foreground">Configure as Áreas de atuação, Especialidades e o que cada uma enxerga no sistema.</p>
       </div>
 
-      <Tabs defaultValue={search.tab === "assign" ? "assign" : "hierarchy"} className="space-y-4">
+      <Tabs defaultValue={search.tab === "assign" ? "assign" : search.tab === "hierarchy" ? "hierarchy" : "perms"} className="space-y-4">
         <TabsList>
+          <TabsTrigger value="perms">Permissões</TabsTrigger>
           <TabsTrigger value="hierarchy">Áreas & Especialidades</TabsTrigger>
           <TabsTrigger value="assign">Atribuição de usuários</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="perms"><PermissionsTab /></TabsContent>
         <TabsContent value="hierarchy"><HierarchyTab /></TabsContent>
         <TabsContent value="assign"><AssignTab focusUserId={search.user} /></TabsContent>
       </Tabs>
@@ -67,11 +68,72 @@ function AcessosPage() {
 }
 
 
+function PermissionsTab() {
+  const [areaId, setAreaId] = useState<string>("");
+  const [specId, setSpecId] = useState<string>("");
+
+  const { data: areas = [] } = useQuery<Area[]>({
+    queryKey: ["provider_areas"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("provider_areas").select("*").order("sort_order").order("name");
+      if (error) throw error;
+      return (data ?? []) as Area[];
+    },
+  });
+  const { data: specs = [] } = useQuery<Specialty[]>({
+    queryKey: ["provider_specialties"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("provider_specialties").select("*").order("sort_order").order("name");
+      if (error) throw error;
+      return (data ?? []) as Specialty[];
+    },
+  });
+
+  const activeArea = areaId || areas[0]?.id || "";
+  const areaSpecs = specs.filter((s) => s.area_id === activeArea);
+  const activeSpec = areaSpecs.some((s) => s.id === specId) ? specId : (areaSpecs[0]?.id ?? "");
+
+  return (
+    <Card>
+      <CardHeader className="space-y-3">
+        <CardTitle className="text-base">Permissões</CardTitle>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs text-muted-foreground">Área (libera os menus)</Label>
+            <Select value={activeArea} onValueChange={(v) => { setAreaId(v); setSpecId(""); }}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione uma área" /></SelectTrigger>
+              <SelectContent>
+                {areas.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Especialidade (o que vê dentro de cada menu)</Label>
+            <Select value={activeSpec} onValueChange={setSpecId} disabled={areaSpecs.length === 0}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder={areaSpecs.length ? "Selecione uma especialidade" : "Nenhuma especialidade nesta área"} />
+              </SelectTrigger>
+              <SelectContent>
+                {areaSpecs.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {activeArea ? (
+          <PermissionTree key={activeArea + activeSpec} areaId={activeArea} specialtyId={activeSpec || null} />
+        ) : (
+          <p className="text-sm text-muted-foreground">Cadastre uma área em “Áreas & Especialidades”.</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function HierarchyTab() {
   const qc = useQueryClient();
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
-  const [menuAreaId, setMenuAreaId] = useState<string | null>(null);
-  const [fieldSpecId, setFieldSpecId] = useState<string | null>(null);
   const [renameTarget, setRenameTarget] = useState<{ type: "area" | "spec"; id: string; name: string } | null>(null);
   const [newAreaOpen, setNewAreaOpen] = useState(false);
   const [newSpecOpen, setNewSpecOpen] = useState(false);
@@ -195,7 +257,6 @@ function HierarchyTab() {
               return (
                 <div key={a.id} className={`flex items-center gap-2 rounded-md border px-3 py-2 ${active ? "bg-accent" : ""}`}>
                   <button className="flex-1 text-left text-sm font-medium" onClick={() => setSelectedArea(a.id)}>{a.name}</button>
-                  <Button variant="ghost" size="icon" title="Menus" onClick={() => setMenuAreaId(a.id)}><Settings className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon" title="Renomear" onClick={() => setRenameTarget({ type: "area", id: a.id, name: a.name })}><Pencil className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon" title="Excluir" onClick={() => { if (confirm(`Excluir área "${a.name}"?`)) deleteArea.mutate(a.id); }}><Trash2 className="h-4 w-4" /></Button>
                 </div>
@@ -241,7 +302,6 @@ function HierarchyTab() {
                 {areaSpecs.map((s) => (
                   <div key={s.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
                     <span className="flex-1 text-sm">{s.name}</span>
-                    <Button variant="ghost" size="icon" title="Campos" onClick={() => setFieldSpecId(s.id)}><Settings className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" title="Renomear" onClick={() => setRenameTarget({ type: "spec", id: s.id, name: s.name })}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" title="Excluir" onClick={() => { if (confirm(`Excluir especialidade "${s.name}"?`)) deleteSpec.mutate(s.id); }}><Trash2 className="h-4 w-4" /></Button>
                   </div>
@@ -255,10 +315,6 @@ function HierarchyTab() {
         </CardContent>
       </Card>
 
-      {menuAreaId && <MenuVisibilityDialog areaId={menuAreaId} onClose={() => setMenuAreaId(null)} />}
-      {fieldSpecId && activeArea && (
-        <FieldVisibilityDialog specialtyId={fieldSpecId} areaId={activeArea} onClose={() => setFieldSpecId(null)} />
-      )}
       {renameTarget && (
         <Dialog open onOpenChange={() => setRenameTarget(null)}>
           <DialogContent>
@@ -274,305 +330,6 @@ function HierarchyTab() {
     </div>
   );
 }
-
-function MenuVisibilityDialog({ areaId, onClose }: { areaId: string; onClose: () => void }) {
-  const qc = useQueryClient();
-  const [search, setSearch] = useState("");
-  const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["area_menu_visibility", areaId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("area_menu_visibility").select("menu_key").eq("area_id", areaId);
-      if (error) throw error;
-      return (data ?? []) as { menu_key: string }[];
-    },
-  });
-  const enabled = new Set(rows.map((r) => r.menu_key));
-
-  const toggle = useMutation({
-    mutationFn: async ({ key, on }: { key: string; on: boolean }) => {
-      if (on) {
-        const { error } = await supabase.from("area_menu_visibility").insert({ area_id: areaId, menu_key: key });
-        if (error && !String(error.message).includes("duplicate")) throw error;
-      } else {
-        const { error } = await supabase.from("area_menu_visibility").delete().eq("area_id", areaId).eq("menu_key", key);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["area_menu_visibility", areaId] }),
-    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
-  });
-
-  const bulk = useMutation({
-    mutationFn: async (on: boolean) => {
-      if (on) {
-        const missing = MENU_REGISTRY.filter((m) => !enabled.has(m.key)).map((m) => ({ area_id: areaId, menu_key: m.key }));
-        if (missing.length === 0) return;
-        const { error } = await supabase.from("area_menu_visibility").insert(missing);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("area_menu_visibility").delete().eq("area_id", areaId);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["area_menu_visibility", areaId] }),
-    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
-  });
-
-  const term = search.trim().toLowerCase();
-  const visibleMenus = MENU_REGISTRY.filter(
-    (m) => !term || m.label.toLowerCase().includes(term) || m.key.toLowerCase().includes(term),
-  );
-  const grouped = visibleMenus.reduce<Record<string, typeof MENU_REGISTRY>>((acc, m) => {
-    const g = m.group ?? "Geral";
-    (acc[g] ??= []).push(m);
-    return acc;
-  }, {});
-  const pending = MENU_REGISTRY.filter((m) => !enabled.has(m.key));
-  const pendingGroups = menuHierarchy(new Set(pending.map((m) => m.key)));
-
-  return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Menus visíveis para esta Área</DialogTitle></DialogHeader>
-        {isLoading ? <p className="text-sm text-muted-foreground">Carregando…</p> : (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Select value="" onValueChange={(v) => toggle.mutate({ key: v, on: true })}>
-                <SelectTrigger className="h-8 flex-1 min-w-48 text-xs">
-                  <SelectValue placeholder={pending.length ? `Liberar menu (${pending.length} disponíveis)` : "Todos os menus liberados"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {pendingGroups.map((g) => (
-                    <SelectGroup key={g.group}>
-                      <SelSelectLabel>{g.group}</SelSelectLabel>
-                      {g.items.map((n) =>
-                        n.selectable ? (
-                          <SelectItem key={n.entry.key} value={n.entry.key}>
-                            <span style={{ paddingLeft: n.depth * 12 }}>
-                              {n.depth > 0 ? "└ " : ""}
-                              {n.entry.label}
-                            </span>
-                          </SelectItem>
-                        ) : (
-                          <div
-                            key={n.entry.key}
-                            className="px-2 py-1.5 text-xs text-muted-foreground"
-                            style={{ paddingLeft: 8 + n.depth * 12 }}
-                          >
-                            {n.entry.label}
-                          </div>
-                        ),
-                      )}
-                    </SelectGroup>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate(true)}>Liberar todos</Button>
-              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate(false)}>Bloquear todos</Button>
-            </div>
-            <Input placeholder="Buscar menu…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 text-sm" />
-            <p className="text-xs text-muted-foreground">
-              {enabled.size} de {MENU_REGISTRY.length} menus liberados. Novos menus do sistema aparecem aqui automaticamente, sempre bloqueados até serem liberados.
-            </p>
-            <div className="space-y-3 max-h-[50vh] overflow-y-auto">
-              {Object.entries(grouped).map(([group, items]) => (
-                <div key={group}>
-                  <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">{group}</p>
-                  <div className="space-y-1">
-                    {items.map((m) => (
-                      <label key={m.key} className="flex items-center gap-2 rounded-md hover:bg-accent px-2 py-1.5 cursor-pointer">
-                        <Checkbox checked={enabled.has(m.key)} onCheckedChange={(v) => toggle.mutate({ key: m.key, on: !!v })} />
-                        <span className="text-sm flex-1">{m.label}</span>
-                        <span className="text-[10px] text-muted-foreground">{m.key}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              {visibleMenus.length === 0 && <p className="text-sm text-muted-foreground">Nenhum menu encontrado.</p>}
-            </div>
-          </div>
-        )}
-        <DialogFooter><Button onClick={onClose}>Concluir</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function FieldVisibilityDialog({ specialtyId, areaId, onClose }: { specialtyId: string; areaId: string; onClose: () => void }) {
-  const qc = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [menu, setMenu] = useState<string>("");
-
-  // Menus liberados para a Área desta Especialidade
-  const { data: allowedMenus = [] } = useQuery({
-    queryKey: ["area_menu_visibility", areaId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("area_menu_visibility").select("menu_key").eq("area_id", areaId);
-      if (error) throw error;
-      return (data ?? []).map((r) => r.menu_key as string);
-    },
-  });
-  const allowedSet = useMemo(() => new Set(allowedMenus), [allowedMenus]);
-  const menuGroups = useMemo(() => menuHierarchy(allowedSet), [allowedSet]);
-  const firstAllowed = useMemo(
-    () => menuGroups.flatMap((g) => g.items).find((n) => n.selectable)?.entry.key ?? "",
-    [menuGroups],
-  );
-  useEffect(() => {
-    if (!menu || !allowedSet.has(menu)) setMenu(firstAllowed);
-  }, [firstAllowed, allowedSet, menu]);
-  const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["specialty_field_visibility", specialtyId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("specialty_field_visibility").select("*").eq("specialty_id", specialtyId);
-      if (error) throw error;
-      return (data ?? []) as { field_key: string; can_view: boolean; can_edit: boolean }[];
-    },
-  });
-  // Colunas reais da tabela de demandas: campos novos entram automaticamente.
-  const { data: projectColumns = [] } = useQuery({
-    queryKey: ["projects-columns"],
-    queryFn: async () => {
-      const { data } = await supabase.from("projects").select("*").limit(1);
-      return data && data[0] ? Object.keys(data[0]) : [];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Itens do menu selecionado: seções (abas) + campos da demanda quando /projects.
-  const items = useMemo(() => {
-    if (!menu) return [];
-    const secs = sectionsForMenu(menu).map((s) => ({
-      key: sectionKey(menu, s.id),
-      label: s.label,
-      kind: "Seção" as const,
-    }));
-    if (menu !== "/projects") return secs;
-    return [
-      ...secs,
-      ...deriveFieldRegistry(projectColumns).map((f) => ({ key: f.key, label: f.label, kind: "Campo" as const })),
-    ];
-  }, [menu, projectColumns]);
-
-  const map = new Map(rows.map((r) => [r.field_key, r]));
-
-  const upsert = useMutation({
-    mutationFn: async ({ key, can_view, can_edit }: { key: string; can_view: boolean; can_edit: boolean }) => {
-      const { error } = await supabase.from("specialty_field_visibility")
-        .upsert({ specialty_id: specialtyId, field_key: key, can_view, can_edit }, { onConflict: "specialty_id,field_key" });
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["specialty_field_visibility", specialtyId] }),
-    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
-  });
-
-  const bulk = useMutation({
-    mutationFn: async (on: boolean) => {
-      const payload = items.map((f) => ({ specialty_id: specialtyId, field_key: f.key, can_view: on, can_edit: on }));
-      const { error } = await supabase.from("specialty_field_visibility").upsert(payload, { onConflict: "specialty_id,field_key" });
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["specialty_field_visibility", specialtyId] }),
-    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
-  });
-
-  const term = search.trim().toLowerCase();
-  const visibleItems = items.filter((f) => !term || f.label.toLowerCase().includes(term) || f.key.toLowerCase().includes(term));
-  const undecided = items.filter((f) => !map.has(f.key));
-
-  return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>O que esta Especialidade pode ver em cada menu</DialogTitle>
-        </DialogHeader>
-        {isLoading ? <p className="text-sm text-muted-foreground">Carregando…</p> : (
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-muted-foreground">Menu</label>
-              <Select value={menu} onValueChange={(v) => { setMenu(v); setSearch(""); }} disabled={!firstAllowed}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder={firstAllowed ? "Selecione um menu" : "Libere menus para esta Área primeiro"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {menuGroups.map((g) => (
-                    <SelectGroup key={g.group}>
-                      <SelSelectLabel>{g.group}</SelSelectLabel>
-                      {g.items.map((n) =>
-                        n.selectable ? (
-                          <SelectItem key={n.entry.key} value={n.entry.key}>
-                            <span style={{ paddingLeft: n.depth * 12 }}>
-                              {n.depth > 0 ? "└ " : ""}
-                              {n.entry.label}
-                            </span>
-                          </SelectItem>
-                        ) : (
-                          <div
-                            key={n.entry.key}
-                            className="px-2 py-1.5 text-xs text-muted-foreground"
-                            style={{ paddingLeft: 8 + n.depth * 12 }}
-                          >
-                            {n.entry.label}
-                          </div>
-                        ),
-                      )}
-                    </SelectGroup>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!firstAllowed && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Nenhum menu liberado para esta Área. Libere em “Menus visíveis”.
-                </p>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs text-muted-foreground flex-1 min-w-40">
-                {items.length - undecided.length} de {items.length} itens configurados neste menu.
-              </p>
-              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate(true)}>Liberar tudo deste menu</Button>
-              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate(false)}>Bloquear tudo</Button>
-            </div>
-            <Input placeholder="Buscar item…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 text-sm" />
-            <div className="max-h-[50vh] overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead className="text-xs uppercase text-muted-foreground border-b">
-                  <tr><th className="text-left py-2">Item</th><th className="w-20 text-center">Ver</th><th className="w-20 text-center">Editar</th></tr>
-                </thead>
-                <tbody>
-                  {visibleItems.map((f) => {
-                    const cur = map.get(f.key);
-                    const canView = cur ? cur.can_view : false;
-                    const canEdit = cur ? cur.can_edit : false;
-                    return (
-                      <tr key={f.key} className="border-b last:border-0">
-                        <td className="py-2">
-                          <span className="text-[10px] uppercase text-muted-foreground mr-2">{f.kind}</span>
-                          {f.label}
-                          {!cur && <Badge variant="secondary" className="ml-2 text-[10px]">Novo</Badge>}
-                        </td>
-                        <td className="text-center">
-                          <Checkbox checked={canView} onCheckedChange={(v) => upsert.mutate({ key: f.key, can_view: !!v, can_edit: !!v && canEdit })} />
-                        </td>
-                        <td className="text-center">
-                          <Checkbox checked={canEdit} onCheckedChange={(v) => upsert.mutate({ key: f.key, can_view: canView || !!v, can_edit: !!v })} />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {visibleItems.length === 0 && <p className="text-sm text-muted-foreground py-2">Nenhum item encontrado.</p>}
-            </div>
-          </div>
-        )}
-        <DialogFooter><Button onClick={onClose}>Concluir</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 
 
 function AssignTab({ focusUserId }: { focusUserId?: string }) {

@@ -76,14 +76,17 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const canViewField = (key: string) => state.fieldView.has(key);
   const canEditField = (key: string) => state.fieldEdit.has(key);
 
-  // Seções (abas) de um menu. Sem nenhuma regra cadastrada para a
-  // especialidade, nada é escondido (comportamento permissivo).
-  const hasSectionRules = Array.from(state.fieldView).some((k) => k.startsWith("menu:"))
-    || Array.from(state.fieldEdit).some((k) => k.startsWith("menu:"));
+  // Seções (abas) de um menu. Fallback permissivo POR MENU: se a especialidade
+  // não tem nenhuma regra para aquele menu, nada é escondido nele.
+  const hasRulesFor = (menu: string) => {
+    const prefix = `menu:${menu}#`;
+    return Array.from(state.fieldView).some((k) => k.startsWith(prefix))
+      || Array.from(state.fieldEdit).some((k) => k.startsWith(prefix));
+  };
   const canViewSection = (menu: string, section: string) =>
-    !hasSectionRules || state.fieldView.has(sectionKey(menu, section));
+    !hasRulesFor(menu) || state.fieldView.has(sectionKey(menu, section));
   const canEditSection = (menu: string, section: string) =>
-    !hasSectionRules || state.fieldEdit.has(sectionKey(menu, section));
+    !hasRulesFor(menu) || state.fieldEdit.has(sectionKey(menu, section));
 
   return (
     <AccessContext.Provider value={{ ...state, isPrivileged, menuAllowed, canViewField, canEditField, canViewSection, canEditSection, refresh: load }}>
