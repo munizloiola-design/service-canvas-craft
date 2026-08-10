@@ -26,8 +26,21 @@ export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
   validateSearch: (s: Record<string, unknown>) => ({
     detail: typeof s.detail === "string" ? s.detail : undefined,
+    quick:
+      s.quick === "abertas" || s.quick === "concluidas" || s.quick === "urgentes" || s.quick === "atrasadas"
+        ? (s.quick as QuickFilter)
+        : undefined,
   }),
 });
+
+type QuickFilter = "abertas" | "concluidas" | "urgentes" | "atrasadas";
+const QUICK_LABELS: Record<QuickFilter, string> = {
+  abertas: "Em aberto",
+  concluidas: "Concluídas",
+  urgentes: "Urgentes",
+  atrasadas: "Atrasadas",
+};
+
 
 type DescriptionCard = { title: string; content: string };
 type Project = {
@@ -47,7 +60,7 @@ type Project = {
 };
 type Client = { id: string; name: string };
 type MediaType = { id: string; name: string };
-type Status = { id: string; name: string; color: string; sort_order: number };
+type Status = { id: string; name: string; color: string; sort_order: number; is_final?: boolean };
 type Priority = { id: string; name: string; color: string; level: number };
 type Role = { id: string; name: string };
 type Profile = { id: string; full_name: string };
@@ -106,10 +119,16 @@ function ProjectsPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [visibleCols, setVisibleCols] = useState<string[]>(ALL_COLUMNS.map((c) => c.key));
   const [filters, setFilters] = useState<ActiveFilter[]>([]);
+  const [quick, setQuick] = useState<QuickFilter | undefined>(search.quick);
 
   useEffect(() => {
     if (search.detail) setDetailId(search.detail);
   }, [search.detail]);
+
+  useEffect(() => {
+    setQuick(search.quick);
+  }, [search.quick]);
+
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -178,8 +197,20 @@ function ProjectsPage() {
     );
   }, [projects, assigneesByProject, isManager, user]);
 
+  const finalStatusIds = useMemo(() => new Set(statuses.filter((s) => s.is_final).map((s) => s.id)), [statuses]);
+  const topPriorityId = useMemo(
+    () => [...priorities].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0]?.id,
+    [priorities],
+  );
+
   const filteredProjects = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const isDone = (p: Project) => !!p.status_id && finalStatusIds.has(p.status_id);
     return visibleProjects.filter((p) => {
+      if (quick === "abertas" && isDone(p)) return false;
+      if (quick === "concluidas" && !isDone(p)) return false;
+      if (quick === "urgentes" && (isDone(p) || p.priority_id !== topPriorityId)) return false;
+      if (quick === "atrasadas" && (isDone(p) || !p.due_date || p.due_date >= today)) return false;
       for (const f of filters) {
         if (!f.value) continue;
         switch (f.key) {
@@ -201,7 +232,8 @@ function ProjectsPage() {
       }
       return true;
     });
-  }, [visibleProjects, filters, assigneesByProject]);
+  }, [visibleProjects, filters, assigneesByProject, quick, finalStatusIds, topPriorityId]);
+
 
 
   const filterOptions: Record<FilterKey, { value: string; label: string }[]> = {
@@ -276,6 +308,23 @@ function ProjectsPage() {
           )}
         </div>
       </header>
+
+      {quick && (
+        <div className="mb-4 flex items-center gap-2">
+          <Badge variant="secondary" className="gap-1">
+            {QUICK_LABELS[quick]}
+            <button
+              type="button"
+              className="ml-1 opacity-70 hover:opacity-100"
+              onClick={() => { setQuick(undefined); navigate({ to: "/projects", search: { detail: undefined, quick: undefined } }); }}
+              aria-label="Remover filtro"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        </div>
+      )}
+
 
       {filters.length > 0 && (
         <Card className="p-3 mb-4 flex flex-wrap items-center gap-2">
