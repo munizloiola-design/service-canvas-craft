@@ -458,10 +458,12 @@ function CashFlow() {
 }
 
 function ProjectsByStatus() {
-  const { data: projects = [] } = useQuery({
-    queryKey: ["projects"],
-    queryFn: async () => (await supabase.from("projects").select("status_id")).data ?? [],
+  const { data: allProjects = [] } = useQuery({
+    queryKey: ["projects-by-status"],
+    queryFn: async () => (await supabase.from("projects").select("id, status_id, assigned_to")).data ?? [],
   });
+  const projects = useVisibleProjects(allProjects);
+
   const { data: statuses = [] } = useQuery({
     queryKey: ["workflow_statuses"],
     queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color, sort_order").order("sort_order")).data ?? [],
