@@ -66,7 +66,7 @@ function AcessosPage() {
         <TabsList>
           <TabsTrigger value="perms">Permissões</TabsTrigger>
           <TabsTrigger value="hierarchy">Áreas & Especialidades</TabsTrigger>
-          <TabsTrigger value="assign">Atribuição de usuários</TabsTrigger>
+          <TabsTrigger value="assign">Usuários</TabsTrigger>
         </TabsList>
 
         <TabsContent value="perms"><PermissionsTab /></TabsContent>
