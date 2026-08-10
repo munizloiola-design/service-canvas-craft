@@ -231,11 +231,30 @@ function WidgetRenderer({ widgetKey }: { widgetKey: WidgetKey }) {
 
 // ========== Widgets ==========
 
-function StatsOverview() {
-  const { data: projects = [] } = useQuery({
-    queryKey: ["projects"],
-    queryFn: async () => (await supabase.from("projects").select("status_id, priority_id")).data ?? [],
+type QuickFilter = "abertas" | "concluidas" | "urgentes" | "atrasadas";
+
+// Demandas visíveis ao usuário atual (gestores veem tudo).
+function useVisibleProjects<T extends { id: string; assigned_to?: string | null }>(rows: T[]) {
+  const { user, isManager } = useAuth();
+  const { data: assignees = [] } = useQuery({
+    queryKey: ["project_assignees_dash"],
+    queryFn: async () => (await supabase.from("project_assignees").select("project_id, user_id")).data ?? [],
+    enabled: !!user,
   });
+  return useMemo(() => {
+    if (isManager || !user) return rows;
+    const mine = new Set(assignees.filter((a) => a.user_id === user.id).map((a) => a.project_id));
+    return rows.filter((p) => p.assigned_to === user.id || mine.has(p.id));
+  }, [rows, assignees, isManager, user]);
+}
+
+function StatsOverview() {
+  const { menuAllowed } = useAccess();
+  const { data: allProjects = [] } = useQuery({
+    queryKey: ["projects-stats"],
+    queryFn: async () => (await supabase.from("projects").select("id, status_id, priority_id, due_date, assigned_to")).data ?? [],
+  });
+  const projects = useVisibleProjects(allProjects);
   const { data: statuses = [] } = useQuery({
     queryKey: ["workflow_statuses"],
     queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, is_final")).data ?? [],
@@ -250,40 +269,120 @@ function StatsOverview() {
   });
 
   const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));
-  const urgentId = priorities.sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0]?.id;
+  const urgentId = [...priorities].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0]?.id;
+  const today = format(new Date(), "yyyy-MM-dd");
+  const isDone = (p: { status_id: string | null }) => !!p.status_id && finalIds.has(p.status_id);
   const total = projects.length;
-  const done = projects.filter((p) => p.status_id && finalIds.has(p.status_id)).length;
+  const done = projects.filter(isDone).length;
   const open = total - done;
-  const urgent = projects.filter((p) => p.priority_id === urgentId && (!p.status_id || !finalIds.has(p.status_id))).length;
+  const urgent = projects.filter((p) => p.priority_id === urgentId && !isDone(p)).length;
+  const overdue = projects.filter((p) => !isDone(p) && p.due_date && p.due_date < today).length;
 
-  const stats = [
-    { label: "Total", value: total, icon: FolderKanban, color: "text-info" },
-    { label: "Em aberto", value: open, icon: Clock, color: "text-warning" },
-    { label: "Concluídos", value: done, icon: CheckCircle2, color: "text-success" },
-    { label: "Urgentes", value: urgent, icon: AlertTriangle, color: "text-destructive" },
-    { label: "Equipe", value: teamCount, icon: Users, color: "text-primary" },
+  const canProjects = menuAllowed("/projects");
+  const canTeam = menuAllowed("/team");
+
+  const stats: {
+    label: string; value: number; icon: typeof Clock; color: string;
+    to?: "/projects" | "/team"; quick?: QuickFilter;
+  }[] = [
+    { label: "Total", value: total, icon: FolderKanban, color: "text-info", to: canProjects ? "/projects" : undefined },
+    { label: "Em aberto", value: open, icon: Clock, color: "text-warning", to: canProjects ? "/projects" : undefined, quick: "abertas" },
+    { label: "Concluídos", value: done, icon: CheckCircle2, color: "text-success", to: canProjects ? "/projects" : undefined, quick: "concluidas" },
+    { label: "Urgentes", value: urgent, icon: AlertTriangle, color: "text-destructive", to: canProjects ? "/projects" : undefined, quick: "urgentes" },
+    { label: "Atrasados", value: overdue, icon: AlertTriangle, color: "text-destructive", to: canProjects ? "/projects" : undefined, quick: "atrasadas" },
+    { label: "Equipe", value: teamCount, icon: Users, color: "text-primary", to: canTeam ? "/team" : undefined },
   ];
 
   return (
     <div>
       <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">Indicadores gerais</h3>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {stats.map((s) => {
           const Icon = s.icon;
-          return (
-            <div key={s.label} className="bg-muted/40 rounded-md p-3">
+          const inner = (
+            <>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] uppercase text-muted-foreground">{s.label}</span>
                 <Icon className={`h-3.5 w-3.5 ${s.color}`} />
               </div>
               <p className="text-2xl font-semibold">{s.value}</p>
-            </div>
+            </>
+          );
+          if (!s.to) {
+            return <div key={s.label} className="bg-muted/40 rounded-md p-3">{inner}</div>;
+          }
+          return (
+            <Link
+              key={s.label}
+              to={s.to}
+              search={s.to === "/projects" ? { detail: undefined, quick: s.quick } : undefined}
+              className="group bg-muted/40 rounded-md p-3 text-left transition-all hover:bg-muted hover:shadow-sm hover:-translate-y-0.5 relative"
+            >
+              {inner}
+              <ArrowUpRight className="h-3 w-3 absolute bottom-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            </Link>
           );
         })}
       </div>
     </div>
   );
 }
+
+function OverdueProjects() {
+  const today = format(new Date(), "yyyy-MM-dd");
+  const { data: statuses = [] } = useQuery({
+    queryKey: ["workflow_statuses"],
+    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, is_final")).data ?? [],
+  });
+  const { data: rows = [] } = useQuery({
+    queryKey: ["overdue-projects", today],
+    queryFn: async () => (await supabase.from("projects")
+      .select("id, title, due_date, client_id, status_id, assigned_to")
+      .lt("due_date", today)
+      .order("due_date")).data ?? [],
+  });
+  const visible = useVisibleProjects(rows);
+  const { data: clients = [] } = useQuery({
+    queryKey: ["clients"],
+    queryFn: async () => (await supabase.from("clients").select("id, name")).data ?? [],
+  });
+  const cmap = new Map(clients.map((c) => [c.id, c.name]));
+
+  const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));
+  const overdue = visible.filter((p) => !p.status_id || !finalIds.has(p.status_id));
+  const shown = overdue.slice(0, 8);
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4 text-destructive" /> Demandas atrasadas
+      </h3>
+      {overdue.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma demanda atrasada.</p>}
+      <div className="divide-y">
+        {shown.map((p) => {
+          const days = Math.max(1, Math.round(differenceInSeconds(new Date(today), new Date(p.due_date!)) / 86400));
+          return (
+            <Link key={p.id} to="/projects" search={{ detail: p.id, quick: undefined }} className="flex items-center justify-between py-2 hover:bg-muted/30 -mx-1 px-1 rounded">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{p.title}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {p.client_id ? cmap.get(p.client_id) : "—"} · {format(new Date(p.due_date!), "dd/MM")}
+                </p>
+              </div>
+              <Badge variant="destructive" className="ml-2 text-xs shrink-0">{days}d</Badge>
+            </Link>
+          );
+        })}
+      </div>
+      {overdue.length > shown.length && (
+        <Link to="/projects" search={{ detail: undefined, quick: "atrasadas" }} className="block mt-3 text-xs text-primary hover:underline">
+          Ver todas ({overdue.length})
+        </Link>
+      )}
+    </div>
+  );
+}
+
 
 function CashFlow() {
   const { data: entries = [] } = useQuery({
