@@ -253,3 +253,51 @@ export function deriveFieldRegistry(columns: string[] | null | undefined): Field
   }
   return Array.from(out.values());
 }
+
+// ---------------------------------------------------------------------------
+// Árvore única de permissões (menu → seções → campos)
+// ---------------------------------------------------------------------------
+
+export type PermItem = { key: string; label: string; kind: "Seção" | "Campo" };
+export type PermMenu = {
+  entry: MenuEntry;
+  depth: number;
+  areaAllowed: boolean;
+  items: PermItem[];
+};
+export type PermGroup = { group: string; menus: PermMenu[] };
+
+/** Menu que possui campos além das abas (hoje apenas Demandas). */
+const FIELD_MENU = "/projects";
+
+/**
+ * Monta a árvore completa usada na tela de Perfis e Acessos: todos os menus
+ * (com indicação de liberado ou não para a Área) e, dentro de cada um, as
+ * abas/seções e — em Demandas — os campos da demanda.
+ */
+export function permissionTree(
+  areaAllowed: Set<string>,
+  projectColumns?: string[] | null,
+): PermGroup[] {
+  const keys = MENU_REGISTRY.map((m) => m.key);
+  const depthOf = (key: string) => keys.filter((k) => k !== key && key.startsWith(k + "/")).length;
+
+  const groups = new Map<string, PermMenu[]>();
+  for (const entry of [...MENU_REGISTRY].sort((a, b) => a.key.localeCompare(b.key))) {
+    const items: PermItem[] = sectionsForMenu(entry.key).map((s) => ({
+      key: sectionKey(entry.key, s.id),
+      label: s.label,
+      kind: "Seção",
+    }));
+    if (entry.key === FIELD_MENU) {
+      for (const f of deriveFieldRegistry(projectColumns)) {
+        items.push({ key: f.key, label: f.label, kind: "Campo" });
+      }
+    }
+    const group = entry.group ?? "Geral";
+    const list = groups.get(group) ?? [];
+    list.push({ entry, depth: depthOf(entry.key), areaAllowed: areaAllowed.has(entry.key), items });
+    groups.set(group, list);
+  }
+  return Array.from(groups.entries()).map(([group, menus]) => ({ group, menus }));
+}
