@@ -545,13 +545,15 @@ function StatusTimer() {
 }
 
 function UpcomingDeadlines() {
-  const { data: projects = [] } = useQuery({
+  const { data: allProjects = [] } = useQuery({
     queryKey: ["upcoming"],
     queryFn: async () => (await supabase.from("projects")
-      .select("id, title, due_date, client_id, status_id")
+      .select("id, title, due_date, client_id, status_id, assigned_to")
       .gte("due_date", format(new Date(), "yyyy-MM-dd"))
-      .order("due_date").limit(8)).data ?? [],
+      .order("due_date").limit(60)).data ?? [],
   });
+  const projects = useVisibleProjects(allProjects).slice(0, 8);
+
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
     queryFn: async () => (await supabase.from("clients").select("id, name")).data ?? [],
