@@ -21,11 +21,12 @@ export const Route = createFileRoute("/_app/calendario")({ component: Calendario
 
 type Project = {
   id: string; title: string; due_date: string | null; post_date: string | null;
-  status_id: string | null; client_id: string | null; assigned_to: string | null;
+  status_id: string | null; client_id: string | null; assigned_to: string | null; priority_id: string | null;
   description: string | null; caption: string | null; notes: string | null;
 };
 type Status = { id: string; name: string; color: string };
 type Client = { id: string; name: string };
+type Priority = { id: string; name: string; level: number; color: string };
 type DateField = "due_date" | "post_date";
 
 function CalendarioPage() {
@@ -42,7 +43,7 @@ function CalendarioPage() {
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-cal"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, description, caption, notes");
+      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, priority_id, description, caption, notes");
       if (error) throw error;
       return data as Project[];
     },
@@ -68,6 +69,13 @@ function CalendarioPage() {
     queryFn: async () => (await supabase.from("clients").select("id, name")).data as Client[] ?? [],
   });
 
+  const { data: priorities = [] } = useQuery({
+    queryKey: ["priorities"],
+    queryFn: async () => (await supabase.from("priorities").select("id, name, level, color").order("level", { ascending: false })).data as Priority[] ?? [],
+  });
+
+  const priorityMap = useMemo(() => new Map(priorities.map((p) => [p.id, p])), [priorities]);
+
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
   const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
 
@@ -82,8 +90,12 @@ function CalendarioPage() {
       if (!m.has(key)) m.set(key, []);
       m.get(key)!.push(p);
     }
+    const level = (p: Project) => (p.priority_id ? priorityMap.get(p.priority_id)?.level ?? -1e9 : -1e9);
+    for (const list of m.values()) {
+      list.sort((a, b) => level(b) - level(a) || a.title.localeCompare(b.title, "pt-BR"));
+    }
     return m;
-  }, [projects, dateField]);
+  }, [projects, dateField, priorityMap]);
 
   const reschedule = useMutation({
     mutationFn: async ({ id, newDate }: { id: string; newDate: string }) => {
@@ -144,6 +156,7 @@ function CalendarioPage() {
 
   const renderCard = (p: Project) => {
     const st = p.status_id ? statusMap.get(p.status_id) : null;
+    const pr = p.priority_id ? priorityMap.get(p.priority_id) : null;
     return (
       <div
         key={p.id}
@@ -153,11 +166,12 @@ function CalendarioPage() {
           e.dataTransfer.effectAllowed = "move";
         }}
         onClick={() => setDetail(p)}
-        className="w-full text-left text-[11px] px-1.5 py-1 rounded truncate cursor-grab active:cursor-grabbing hover:opacity-80"
+        className="w-full text-left text-[11px] px-1.5 py-1 rounded truncate cursor-grab active:cursor-grabbing hover:opacity-80 flex items-center gap-1"
         style={st ? { background: `${st.color}25`, color: st.color } : { background: "var(--muted)" }}
-        title={`${p.title}${p.client_id ? ` — ${clientMap.get(p.client_id) ?? ""}` : ""}`}
+        title={`${p.title}${p.client_id ? ` — ${clientMap.get(p.client_id) ?? ""}` : ""}${pr ? ` — ${pr.name}` : ""}`}
       >
-        {p.title}
+        {pr && <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: pr.color }} />}
+        <span className="truncate">{p.title}</span>
       </div>
     );
   };

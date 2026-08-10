@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter, Pencil } from "lucide-react";
+import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter, Pencil, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { useFieldVisibility } from "@/lib/field-visibility";
 import { useAccess } from "@/lib/access-context";
@@ -78,6 +78,22 @@ const ALL_COLUMNS = [
   { key: "due_date", label: "Prazo" },
   { key: "post_date", label: "Postagem" },
 ] as const;
+
+function priorityLevelOf(p: Project, maps: Record<string, Map<string, unknown>>): number {
+  if (!p.priority_id) return -Infinity;
+  const pr = maps.priority?.get(p.priority_id) as { level?: number } | undefined;
+  return pr?.level ?? -Infinity;
+}
+
+function comparePriorityThenDue(a: Project, b: Project, maps: Record<string, Map<string, unknown>>): number {
+  const la = priorityLevelOf(a, maps);
+  const lb = priorityLevelOf(b, maps);
+  if (la !== lb) return lb - la;
+  const da = a.due_date ?? "9999-12-31";
+  const db = b.due_date ?? "9999-12-31";
+  if (da !== db) return da < db ? -1 : 1;
+  return a.title.localeCompare(b.title, "pt-BR");
+}
 
 type FilterKey = "client" | "assignee" | "status" | "priority" | "media" | "decision" | "due_from" | "due_to" | "post_from" | "post_to";
 type ActiveFilter = { key: FilterKey; value: string };
@@ -448,7 +464,9 @@ function KanbanView({ projects, statuses, priorities, maps, assigneesByProject, 
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:[grid-template-columns:repeat(var(--kanban-cols),minmax(0,1fr))] lg:overflow-x-auto"
         style={{ ["--kanban-cols" as never]: Math.min(cols.length, 5) }}>
         {cols.map((col) => {
-          const items = projects.filter((p) => (p.status_id ?? "__none__") === col.id);
+          const items = projects
+            .filter((p) => (p.status_id ?? "__none__") === col.id)
+            .sort((a, b) => comparePriorityThenDue(a, b, maps));
           return (
             <KanbanColumn key={col.id} col={col}
               items={items}
@@ -597,19 +615,77 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
   });
   const isColBlocked = useColumnAccess();
   const allowedCols = visibleCols.filter((k) => !isColBlocked(k));
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
+
+  const toggleSort = (key: string) => {
+    setSort((cur) => {
+      if (!cur || cur.key !== key) return { key, dir: "asc" };
+      if (cur.dir === "asc") return { key, dir: "desc" };
+      return null;
+    });
+  };
+
+  const sortedProjects = useMemo(() => {
+    const list = [...projects];
+    if (!sort) return list.sort((a, b) => comparePriorityThenDue(a, b, maps));
+    const txt = (v: unknown) => (typeof v === "string" ? v : "");
+    const valueOf = (p: Project): string | number => {
+      switch (sort.key) {
+        case "title": return p.title ?? "";
+        case "client": return p.client_id ? txt(maps.client.get(p.client_id)) : "";
+        case "media": return p.media_type_id ? txt(maps.media.get(p.media_type_id)) : "";
+        case "status": {
+          const st = p.status_id ? (maps.status.get(p.status_id) as { sort_order?: number } | undefined) : undefined;
+          return st?.sort_order ?? Number.POSITIVE_INFINITY;
+        }
+        case "priority": {
+          const lv = priorityLevelOf(p, maps);
+          return lv === -Infinity ? Number.NEGATIVE_INFINITY : lv;
+        }
+        case "assignees":
+          return (assigneesByProject.get(p.id) ?? []).map((a) => txt(maps.member.get(a.user_id))).sort().join(", ");
+        case "due_date": return p.due_date ?? "";
+        case "post_date": return p.post_date ?? "";
+        default: return "";
+      }
+    };
+    const emptyLast = (v: string | number) =>
+      v === "" || v === Number.POSITIVE_INFINITY || v === Number.NEGATIVE_INFINITY;
+    const mul = sort.dir === "asc" ? 1 : -1;
+    return list.sort((a, b) => {
+      const va = valueOf(a); const vb = valueOf(b);
+      const ea = emptyLast(va); const eb = emptyLast(vb);
+      if (ea !== eb) return ea ? 1 : -1;
+      if (ea && eb) return a.title.localeCompare(b.title, "pt-BR");
+      if (typeof va === "number" && typeof vb === "number") return (va - vb) * mul;
+      return String(va).localeCompare(String(vb), "pt-BR") * mul;
+    });
+  }, [projects, sort, maps, assigneesByProject]);
+
   return (
     <Card className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-muted/40 border-b">
           <tr>
-            {ALL_COLUMNS.filter((c) => allowedCols.includes(c.key)).map((c) => (
-              <th key={c.key} className="text-left px-3 py-2 font-medium text-xs uppercase text-muted-foreground">{c.label}</th>
-            ))}
+            {ALL_COLUMNS.filter((c) => allowedCols.includes(c.key)).map((c) => {
+              const active = sort?.key === c.key;
+              const Icon = active ? (sort!.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+              return (
+                <th key={c.key} className="text-left px-3 py-2 font-medium text-xs uppercase text-muted-foreground">
+                  <button type="button" onClick={() => toggleSort(c.key)}
+                    className={`inline-flex items-center gap-1 hover:text-foreground transition-colors ${active ? "text-foreground" : ""}`}
+                    title="Ordenar por esta coluna">
+                    {c.label}
+                    <Icon className={`h-3 w-3 ${active ? "opacity-100" : "opacity-40"}`} />
+                  </button>
+                </th>
+              );
+            })}
             <th className="w-32"></th>
           </tr>
         </thead>
         <tbody>
-          {projects.map((p) => {
+          {sortedProjects.map((p) => {
             const ass = assigneesByProject.get(p.id) ?? [];
             const pr = p.priority_id ? (maps.priority.get(p.priority_id) as Priority | undefined) : null;
             const st = p.status_id ? (maps.status.get(p.status_id) as Status | undefined) : null;
