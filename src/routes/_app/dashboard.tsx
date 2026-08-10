@@ -32,6 +32,8 @@ const WIDGETS = {
   projects_by_status: { label: "Projetos por etapa", size: "md" as const, menu: "/projects" },
   status_timer: { label: "Tempo médio por etapa", size: "md" as const, menu: "/tempo" },
   upcoming_deadlines: { label: "Próximos prazos", size: "md" as const, menu: "/projects" },
+  overdue_projects: { label: "Demandas atrasadas", size: "md" as const, menu: "/projects" },
+
   recurring_revenue: { label: "Receitas recorrentes", size: "md" as const, menu: "/financeiro" },
   team_load: { label: "Carga por profissional", size: "md" as const, menu: "/team" },
   equipment_depreciated: { label: "Depreciação de equipamentos", size: "md" as const, menu: "/equipamentos" },
