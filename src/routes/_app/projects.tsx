@@ -197,8 +197,20 @@ function ProjectsPage() {
     );
   }, [projects, assigneesByProject, isManager, user]);
 
+  const finalStatusIds = useMemo(() => new Set(statuses.filter((s) => s.is_final).map((s) => s.id)), [statuses]);
+  const topPriorityId = useMemo(
+    () => [...priorities].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0]?.id,
+    [priorities],
+  );
+
   const filteredProjects = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const isDone = (p: Project) => !!p.status_id && finalStatusIds.has(p.status_id);
     return visibleProjects.filter((p) => {
+      if (quick === "abertas" && isDone(p)) return false;
+      if (quick === "concluidas" && !isDone(p)) return false;
+      if (quick === "urgentes" && (isDone(p) || p.priority_id !== topPriorityId)) return false;
+      if (quick === "atrasadas" && (isDone(p) || !p.due_date || p.due_date >= today)) return false;
       for (const f of filters) {
         if (!f.value) continue;
         switch (f.key) {
@@ -220,7 +232,8 @@ function ProjectsPage() {
       }
       return true;
     });
-  }, [visibleProjects, filters, assigneesByProject]);
+  }, [visibleProjects, filters, assigneesByProject, quick, finalStatusIds, topPriorityId]);
+
 
 
   const filterOptions: Record<FilterKey, { value: string; label: string }[]> = {
