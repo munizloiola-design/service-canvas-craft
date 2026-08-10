@@ -299,10 +299,6 @@ function StatsOverview() {
     queryKey: ["priorities"],
     queryFn: async () => (await supabase.from("priorities").select("id, name, level")).data ?? [],
   });
-  const { data: teamCount = 0 } = useQuery({
-    queryKey: ["team-count"],
-    queryFn: async () => (await supabase.from("internal_profiles").select("id", { count: "exact", head: true })).count ?? 0,
-  });
 
   const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));
   const urgentId = [...priorities].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0]?.id;
@@ -315,25 +311,24 @@ function StatsOverview() {
   const overdue = projects.filter((p) => !isDone(p) && p.due_date && p.due_date < today).length;
 
   const canProjects = menuAllowed("/projects");
-  const canTeam = menuAllowed("/team");
 
   const stats: {
     label: string; value: number; icon: typeof Clock; color: string;
-    to?: "/projects" | "/team"; quick?: QuickFilter;
+    to?: "/projects"; quick?: QuickFilter;
   }[] = [
     { label: "Total", value: total, icon: FolderKanban, color: "text-info", to: canProjects ? "/projects" : undefined },
     { label: "Em aberto", value: open, icon: Clock, color: "text-warning", to: canProjects ? "/projects" : undefined, quick: "abertas" },
     { label: "Concluídos", value: done, icon: CheckCircle2, color: "text-success", to: canProjects ? "/projects" : undefined, quick: "concluidas" },
     { label: "Urgentes", value: urgent, icon: AlertTriangle, color: "text-destructive", to: canProjects ? "/projects" : undefined, quick: "urgentes" },
     { label: "Atrasados", value: overdue, icon: AlertTriangle, color: "text-destructive", to: canProjects ? "/projects" : undefined, quick: "atrasadas" },
-    { label: "Equipe", value: teamCount, icon: Users, color: "text-primary", to: canTeam ? "/team" : undefined },
   ];
 
   return (
     <div>
       <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">Indicadores gerais</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {stats.map((s) => {
+
           const Icon = s.icon;
           const inner = (
             <>
