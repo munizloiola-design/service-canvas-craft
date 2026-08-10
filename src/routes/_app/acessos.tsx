@@ -344,6 +344,9 @@ function HierarchyTab() {
 
 function AssignTab({ focusUserId }: { focusUserId?: string }) {
   const qc = useQueryClient();
+  const [memberSearch, setMemberSearch] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
   const { isMaster, roles: actorRoles } = useAuth();
   const actorRank = Math.max(-1, ...actorRoles.map((r) => ROLE_RANK[r as AppRole] ?? -1));
 
