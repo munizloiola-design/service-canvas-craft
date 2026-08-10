@@ -21,11 +21,12 @@ export const Route = createFileRoute("/_app/calendario")({ component: Calendario
 
 type Project = {
   id: string; title: string; due_date: string | null; post_date: string | null;
-  status_id: string | null; client_id: string | null; assigned_to: string | null;
+  status_id: string | null; client_id: string | null; assigned_to: string | null; priority_id: string | null;
   description: string | null; caption: string | null; notes: string | null;
 };
 type Status = { id: string; name: string; color: string };
 type Client = { id: string; name: string };
+type Priority = { id: string; name: string; level: number; color: string };
 type DateField = "due_date" | "post_date";
 
 function CalendarioPage() {
@@ -42,7 +43,7 @@ function CalendarioPage() {
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-cal"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, description, caption, notes");
+      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, priority_id, description, caption, notes");
       if (error) throw error;
       return data as Project[];
     },
@@ -68,6 +69,13 @@ function CalendarioPage() {
     queryFn: async () => (await supabase.from("clients").select("id, name")).data as Client[] ?? [],
   });
 
+  const { data: priorities = [] } = useQuery({
+    queryKey: ["priorities"],
+    queryFn: async () => (await supabase.from("priorities").select("id, name, level, color").order("level", { ascending: false })).data as Priority[] ?? [],
+  });
+
+  const priorityMap = useMemo(() => new Map(priorities.map((p) => [p.id, p])), [priorities]);
+
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
   const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
 
@@ -82,8 +90,17 @@ function CalendarioPage() {
       if (!m.has(key)) m.set(key, []);
       m.get(key)!.push(p);
     }
+    const level = (p: Project) => (p.priority_id ? priorityMap.get(p.priority_id)?.level ?? -Infinity : -Infinity);
+    for (const list of m.values()) {
+      list.sort((a, b) => {
+        const diff = level(b) - level(a);
+        if (diff !== 0 && Number.isFinite(diff)) return diff;
+        if (level(a) !== level(b)) return level(b) === Infinity || level(a) === -Infinity ? 1 : -1;
+        return a.title.localeCompare(b.title, "pt-BR");
+      });
+    }
     return m;
-  }, [projects, dateField]);
+  }, [projects, dateField, priorityMap]);
 
   const reschedule = useMutation({
     mutationFn: async ({ id, newDate }: { id: string; newDate: string }) => {
