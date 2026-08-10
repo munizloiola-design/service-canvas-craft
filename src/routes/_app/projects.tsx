@@ -114,6 +114,8 @@ function ProjectsPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const projSec = useSectionGate("/projects");
+  const canSeeStage = useStageGate();
+
   const [view, setView] = useState<"kanban" | "list">(projSec.can("kanban") ? "kanban" : "list");
   const [open, setOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
