@@ -739,7 +739,9 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const { canSee } = useFieldVisibility();
   const isEdit = !!editProject;
+
   const [files, setFiles] = useState<File[]>([]);
   const [refLinks, setRefLinks] = useState<string[]>(
     editProject?.reference_links && editProject.reference_links.length ? [...editProject.reference_links] : [""]
