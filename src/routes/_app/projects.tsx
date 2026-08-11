@@ -875,7 +875,27 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         has_reference: hasRef,
         reference_links: refLinks.map((s) => s.trim()).filter(Boolean),
         budget: fd.get("budget") ? Number(fd.get("budget")) : null,
+      } as Record<string, unknown>;
+
+      // Campos não liberados em Perfis e Acessos não são renderizados; não devem
+      // ser sobrescritos ao salvar.
+      const hiddenMap: Record<string, string[]> = {
+        client_id: ["client_id"],
+        media_type: ["media_type_id"],
+        priority: ["priority_id"],
+        due_date: ["due_date"],
+        post_date: ["post_date"],
+        budget: ["budget"],
+        notes: ["notes"],
+        caption: ["caption"],
+        reference_links: ["reference_links", "has_reference"],
+        description: ["description", "description_cards"],
+        final_link: ["final_link"],
       };
+      for (const [field, keys] of Object.entries(hiddenMap)) {
+        if (!canSee(field as never)) for (const k of keys) delete base[k];
+      }
+
 
       let projectId: string;
       if (isEdit) {
