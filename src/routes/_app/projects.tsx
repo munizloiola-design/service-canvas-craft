@@ -898,17 +898,21 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
 
 
       let projectId: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload = base as any;
       if (isEdit) {
-        const { error } = await supabase.from("projects").update(base).eq("id", editProject!.id);
+        const { error } = await supabase.from("projects").update(payload).eq("id", editProject!.id);
         if (error) throw error;
         projectId = editProject!.id;
         await supabase.from("project_assignees").delete().eq("project_id", projectId);
       } else {
         const { data, error } = await supabase.from("projects").insert({
-          ...base,
+          ...payload,
+          title: String(fd.get("title")),
           client_token: crypto.randomUUID().replace(/-/g, ""),
           created_by: user?.id,
         }).select("id").single();
+
         if (error) throw error;
         projectId = data.id;
       }
