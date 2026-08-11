@@ -905,7 +905,9 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         const { error } = await supabase.from("projects").update(payload).eq("id", editProject!.id);
         if (error) throw error;
         projectId = editProject!.id;
-        await supabase.from("project_assignees").delete().eq("project_id", projectId);
+        if (canSee("assignees") && canEdit("assignees")) {
+          await supabase.from("project_assignees").delete().eq("project_id", projectId);
+        }
       } else {
         const { data, error } = await supabase.from("projects").insert({
           ...payload,
@@ -918,7 +920,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         projectId = data.id;
       }
 
-      const validAssignees = assignees.filter((a) => a.user_id);
+      const validAssignees = canSee("assignees") && canEdit("assignees") ? assignees.filter((a) => a.user_id) : [];
       if (validAssignees.length) {
         const { error } = await supabase.from("project_assignees").insert(
           validAssignees.map((a) => ({ project_id: projectId, user_id: a.user_id, role_id: a.role_id || null }))
