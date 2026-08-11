@@ -534,7 +534,27 @@ function AssignTab({ focusUserId }: { focusUserId?: string }) {
                 <p className="text-[11px] text-muted-foreground">{sec.hint}</p>
               </div>
               <div className="space-y-2">
-                {list.map((m) => <MemberCard key={m.id} m={m} />)}
+                {list.map((m) => (
+                  <MemberCard
+                    key={m.id}
+                    m={m}
+                    specs={specs}
+                    areas={areas}
+                    specsByArea={specsByArea}
+                    mine={userSpecs.filter((u) => u.user_id === m.id).map((u) => u.specialty_id)}
+                    memberRoles={allUserRoles.filter((r) => r.user_id === m.id).map((r) => r.role)}
+                    isMaster={isMaster}
+                    actorRank={actorRank}
+                    expanded={expanded.has(m.id)}
+                    onExpand={() => setExpanded((p) => new Set(p).add(m.id))}
+                    pickerOpen={pickerFor === m.id}
+                    onPickerOpenChange={(o) => setPickerFor(o ? m.id : null)}
+                    onSetRole={(role) => setRole.mutate({ userId: m.id, role })}
+                    onAssign={(specId) => { assign.mutate({ userId: m.id, specId }); setPickerFor(null); }}
+                    onUnassign={(specId) => unassign.mutate({ userId: m.id, specId })}
+                  />
+                ))}
+
               </div>
             </div>
           );
