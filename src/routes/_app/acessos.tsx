@@ -565,4 +565,129 @@ function AssignTab({ focusUserId }: { focusUserId?: string }) {
   );
 }
 
+function MemberCard({
+  m, specs, areas, specsByArea, mine, memberRoles, isMaster, actorRank,
+  expanded, onExpand, pickerOpen, onPickerOpenChange, onSetRole, onAssign, onUnassign,
+}: {
+  m: MemberProfile;
+  specs: Specialty[];
+  areas: Area[];
+  specsByArea: { area: Area; specs: Specialty[] }[];
+  mine: string[];
+  memberRoles: AppRole[];
+  isMaster: boolean;
+  actorRank: number;
+  expanded: boolean;
+  onExpand: () => void;
+  pickerOpen: boolean;
+  onPickerOpenChange: (open: boolean) => void;
+  onSetRole: (role: AppRole) => void;
+  onAssign: (specId: string) => void;
+  onUnassign: (specId: string) => void;
+}) {
+  const mineSet = new Set(mine);
+  const primaryRole: AppRole = memberRoles[0] ?? "membro";
+  const targetRank = Math.max(-1, ...memberRoles.map((r) => ROLE_RANK[r] ?? -1));
+  const canManageRole = isMaster || actorRank > targetRank;
+  const allowedRoles = isMaster ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
+  const privileged = primaryRole === "admin" || primaryRole === "gerente";
+  const showFunctions = !privileged || expanded;
+  const areaOf = (specId: string) => {
+    const s = specs.find((x) => x.id === specId);
+    return areas.find((a) => a.id === s?.area_id);
+  };
+
+  return (
+    <div id={`assign-member-${m.id}`} className="border rounded-lg p-3 space-y-2 transition-shadow">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="font-medium">{m.full_name ?? m.id}</p>
+        <div className="flex items-center gap-2">
+          <Label className="text-xs text-muted-foreground whitespace-nowrap">Nível de acesso</Label>
+          <Select
+            value={primaryRole}
+            onValueChange={(v) => onSetRole(v as AppRole)}
+            disabled={!canManageRole || allowedRoles.length === 0}
+          >
+            <SelectTrigger className="h-8 w-44 text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {allowedRoles.map((r) => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">{ROLE_HINTS[primaryRole]}</p>
+
+      {privileged && !expanded && (
+        <button type="button" className="text-xs text-muted-foreground underline underline-offset-2" onClick={onExpand}>
+          Acesso total — não depende de função. Mostrar funções ({mine.length})
+        </button>
+      )}
+
+      {showFunctions && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Label className="text-xs text-muted-foreground">Função:</Label>
+          {mine.length === 0 && !privileged && (
+            <span className="text-xs text-destructive">Sem acesso a nenhum menu — escolha uma função.</span>
+          )}
+          {mine.length === 0 && privileged && (
+            <span className="text-xs text-muted-foreground">Nenhuma função.</span>
+          )}
+          {mine.map((sid) => {
+            const s = specs.find((x) => x.id === sid);
+            if (!s) return null;
+            const a = areaOf(sid);
+            return (
+              <Badge key={sid} variant="secondary" className="gap-1">
+                {a?.name ? `${a.name} › ` : ""}{s.name}
+                <button
+                  type="button"
+                  className="ml-1 opacity-70 hover:opacity-100"
+                  onClick={() => onUnassign(sid)}
+                  title="Remover função"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            );
+          })}
+          <Popover open={pickerOpen} onOpenChange={onPickerOpenChange}>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                <Plus className="h-3 w-3" /> adicionar função
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-72" align="start">
+              <Command>
+                <CommandInput placeholder="Buscar função…" />
+                <CommandList>
+                  <CommandEmpty>Nenhuma função disponível.</CommandEmpty>
+                  {specsByArea.map(({ area, specs: aSpecs }) => {
+                    const available = aSpecs.filter((s) => !mineSet.has(s.id));
+                    if (available.length === 0) return null;
+                    return (
+                      <CommandGroup key={area.id} heading={area.name}>
+                        {available.map((s) => (
+                          <CommandItem
+                            key={s.id}
+                            value={`${area.name} ${s.name}`}
+                            onSelect={() => onAssign(s.id)}
+                          >
+                            {s.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    );
+                  })}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 
