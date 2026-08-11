@@ -1037,30 +1037,35 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
           </p>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Checkbox id="has_ref" checked={hasRef} onCheckedChange={(v) => setHasRef(!!v)} />
-            <Label htmlFor="has_ref" className="cursor-pointer">Possui arquivos de referência</Label>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>Links de referência</Label>
-            <Button type="button" variant="outline" size="sm" onClick={() => setRefLinks((l) => [...l, ""])}>
-              <Plus className="h-3 w-3 mr-1" /> Adicionar
-            </Button>
-          </div>
-          {refLinks.map((url, i) => (
-            <div key={i} className="flex gap-2">
-              <Input value={url} onChange={(e) => setRefLinks((cur) => cur.map((u, j) => j === i ? e.target.value : u))} placeholder="https://..." />
-              <Button type="button" variant="ghost" size="sm" onClick={() => setRefLinks((cur) => cur.filter((_, j) => j !== i))}><X className="h-4 w-4" /></Button>
+        {canSee("reference_links") && (
+          <>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Checkbox id="has_ref" checked={hasRef} onCheckedChange={(v) => setHasRef(!!v)} />
+                <Label htmlFor="has_ref" className="cursor-pointer">Possui arquivos de referência</Label>
+              </div>
             </div>
-          ))}
-        </div>
 
-        <Field label="Direção de arte"><Textarea name="notes" rows={2} defaultValue={editProject?.notes ?? ""} /></Field>
-        <Field label="Legenda"><Textarea name="caption" rows={3} defaultValue={editProject?.caption ?? ""} /></Field>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Links de referência</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => setRefLinks((l) => [...l, ""])}>
+                  <Plus className="h-3 w-3 mr-1" /> Adicionar
+                </Button>
+              </div>
+              {refLinks.map((url, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input value={url} onChange={(e) => setRefLinks((cur) => cur.map((u, j) => j === i ? e.target.value : u))} placeholder="https://..." />
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setRefLinks((cur) => cur.filter((_, j) => j !== i))}><X className="h-4 w-4" /></Button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {canSee("notes") && <Field label="Direção de arte"><Textarea name="notes" rows={2} defaultValue={editProject?.notes ?? ""} /></Field>}
+        {canSee("caption") && <Field label="Legenda"><Textarea name="caption" rows={3} defaultValue={editProject?.caption ?? ""} /></Field>}
+
 
         <div className="space-y-2">
           <Label>Briefing / Descrição</Label>
