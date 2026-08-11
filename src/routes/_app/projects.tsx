@@ -1235,12 +1235,13 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
                 </Select>
               </div>
             )}
-            <Info label="Início" value={project.start_date ? new Date(project.start_date).toLocaleDateString("pt-BR") : "—"} />
+            {canSee("start_date") && <Info label="Início" value={project.start_date ? new Date(project.start_date).toLocaleDateString("pt-BR") : "—"} />}
             {canSee("due_date") && <Info label="Prazo" value={project.due_date ? new Date(project.due_date).toLocaleDateString("pt-BR") : "—"} />}
             {canSee("post_date") && <Info label="Postagem" value={project.post_date ? new Date(project.post_date).toLocaleDateString("pt-BR") : "—"} />}
             {pr && canSee("priority") && <Info label="Prioridade atual" value={pr.name} />}
           </div>
 
+          {canSee("assignees") && (
           <div>
             <Label className="text-xs text-muted-foreground">Responsáveis</Label>
             {assignees.length === 0 ? <p className="text-muted-foreground mt-1">—</p> : (
@@ -1254,6 +1255,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
               </ul>
             )}
           </div>
+          )}
 
           {project.notes && canSee("notes") && <div><Label className="text-xs text-muted-foreground">Direção de arte</Label><p className="mt-1 whitespace-pre-wrap">{project.notes}</p></div>}
           {project.caption && canSee("caption") && <div><Label className="text-xs text-muted-foreground">Legenda</Label><p className="mt-1 whitespace-pre-wrap">{project.caption}</p></div>}
@@ -1327,7 +1329,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
                       <Copy className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                  {project.client_decision && canSee("client_feedback") && (
+                  {project.client_decision && canSee("client_decision") && (
                     <p className="text-xs mt-1">
                       Decisão do cliente: <strong>{project.client_decision}</strong>
                       {project.client_feedback && <> — "{project.client_feedback}"</>}
