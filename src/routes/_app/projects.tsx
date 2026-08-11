@@ -310,17 +310,13 @@ function ProjectsPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Mostrar colunas</DropdownMenuLabel>
-                {ALL_COLUMNS.map((c) => {
-                  const blocked = isColBlocked(c.key);
-                  return (
-                    <DropdownMenuCheckboxItem key={c.key} checked={visibleCols.includes(c.key) && !blocked}
-                      disabled={blocked}
-                      title={blocked ? "Bloqueado em Perfis e Acessos" : undefined}
-                      onCheckedChange={(v) => setVisibleCols((cur) => v ? [...cur, c.key] : cur.filter((k) => k !== c.key))}>
-                      {c.label}{blocked ? " (bloqueado)" : ""}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
+                {ALL_COLUMNS.filter((c) => !isColBlocked(c.key)).map((c) => (
+                  <DropdownMenuCheckboxItem key={c.key} checked={visibleCols.includes(c.key)}
+                    onCheckedChange={(v) => setVisibleCols((cur) => v ? [...cur, c.key] : cur.filter((k) => k !== c.key))}>
+                    {c.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -739,7 +735,9 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const { canSee } = useFieldVisibility();
   const isEdit = !!editProject;
+
   const [files, setFiles] = useState<File[]>([]);
   const [refLinks, setRefLinks] = useState<string[]>(
     editProject?.reference_links && editProject.reference_links.length ? [...editProject.reference_links] : [""]
@@ -873,20 +871,44 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         has_reference: hasRef,
         reference_links: refLinks.map((s) => s.trim()).filter(Boolean),
         budget: fd.get("budget") ? Number(fd.get("budget")) : null,
+      } as Record<string, unknown>;
+
+      // Campos não liberados em Perfis e Acessos não são renderizados; não devem
+      // ser sobrescritos ao salvar.
+      const hiddenMap: Record<string, string[]> = {
+        client_id: ["client_id"],
+        media_type: ["media_type_id"],
+        priority: ["priority_id"],
+        due_date: ["due_date"],
+        post_date: ["post_date"],
+        budget: ["budget"],
+        notes: ["notes"],
+        caption: ["caption"],
+        reference_links: ["reference_links", "has_reference"],
+        description: ["description", "description_cards"],
+        final_link: ["final_link"],
       };
+      for (const [field, keys] of Object.entries(hiddenMap)) {
+        if (!canSee(field as never)) for (const k of keys) delete base[k];
+      }
+
 
       let projectId: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload = base as any;
       if (isEdit) {
-        const { error } = await supabase.from("projects").update(base).eq("id", editProject!.id);
+        const { error } = await supabase.from("projects").update(payload).eq("id", editProject!.id);
         if (error) throw error;
         projectId = editProject!.id;
         await supabase.from("project_assignees").delete().eq("project_id", projectId);
       } else {
         const { data, error } = await supabase.from("projects").insert({
-          ...base,
+          ...payload,
+          title: String(fd.get("title")),
           client_token: crypto.randomUUID().replace(/-/g, ""),
           created_by: user?.id,
         }).select("id").single();
+
         if (error) throw error;
         projectId = data.id;
       }
@@ -942,30 +964,34 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
           <Input id="title" name="title" required defaultValue={editProject?.title ?? ""} />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Empresa / Cliente">
-            <Select value={clientId} onValueChange={(v) => setClientId(v)}>
-              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </Field>
+          {canSee("client_id") && (
+            <Field label="Empresa / Cliente">
+              <Select value={clientId} onValueChange={(v) => setClientId(v)}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+          )}
           <Field label="Equipe responsável">
             <Select value={teamId} onValueChange={(v) => setTeamId(v)}>
               <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>{teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
-          <Field label="Tipo de mídia"><Select name="media_type_id" defaultValue={editProject?.media_type_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{mediaTypes.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></Field>
+          {canSee("media_type") && <Field label="Tipo de mídia"><Select name="media_type_id" defaultValue={editProject?.media_type_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{mediaTypes.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></Field>}
           <Field label="Etapa"><Select name="status_id" defaultValue={editProject?.status_id ?? statuses[0]?.id}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></Field>
-          <Field label="Prioridade"><Select name="priority_id" defaultValue={editProject?.priority_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field>
+          {canSee("priority") && <Field label="Prioridade"><Select name="priority_id" defaultValue={editProject?.priority_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field>}
+
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Field label="Início"><Input name="start_date" type="date" defaultValue={editProject?.start_date ?? ""} /></Field>
-          <Field label="Prazo"><Input name="due_date" type="date" defaultValue={editProject?.due_date ?? ""} /></Field>
-          <Field label="Postagem"><Input name="post_date" type="date" defaultValue={editProject?.post_date ?? ""} /></Field>
+          {canSee("due_date") && <Field label="Prazo"><Input name="due_date" type="date" defaultValue={editProject?.due_date ?? ""} /></Field>}
+          {canSee("post_date") && <Field label="Postagem"><Input name="post_date" type="date" defaultValue={editProject?.post_date ?? ""} /></Field>}
         </div>
 
-        <Field label="Valor (R$)"><Input name="budget" type="number" step="0.01" defaultValue={editProject?.budget ?? ""} /></Field>
+        {canSee("budget") && <Field label="Valor (R$)"><Input name="budget" type="number" step="0.01" defaultValue={editProject?.budget ?? ""} /></Field>}
+
 
         {clientId && teamMemberIds.length > 0 && (
           <p className="text-xs text-muted-foreground">
@@ -1007,32 +1033,39 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
           </p>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Checkbox id="has_ref" checked={hasRef} onCheckedChange={(v) => setHasRef(!!v)} />
-            <Label htmlFor="has_ref" className="cursor-pointer">Possui arquivos de referência</Label>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>Links de referência</Label>
-            <Button type="button" variant="outline" size="sm" onClick={() => setRefLinks((l) => [...l, ""])}>
-              <Plus className="h-3 w-3 mr-1" /> Adicionar
-            </Button>
-          </div>
-          {refLinks.map((url, i) => (
-            <div key={i} className="flex gap-2">
-              <Input value={url} onChange={(e) => setRefLinks((cur) => cur.map((u, j) => j === i ? e.target.value : u))} placeholder="https://..." />
-              <Button type="button" variant="ghost" size="sm" onClick={() => setRefLinks((cur) => cur.filter((_, j) => j !== i))}><X className="h-4 w-4" /></Button>
+        {canSee("reference_links") && (
+          <>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Checkbox id="has_ref" checked={hasRef} onCheckedChange={(v) => setHasRef(!!v)} />
+                <Label htmlFor="has_ref" className="cursor-pointer">Possui arquivos de referência</Label>
+              </div>
             </div>
-          ))}
-        </div>
 
-        <Field label="Direção de arte"><Textarea name="notes" rows={2} defaultValue={editProject?.notes ?? ""} /></Field>
-        <Field label="Legenda"><Textarea name="caption" rows={3} defaultValue={editProject?.caption ?? ""} /></Field>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Links de referência</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => setRefLinks((l) => [...l, ""])}>
+                  <Plus className="h-3 w-3 mr-1" /> Adicionar
+                </Button>
+              </div>
+              {refLinks.map((url, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input value={url} onChange={(e) => setRefLinks((cur) => cur.map((u, j) => j === i ? e.target.value : u))} placeholder="https://..." />
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setRefLinks((cur) => cur.filter((_, j) => j !== i))}><X className="h-4 w-4" /></Button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
+        {canSee("notes") && <Field label="Direção de arte"><Textarea name="notes" rows={2} defaultValue={editProject?.notes ?? ""} /></Field>}
+        {canSee("caption") && <Field label="Legenda"><Textarea name="caption" rows={3} defaultValue={editProject?.caption ?? ""} /></Field>}
+
+
+        {canSee("description") && (
         <div className="space-y-2">
+
           <Label>Briefing / Descrição</Label>
           <div className="space-y-3">
             {descCards.map((card, i) => (
@@ -1058,6 +1091,8 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
             </Button>
           </div>
         </div>
+        )}
+
 
         {isEdit && existingAttachments.length > 0 && (
           <div className="space-y-2">
