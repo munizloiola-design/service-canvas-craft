@@ -1,19 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function assertManager(ctx: any) {
-  const { data } = await ctx.supabase.rpc("is_manager", { _uid: ctx.userId });
-  if (!data) throw new Error("Sem permissão");
-}
-
-const FALLBACK_BASE_URL = "https://workflow.digcomunicacao.com.br";
-
-function setPasswordRedirect(baseUrl?: string) {
-  const base = (baseUrl ?? FALLBACK_BASE_URL).replace(/\/+$/, "");
-  return `${base}/set-password`;
-}
+import { assertManager, setPasswordRedirect } from "@/lib/approvals-helpers";
 
 export const approveRegistration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
