@@ -1260,7 +1260,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
           {project.notes && canSee("notes") && <div><Label className="text-xs text-muted-foreground">Direção de arte</Label><p className="mt-1 whitespace-pre-wrap">{project.notes}</p></div>}
           {project.caption && canSee("caption") && <div><Label className="text-xs text-muted-foreground">Legenda</Label><p className="mt-1 whitespace-pre-wrap">{project.caption}</p></div>}
           {canSee("description") && (
-            (project.description_cards && project.description_cards.length > 0) ? (
+            (canSee("description_cards") && project.description_cards && project.description_cards.length > 0) ? (
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Descrição</Label>
                 {project.description_cards.map((c, i) => (
