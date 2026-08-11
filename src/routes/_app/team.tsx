@@ -526,7 +526,7 @@ function NewUserButton() {
     if (!form.full_name || !form.email) return toast.error("Nome e e-mail obrigatórios");
     setBusy(true);
     try {
-      const res = await doCreate({ data: { full_name: form.full_name, email: form.email, phone: form.phone || undefined, role: form.role } });
+      const res = await doCreate({ data: { full_name: form.full_name, email: form.email, phone: form.phone || undefined, role: form.role, base_url: typeof window !== "undefined" ? window.location.origin : undefined } });
       toast.success("Usuário criado");
       qc.invalidateQueries({ queryKey: ["team-overview"] });
       setForm({ full_name: "", email: "", phone: "", role: "membro" });
