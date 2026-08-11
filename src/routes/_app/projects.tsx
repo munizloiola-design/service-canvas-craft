@@ -310,17 +310,13 @@ function ProjectsPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Mostrar colunas</DropdownMenuLabel>
-                {ALL_COLUMNS.map((c) => {
-                  const blocked = isColBlocked(c.key);
-                  return (
-                    <DropdownMenuCheckboxItem key={c.key} checked={visibleCols.includes(c.key) && !blocked}
-                      disabled={blocked}
-                      title={blocked ? "Bloqueado em Perfis e Acessos" : undefined}
-                      onCheckedChange={(v) => setVisibleCols((cur) => v ? [...cur, c.key] : cur.filter((k) => k !== c.key))}>
-                      {c.label}{blocked ? " (bloqueado)" : ""}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
+                {ALL_COLUMNS.filter((c) => !isColBlocked(c.key)).map((c) => (
+                  <DropdownMenuCheckboxItem key={c.key} checked={visibleCols.includes(c.key)}
+                    onCheckedChange={(v) => setVisibleCols((cur) => v ? [...cur, c.key] : cur.filter((k) => k !== c.key))}>
+                    {c.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+
               </DropdownMenuContent>
             </DropdownMenu>
           )}
