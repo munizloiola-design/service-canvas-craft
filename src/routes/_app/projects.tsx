@@ -1013,32 +1013,38 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         )}
 
 
+        {canSee("assignees") && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>Responsáveis</Label>
+            {canEdit("assignees") && (
             <Button type="button" variant="outline" size="sm" onClick={() => setAssignees((a) => [...a, { user_id: "", role_id: "" }])}>
               <Plus className="h-3 w-3 mr-1" /> Adicionar
             </Button>
+            )}
           </div>
           {assignees.map((a, i) => (
             <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2">
-              <Select value={a.user_id} onValueChange={(v) => setAssignees((cur) => cur.map((x, j) => j === i ? { ...x, user_id: v } : x))}>
+              <Select value={a.user_id} disabled={ro("assignees")} onValueChange={(v) => setAssignees((cur) => cur.map((x, j) => j === i ? { ...x, user_id: v } : x))}>
                 <SelectTrigger><SelectValue placeholder="Pessoa" /></SelectTrigger>
                 <SelectContent>{members.map((m) => <SelectItem key={m.id} value={m.id}>{m.full_name || "Sem nome"}</SelectItem>)}</SelectContent>
               </Select>
-              <Select value={a.role_id} onValueChange={(v) => setAssignees((cur) => cur.map((x, j) => j === i ? { ...x, role_id: v } : x))}>
+              <Select value={a.role_id} disabled={ro("assignees")} onValueChange={(v) => setAssignees((cur) => cur.map((x, j) => j === i ? { ...x, role_id: v } : x))}>
                 <SelectTrigger><SelectValue placeholder="Função" /></SelectTrigger>
                 <SelectContent>{roles.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
               </Select>
+              {canEdit("assignees") && (
               <Button type="button" variant="ghost" size="sm" onClick={() => setAssignees((cur) => cur.filter((_, j) => j !== i))}>
                 <X className="h-4 w-4" />
               </Button>
+              )}
             </div>
           ))}
           <p className="text-xs text-muted-foreground">
             Membros da equipe selecionada e usuários com funções correspondentes também terão visibilidade desta demanda.
           </p>
         </div>
+        )}
 
         {canSee("reference_links") && (
           <>
