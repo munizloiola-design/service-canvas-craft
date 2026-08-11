@@ -60,7 +60,8 @@ function AprovacoesPage() {
   });
 
   const approve = useMutation({
-    mutationFn: (id: string) => doApprove({ data: { id } }),
+    mutationFn: (id: string) =>
+      doApprove({ data: { id, base_url: typeof window !== "undefined" ? window.location.origin : undefined } }),
     onSuccess: (res) => {
       toast.success("Cadastro aprovado");
       qc.invalidateQueries({ queryKey: ["pending_registrations"] });
@@ -162,7 +163,7 @@ export function PasswordLinkModal({ link, onClose }: { link: string | null; onCl
       <DialogContent>
         <DialogHeader><DialogTitle>Link para criar senha</DialogTitle></DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Compartilhe este link com o usuário para que ele defina a senha. Válido por 24 horas.
+          Compartilhe este link para que a pessoa crie a senha de acesso. Válido por 24 horas.
         </p>
         <div className="flex gap-2">
           <Input readOnly value={link ?? ""} className="text-xs" />

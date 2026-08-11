@@ -8,9 +8,16 @@ async function assertManager(ctx: any) {
   if (!data) throw new Error("Sem permissão");
 }
 
+const FALLBACK_BASE_URL = "https://workflow.digcomunicacao.com.br";
+
+function setPasswordRedirect(baseUrl?: string) {
+  const base = (baseUrl ?? FALLBACK_BASE_URL).replace(/\/+$/, "");
+  return `${base}/set-password`;
+}
+
 export const approveRegistration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
+  .inputValidator((i: unknown) => z.object({ id: z.string().uuid(), base_url: z.string().url().optional() }).parse(i))
   .handler(async ({ data, context }) => {
     await assertManager(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -32,6 +39,7 @@ export const approveRegistration = createServerFn({ method: "POST" })
     const { data: linkData, error: e3 } = await supabaseAdmin.auth.admin.generateLink({
       type: "recovery",
       email: reg.email,
+      options: { redirectTo: setPasswordRedirect(data.base_url) },
     });
     if (e3) throw new Error(e3.message);
     const actionLink = linkData?.properties?.action_link ?? null;
@@ -107,6 +115,7 @@ export const createTeamUser = createServerFn({ method: "POST" })
         full_name: z.string().min(1).max(120),
         phone: z.string().max(30).optional(),
         role: z.enum(["admin", "gerente", "membro"]).default("membro"),
+        base_url: z.string().url().optional(),
       })
       .parse(i),
   )
@@ -131,6 +140,7 @@ export const createTeamUser = createServerFn({ method: "POST" })
     const { data: linkData, error: e2 } = await supabaseAdmin.auth.admin.generateLink({
       type: "recovery",
       email: data.email,
+      options: { redirectTo: setPasswordRedirect(data.base_url) },
     });
     if (e2) throw new Error(e2.message);
     const actionLink = linkData?.properties?.action_link ?? null;
@@ -151,7 +161,7 @@ export const createTeamUser = createServerFn({ method: "POST" })
 
 export const regeneratePasswordLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => z.object({ user_id: z.string().uuid() }).parse(i))
+  .inputValidator((i: unknown) => z.object({ user_id: z.string().uuid(), base_url: z.string().url().optional() }).parse(i))
   .handler(async ({ data, context }) => {
     await assertManager(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -162,6 +172,7 @@ export const regeneratePasswordLink = createServerFn({ method: "POST" })
     const { data: linkData, error: el } = await supabaseAdmin.auth.admin.generateLink({
       type: "recovery",
       email: u.user.email,
+      options: { redirectTo: setPasswordRedirect(data.base_url) },
     });
     if (el) throw new Error(el.message);
     const actionLink = linkData?.properties?.action_link ?? null;
