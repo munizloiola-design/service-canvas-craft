@@ -1093,7 +1093,9 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
             <Button type="button" variant="outline" size="sm" onClick={addCard}>
               <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar novo card
             </Button>
-          </div>
+        </div>
+        )}
+
         </div>
 
         {isEdit && existingAttachments.length > 0 && (
