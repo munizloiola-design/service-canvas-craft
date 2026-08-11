@@ -990,11 +990,12 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Field label="Início"><Input name="start_date" type="date" defaultValue={editProject?.start_date ?? ""} /></Field>
-          <Field label="Prazo"><Input name="due_date" type="date" defaultValue={editProject?.due_date ?? ""} /></Field>
-          <Field label="Postagem"><Input name="post_date" type="date" defaultValue={editProject?.post_date ?? ""} /></Field>
+          {canSee("due_date") && <Field label="Prazo"><Input name="due_date" type="date" defaultValue={editProject?.due_date ?? ""} /></Field>}
+          {canSee("post_date") && <Field label="Postagem"><Input name="post_date" type="date" defaultValue={editProject?.post_date ?? ""} /></Field>}
         </div>
 
-        <Field label="Valor (R$)"><Input name="budget" type="number" step="0.01" defaultValue={editProject?.budget ?? ""} /></Field>
+        {canSee("budget") && <Field label="Valor (R$)"><Input name="budget" type="number" step="0.01" defaultValue={editProject?.budget ?? ""} /></Field>}
+
 
         {clientId && teamMemberIds.length > 0 && (
           <p className="text-xs text-muted-foreground">
