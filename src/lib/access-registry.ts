@@ -222,6 +222,10 @@ const INTERNAL_FIELDS = new Set([
   "client_token",
   "client_decided_at",
   "status",
+  // Campos sem interface própria — não fazem sentido na árvore de permissões
+  "client_name",
+  "service_type",
+  "has_reference",
 ]);
 
 /** Lista base (sempre presente) de campos liberáveis. */

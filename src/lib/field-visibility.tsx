@@ -17,6 +17,11 @@ export const PROJECT_FIELDS = [
   { key: "final_link", label: "Arquivo ou link finalizado" },
   { key: "client_feedback", label: "Feedback do cliente" },
   { key: "media_type", label: "Tipo de mídia" },
+  { key: "assignees", label: "Responsáveis" },
+  { key: "team_id", label: "Equipe responsável" },
+  { key: "start_date", label: "Data de início" },
+  { key: "client_decision", label: "Decisão do cliente" },
+  { key: "description_cards", label: "Cards de descrição" },
 ] as const;
 export type ProjectFieldKey = (typeof PROJECT_FIELDS)[number]["key"];
 

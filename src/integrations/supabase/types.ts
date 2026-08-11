@@ -2242,6 +2242,7 @@ export type Database = {
       }
       is_client_profile: { Args: { _uid: string }; Returns: boolean }
       is_client_user: { Args: { _uid: string }; Returns: boolean }
+      is_internal_user: { Args: { _uid: string }; Returns: boolean }
       is_manager: { Args: { _uid: string }; Returns: boolean }
       is_master: { Args: { _uid: string }; Returns: boolean }
       is_project_assignee: {

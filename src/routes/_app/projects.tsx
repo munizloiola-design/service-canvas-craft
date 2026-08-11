@@ -735,7 +735,8 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { canSee } = useFieldVisibility();
+  const { canSee, canEdit } = useFieldVisibility();
+  const ro = (f: Parameters<typeof canEdit>[0]) => !canEdit(f);
   const isEdit = !!editProject;
 
   const [files, setFiles] = useState<File[]>([]);
@@ -887,9 +888,13 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         reference_links: ["reference_links", "has_reference"],
         description: ["description", "description_cards"],
         final_link: ["final_link"],
+        team_id: ["team_id"],
+        start_date: ["start_date"],
       };
       for (const [field, keys] of Object.entries(hiddenMap)) {
-        if (!canSee(field as never)) for (const k of keys) delete base[k];
+        // Sem "ver" (campo não renderizado) ou sem "editar" (somente leitura):
+        // em ambos os casos o valor não pode ser sobrescrito.
+        if (!canSee(field as never) || !canEdit(field as never)) for (const k of keys) delete base[k];
       }
 
 
@@ -900,7 +905,9 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         const { error } = await supabase.from("projects").update(payload).eq("id", editProject!.id);
         if (error) throw error;
         projectId = editProject!.id;
-        await supabase.from("project_assignees").delete().eq("project_id", projectId);
+        if (canSee("assignees") && canEdit("assignees")) {
+          await supabase.from("project_assignees").delete().eq("project_id", projectId);
+        }
       } else {
         const { data, error } = await supabase.from("projects").insert({
           ...payload,
@@ -913,7 +920,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         projectId = data.id;
       }
 
-      const validAssignees = assignees.filter((a) => a.user_id);
+      const validAssignees = canSee("assignees") && canEdit("assignees") ? assignees.filter((a) => a.user_id) : [];
       if (validAssignees.length) {
         const { error } = await supabase.from("project_assignees").insert(
           validAssignees.map((a) => ({ project_id: projectId, user_id: a.user_id, role_id: a.role_id || null }))
@@ -966,31 +973,33 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {canSee("client_id") && (
             <Field label="Empresa / Cliente">
-              <Select value={clientId} onValueChange={(v) => setClientId(v)}>
+              <Select value={clientId} onValueChange={(v) => setClientId(v)} disabled={ro("client_id")}>
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
           )}
+          {canSee("team_id") && (
           <Field label="Equipe responsável">
-            <Select value={teamId} onValueChange={(v) => setTeamId(v)}>
+            <Select value={teamId} onValueChange={(v) => setTeamId(v)} disabled={ro("team_id")}>
               <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>{teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
-          {canSee("media_type") && <Field label="Tipo de mídia"><Select name="media_type_id" defaultValue={editProject?.media_type_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{mediaTypes.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></Field>}
+          )}
+          {canSee("media_type") && <Field label="Tipo de mídia"><Select name="media_type_id" defaultValue={editProject?.media_type_id ?? undefined} disabled={ro("media_type")}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{mediaTypes.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></Field>}
           <Field label="Etapa"><Select name="status_id" defaultValue={editProject?.status_id ?? statuses[0]?.id}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></Field>
-          {canSee("priority") && <Field label="Prioridade"><Select name="priority_id" defaultValue={editProject?.priority_id ?? undefined}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field>}
+          {canSee("priority") && <Field label="Prioridade"><Select name="priority_id" defaultValue={editProject?.priority_id ?? undefined} disabled={ro("priority")}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field>}
 
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Field label="Início"><Input name="start_date" type="date" defaultValue={editProject?.start_date ?? ""} /></Field>
-          {canSee("due_date") && <Field label="Prazo"><Input name="due_date" type="date" defaultValue={editProject?.due_date ?? ""} /></Field>}
-          {canSee("post_date") && <Field label="Postagem"><Input name="post_date" type="date" defaultValue={editProject?.post_date ?? ""} /></Field>}
+          {canSee("start_date") && <Field label="Início"><Input name="start_date" type="date" defaultValue={editProject?.start_date ?? ""} readOnly={ro("start_date")} /></Field>}
+          {canSee("due_date") && <Field label="Prazo"><Input name="due_date" type="date" defaultValue={editProject?.due_date ?? ""} readOnly={ro("due_date")} /></Field>}
+          {canSee("post_date") && <Field label="Postagem"><Input name="post_date" type="date" defaultValue={editProject?.post_date ?? ""} readOnly={ro("post_date")} /></Field>}
         </div>
 
-        {canSee("budget") && <Field label="Valor (R$)"><Input name="budget" type="number" step="0.01" defaultValue={editProject?.budget ?? ""} /></Field>}
+        {canSee("budget") && <Field label="Valor (R$)"><Input name="budget" type="number" step="0.01" defaultValue={editProject?.budget ?? ""} readOnly={ro("budget")} /></Field>}
 
 
         {clientId && teamMemberIds.length > 0 && (
@@ -1006,32 +1015,38 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         )}
 
 
+        {canSee("assignees") && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>Responsáveis</Label>
+            {canEdit("assignees") && (
             <Button type="button" variant="outline" size="sm" onClick={() => setAssignees((a) => [...a, { user_id: "", role_id: "" }])}>
               <Plus className="h-3 w-3 mr-1" /> Adicionar
             </Button>
+            )}
           </div>
           {assignees.map((a, i) => (
             <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2">
-              <Select value={a.user_id} onValueChange={(v) => setAssignees((cur) => cur.map((x, j) => j === i ? { ...x, user_id: v } : x))}>
+              <Select value={a.user_id} disabled={ro("assignees")} onValueChange={(v) => setAssignees((cur) => cur.map((x, j) => j === i ? { ...x, user_id: v } : x))}>
                 <SelectTrigger><SelectValue placeholder="Pessoa" /></SelectTrigger>
                 <SelectContent>{members.map((m) => <SelectItem key={m.id} value={m.id}>{m.full_name || "Sem nome"}</SelectItem>)}</SelectContent>
               </Select>
-              <Select value={a.role_id} onValueChange={(v) => setAssignees((cur) => cur.map((x, j) => j === i ? { ...x, role_id: v } : x))}>
+              <Select value={a.role_id} disabled={ro("assignees")} onValueChange={(v) => setAssignees((cur) => cur.map((x, j) => j === i ? { ...x, role_id: v } : x))}>
                 <SelectTrigger><SelectValue placeholder="Função" /></SelectTrigger>
                 <SelectContent>{roles.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
               </Select>
+              {canEdit("assignees") && (
               <Button type="button" variant="ghost" size="sm" onClick={() => setAssignees((cur) => cur.filter((_, j) => j !== i))}>
                 <X className="h-4 w-4" />
               </Button>
+              )}
             </div>
           ))}
           <p className="text-xs text-muted-foreground">
             Membros da equipe selecionada e usuários com funções correspondentes também terão visibilidade desta demanda.
           </p>
         </div>
+        )}
 
         {canSee("reference_links") && (
           <>
@@ -1059,8 +1074,8 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
           </>
         )}
 
-        {canSee("notes") && <Field label="Direção de arte"><Textarea name="notes" rows={2} defaultValue={editProject?.notes ?? ""} /></Field>}
-        {canSee("caption") && <Field label="Legenda"><Textarea name="caption" rows={3} defaultValue={editProject?.caption ?? ""} /></Field>}
+        {canSee("notes") && <Field label="Direção de arte"><Textarea name="notes" rows={2} defaultValue={editProject?.notes ?? ""} readOnly={ro("notes")} /></Field>}
+        {canSee("caption") && <Field label="Legenda"><Textarea name="caption" rows={3} defaultValue={editProject?.caption ?? ""} readOnly={ro("caption")} /></Field>}
 
 
         {canSee("description") && (
@@ -1220,12 +1235,13 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
                 </Select>
               </div>
             )}
-            <Info label="Início" value={project.start_date ? new Date(project.start_date).toLocaleDateString("pt-BR") : "—"} />
+            {canSee("start_date") && <Info label="Início" value={project.start_date ? new Date(project.start_date).toLocaleDateString("pt-BR") : "—"} />}
             {canSee("due_date") && <Info label="Prazo" value={project.due_date ? new Date(project.due_date).toLocaleDateString("pt-BR") : "—"} />}
             {canSee("post_date") && <Info label="Postagem" value={project.post_date ? new Date(project.post_date).toLocaleDateString("pt-BR") : "—"} />}
             {pr && canSee("priority") && <Info label="Prioridade atual" value={pr.name} />}
           </div>
 
+          {canSee("assignees") && (
           <div>
             <Label className="text-xs text-muted-foreground">Responsáveis</Label>
             {assignees.length === 0 ? <p className="text-muted-foreground mt-1">—</p> : (
@@ -1239,11 +1255,12 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
               </ul>
             )}
           </div>
+          )}
 
           {project.notes && canSee("notes") && <div><Label className="text-xs text-muted-foreground">Direção de arte</Label><p className="mt-1 whitespace-pre-wrap">{project.notes}</p></div>}
           {project.caption && canSee("caption") && <div><Label className="text-xs text-muted-foreground">Legenda</Label><p className="mt-1 whitespace-pre-wrap">{project.caption}</p></div>}
           {canSee("description") && (
-            (project.description_cards && project.description_cards.length > 0) ? (
+            (canSee("description_cards") && project.description_cards && project.description_cards.length > 0) ? (
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Descrição</Label>
                 {project.description_cards.map((c, i) => (
@@ -1312,7 +1329,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
                       <Copy className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                  {project.client_decision && canSee("client_feedback") && (
+                  {project.client_decision && canSee("client_decision") && (
                     <p className="text-xs mt-1">
                       Decisão do cliente: <strong>{project.client_decision}</strong>
                       {project.client_feedback && <> — "{project.client_feedback}"</>}
