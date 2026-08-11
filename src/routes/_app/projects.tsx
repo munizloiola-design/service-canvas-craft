@@ -1067,7 +1067,9 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         {canSee("caption") && <Field label="Legenda"><Textarea name="caption" rows={3} defaultValue={editProject?.caption ?? ""} /></Field>}
 
 
+        {canSee("description") && (
         <div className="space-y-2">
+
           <Label>Briefing / Descrição</Label>
           <div className="space-y-3">
             {descCards.map((card, i) => (
