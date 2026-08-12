@@ -63,13 +63,35 @@ function CalendarioPage() {
   const qc = useQueryClient();
 
   const { data: allProjects = [] } = useQuery({
+  const { canSee } = useFieldVisibility();
+
+  const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-cal"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, priority_id, description, caption, notes, team_id");
+      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, priority_id, description, caption, notes, team_id, media_type_id, reference_links, deliverable_path, final_link");
       if (error) throw error;
       return data as Project[];
     },
   });
+
+  const { data: mediaTypes = [] } = useQuery({
+    queryKey: ["media_types_cal"],
+    queryFn: async () => ((await supabase.from("media_types").select("id, name")).data ?? []) as { id: string; name: string }[],
+  });
+  const mediaMap = useMemo(() => new Map(mediaTypes.map((m) => [m.id, m.name])), [mediaTypes]);
+
+  const { data: attachments = [] } = useQuery({
+    queryKey: ["project_attachments_cal", detail?.id],
+    enabled: !!detail,
+    queryFn: async () =>
+      ((await supabase.from("project_attachments").select("id, file_name, file_path").eq("project_id", detail!.id)).data ?? []) as { id: string; file_name: string; file_path: string }[],
+  });
+
+  const downloadFile = async (path: string) => {
+    const { data } = await supabase.storage.from("project-files").createSignedUrl(path, 60);
+    if (data) window.open(data.signedUrl, "_blank");
+  };
+
 
   const { data: assignees = [] } = useQuery({
     queryKey: ["project_assignees_cal"],
