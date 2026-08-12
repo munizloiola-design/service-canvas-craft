@@ -21,6 +21,7 @@ import { useAccess } from "@/lib/access-context";
 import { useSectionGate, useStageGate } from "@/lib/access-sections";
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import { ProjectChat } from "@/components/ProjectChat";
+import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
@@ -132,21 +133,31 @@ function ProjectsPage() {
   const projSec = useSectionGate("/projects");
   const canSeeStage = useStageGate();
 
-  const [view, setView] = useState<"kanban" | "list">(projSec.can("kanban") ? "kanban" : "list");
+  const [view, setView] = usePersistedState<"kanban" | "list">(
+    persistKey("projects", "view", user?.id),
+    projSec.can("kanban") ? "kanban" : "list",
+  );
   const [open, setOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [visibleCols, setVisibleCols] = useState<string[]>(ALL_COLUMNS.map((c) => c.key));
-  const [filters, setFilters] = useState<ActiveFilter[]>([]);
-  const [quick, setQuick] = useState<QuickFilter | undefined>(search.quick);
+  const [visibleCols, setVisibleCols] = usePersistedState<string[]>(
+    persistKey("projects", "cols", user?.id),
+    ALL_COLUMNS.map((c) => c.key),
+  );
+  const [filters, setFilters] = usePersistedState<ActiveFilter[]>(persistKey("projects", "filters", user?.id), []);
+  const [quick, setQuick] = usePersistedState<QuickFilter | undefined>(
+    persistKey("projects", "quick", user?.id),
+    search.quick,
+  );
 
   useEffect(() => {
     if (search.detail) setDetailId(search.detail);
   }, [search.detail]);
 
   useEffect(() => {
-    setQuick(search.quick);
-  }, [search.quick]);
+    // URL manda quando vem com filtro rápido; senão mantém o último usado
+    if (search.quick) setQuick(search.quick);
+  }, [search.quick, setQuick]);
 
 
   const { data: projects = [] } = useQuery({
@@ -611,7 +622,11 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
   });
   const isColBlocked = useColumnAccess();
   const allowedCols = visibleCols.filter((k) => !isColBlocked(k));
-  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
+  const { user: listUser } = useAuth();
+  const [sort, setSort] = usePersistedState<{ key: string; dir: "asc" | "desc" } | null>(
+    persistKey("projects", "sort", listUser?.id),
+    null,
+  );
 
   const toggleSort = (key: string) => {
     setSort((cur) => {
