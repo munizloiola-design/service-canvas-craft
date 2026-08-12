@@ -286,18 +286,23 @@ function useVisibleProjects<T extends { id: string; assigned_to?: string | null 
 
 function StatsOverview() {
   const { menuAllowed } = useAccess();
+  const [openStat, setOpenStat] = useState<string | null>(null);
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-stats"],
-    queryFn: async () => (await supabase.from("projects").select("id, status_id, priority_id, due_date, assigned_to")).data ?? [],
+    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, assigned_to, client_id, team_id")).data ?? [],
   });
   const projects = useVisibleProjects(allProjects);
   const { data: statuses = [] } = useQuery({
     queryKey: ["workflow_statuses"],
-    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, is_final")).data ?? [],
+    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, is_final, color")).data ?? [],
   });
   const { data: priorities = [] } = useQuery({
     queryKey: ["priorities"],
     queryFn: async () => (await supabase.from("priorities").select("id, name, level")).data ?? [],
+  });
+  const { data: clients = [] } = useQuery({
+    queryKey: ["clients"],
+    queryFn: async () => (await supabase.from("clients").select("id, name")).data ?? [],
   });
 
   const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));
@@ -311,24 +316,48 @@ function StatsOverview() {
   const overdue = projects.filter((p) => !isDone(p) && p.due_date && p.due_date < today).length;
 
   const canProjects = menuAllowed("/projects");
+  const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
+  const statusMap = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
+  const priorityLevel = useMemo(() => new Map(priorities.map((p) => [p.id, p.level ?? 0])), [priorities]);
 
-  const stats: {
-    label: string; value: number; icon: typeof Clock; color: string;
-    to?: "/projects"; quick?: QuickFilter;
-  }[] = [
-    { label: "Total", value: total, icon: FolderKanban, color: "text-info", to: canProjects ? "/projects" : undefined },
-    { label: "Em aberto", value: open, icon: Clock, color: "text-warning", to: canProjects ? "/projects" : undefined, quick: "abertas" },
-    { label: "Concluídos", value: done, icon: CheckCircle2, color: "text-success", to: canProjects ? "/projects" : undefined, quick: "concluidas" },
-    { label: "Urgentes", value: urgent, icon: AlertTriangle, color: "text-destructive", to: canProjects ? "/projects" : undefined, quick: "urgentes" },
-    { label: "Atrasados", value: overdue, icon: AlertTriangle, color: "text-destructive", to: canProjects ? "/projects" : undefined, quick: "atrasadas" },
+  type StatItem = {
+    label: string;
+    value: number;
+    icon: typeof Clock;
+    color: string;
+    quick?: QuickFilter;
+    filter: (p: (typeof projects)[number]) => boolean;
+  };
+
+  const stats: StatItem[] = [
+    { label: "Total", value: total, icon: FolderKanban, color: "text-info", filter: () => true },
+    { label: "Em aberto", value: open, icon: Clock, color: "text-warning", quick: "abertas", filter: (p) => !isDone(p) },
+    { label: "Concluídos", value: done, icon: CheckCircle2, color: "text-success", quick: "concluidas", filter: (p) => isDone(p) },
+    { label: "Urgentes", value: urgent, icon: AlertTriangle, color: "text-destructive", quick: "urgentes", filter: (p) => p.priority_id === urgentId && !isDone(p) },
+    { label: "Atrasados", value: overdue, icon: AlertTriangle, color: "text-destructive", quick: "atrasadas", filter: (p) => !isDone(p) && !!p.due_date && p.due_date < today },
   ];
+
+  const selected = stats.find((s) => s.label === openStat);
+  const selectedProjects = useMemo(() => {
+    if (!selected) return [];
+    return projects
+      .filter(selected.filter)
+      .sort((a, b) => {
+        const pa = priorityLevel.get(a.priority_id ?? "") ?? 0;
+        const pb = priorityLevel.get(b.priority_id ?? "") ?? 0;
+        if (pb !== pa) return pb - pa;
+        if (!a.due_date && !b.due_date) return 0;
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return a.due_date.localeCompare(b.due_date);
+      });
+  }, [selected, projects, priorityLevel]);
 
   return (
     <div>
       <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">Indicadores gerais</h3>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {stats.map((s) => {
-
           const Icon = s.icon;
           const inner = (
             <>
@@ -339,23 +368,86 @@ function StatsOverview() {
               <p className="text-2xl font-semibold">{s.value}</p>
             </>
           );
-          if (!s.to) {
+          if (!canProjects) {
             return <div key={s.label} className="bg-muted/40 rounded-md p-3">{inner}</div>;
           }
           return (
-            <Link
+            <button
               key={s.label}
-              to={s.to}
-              search={{ detail: undefined, quick: s.quick }}
-
+              onClick={() => setOpenStat(s.label)}
               className="group bg-muted/40 rounded-md p-3 text-left transition-all hover:bg-muted hover:shadow-sm hover:-translate-y-0.5 relative"
             >
               {inner}
               <ArrowUpRight className="h-3 w-3 absolute bottom-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-            </Link>
+            </button>
           );
         })}
       </div>
+
+      <Dialog open={!!openStat} onOpenChange={(o) => !o && setOpenStat(null)}>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 shrink-0 border-b">
+            <DialogTitle className="text-lg">
+              {selected?.label} — {selected?.value} {selected?.value === 1 ? "demanda" : "demandas"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
+            {selectedProjects.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhuma demanda neste indicador.</p>
+            ) : (
+              <div className="divide-y">
+                {selectedProjects.map((p) => {
+                  const status = p.status_id ? statusMap.get(p.status_id) : null;
+                  const isLate = !isDone(p) && !!p.due_date && p.due_date < today;
+                  return (
+                    <Link
+                      key={p.id}
+                      to="/projects"
+                      search={{ detail: p.id, quick: undefined }}
+                      onClick={() => setOpenStat(null)}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3 hover:bg-muted/30 -mx-1 px-1 rounded"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{p.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {p.client_id ? (clientMap.get(p.client_id) ?? "—") : "—"}
+                          {status && (
+                            <span className="ml-2 inline-flex items-center gap-1">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: status.color }} />
+                              {status.name}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {p.due_date && (
+                          <span className={`text-xs ${isLate ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                            {format(new Date(p.due_date), "dd/MM/yyyy")}
+                          </span>
+                        )}
+                        <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="px-6 py-4 shrink-0 border-t flex justify-end">
+            <Button asChild variant="default" size="sm">
+              <Link
+                to="/projects"
+                search={{ detail: undefined, quick: selected?.quick }}
+                onClick={() => setOpenStat(null)}
+              >
+                Acesse as demandas
+              </Link>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
