@@ -50,13 +50,45 @@ function CalendarioPage() {
   const calSec = useSectionGate("/calendario");
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/calendario" });
+  const filtersKey = persistKey("calendario", "filters", user?.id);
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current || typeof window === "undefined") return;
+    restored.current = true;
+    const hasUrl = !!(search.resp || search.equipe || search.cliente || search.fase || search.prioridade);
+    if (hasUrl) return;
+    try {
+      const raw = window.localStorage.getItem(filtersKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as CalSearch;
+      if (saved.resp || saved.equipe || saved.cliente || saved.fase || saved.prioridade) {
+        navigate({ search: () => saved, replace: true });
+      }
+    } catch {
+      /* ignora valor inválido */
+    }
+  }, [filtersKey, navigate, search]);
+  useEffect(() => {
+    if (!restored.current || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(filtersKey, JSON.stringify(search));
+    } catch {
+      /* ignora */
+    }
+  }, [filtersKey, search]);
   const setFilter = (key: keyof CalSearch, value: string) =>
     navigate({ search: (prev) => ({ ...prev, [key]: value === "__all" ? "" : value }) });
   const clearFilters = () =>
     navigate({ search: () => ({ resp: "", equipe: "", cliente: "", fase: "", prioridade: "" }) });
   const hasFilters = !!(search.resp || search.equipe || search.cliente || search.fase || search.prioridade);
-  const [tab, setTab] = useState<"due" | "post">(calSec.can("due") ? "due" : "post");
-  const [view, setView] = useState<"month" | "week">(calSec.can("month") ? "month" : "week");
+  const [tab, setTab] = usePersistedState<"due" | "post">(
+    persistKey("calendario", "tab", user?.id),
+    calSec.can("due") ? "due" : "post",
+  );
+  const [view, setView] = usePersistedState<"month" | "week">(
+    persistKey("calendario", "view", user?.id),
+    calSec.can("month") ? "month" : "week",
+  );
   const [cursor, setCursor] = useState(new Date());
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
