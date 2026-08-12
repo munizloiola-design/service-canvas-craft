@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
@@ -10,19 +10,31 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSectionGate } from "@/lib/access-sections";
 import { useAuth } from "@/lib/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_app/calendario")({ component: CalendarioPage });
+type CalSearch = { resp: string; equipe: string; cliente: string; fase: string; prioridade: string };
+
+export const Route = createFileRoute("/_app/calendario")({
+  validateSearch: (s: Record<string, unknown>): CalSearch => ({
+    resp: typeof s.resp === "string" ? s.resp : "",
+    equipe: typeof s.equipe === "string" ? s.equipe : "",
+    cliente: typeof s.cliente === "string" ? s.cliente : "",
+    fase: typeof s.fase === "string" ? s.fase : "",
+    prioridade: typeof s.prioridade === "string" ? s.prioridade : "",
+  }),
+  component: CalendarioPage,
+});
 
 type Project = {
   id: string; title: string; due_date: string | null; post_date: string | null;
   status_id: string | null; client_id: string | null; assigned_to: string | null; priority_id: string | null;
-  description: string | null; caption: string | null; notes: string | null;
+  description: string | null; caption: string | null; notes: string | null; team_id: string | null;
 };
 type Status = { id: string; name: string; color: string };
 type Client = { id: string; name: string };
@@ -32,6 +44,13 @@ type DateField = "due_date" | "post_date";
 function CalendarioPage() {
   const { user, isManager } = useAuth();
   const calSec = useSectionGate("/calendario");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/calendario" });
+  const setFilter = (key: keyof CalSearch, value: string) =>
+    navigate({ search: (prev) => ({ ...prev, [key]: value === "__all" ? "" : value }) });
+  const clearFilters = () =>
+    navigate({ search: () => ({ resp: "", equipe: "", cliente: "", fase: "", prioridade: "" }) });
+  const hasFilters = !!(search.resp || search.equipe || search.cliente || search.fase || search.prioridade);
   const [tab, setTab] = useState<"due" | "post">(calSec.can("due") ? "due" : "post");
   const [view, setView] = useState<"month" | "week">(calSec.can("month") ? "month" : "week");
   const [cursor, setCursor] = useState(new Date());
@@ -43,11 +62,12 @@ function CalendarioPage() {
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-cal"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, priority_id, description, caption, notes");
+      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, priority_id, description, caption, notes, team_id");
       if (error) throw error;
       return data as Project[];
     },
   });
+
   const { data: assignees = [] } = useQuery({
     queryKey: ["project_assignees_cal"],
     queryFn: async () =>
