@@ -15,7 +15,9 @@ import { useSectionGate } from "@/lib/access-sections";
 import { useAuth } from "@/lib/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, X, Link as LinkIcon, Paperclip, Download } from "lucide-react";
+import { ProjectChat } from "@/components/ProjectChat";
+import { useFieldVisibility } from "@/lib/field-visibility";
 import { toast } from "sonner";
 
 type CalSearch = { resp: string; equipe: string; cliente: string; fase: string; prioridade: string };
@@ -35,6 +37,7 @@ type Project = {
   id: string; title: string; due_date: string | null; post_date: string | null;
   status_id: string | null; client_id: string | null; assigned_to: string | null; priority_id: string | null;
   description: string | null; caption: string | null; notes: string | null; team_id: string | null;
+  media_type_id: string | null; reference_links: string[] | null; deliverable_path: string | null; final_link: string | null;
 };
 type Status = { id: string; name: string; color: string };
 type Client = { id: string; name: string };
@@ -59,14 +62,35 @@ function CalendarioPage() {
   const [detail, setDetail] = useState<Project | null>(null);
   const qc = useQueryClient();
 
+  const { canSee } = useFieldVisibility();
+
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-cal"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, priority_id, description, caption, notes, team_id");
+      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, priority_id, description, caption, notes, team_id, media_type_id, reference_links, deliverable_path, final_link");
       if (error) throw error;
       return data as Project[];
     },
   });
+
+  const { data: mediaTypes = [] } = useQuery({
+    queryKey: ["media_types_cal"],
+    queryFn: async () => ((await supabase.from("media_types").select("id, name")).data ?? []) as { id: string; name: string }[],
+  });
+  const mediaMap = useMemo(() => new Map(mediaTypes.map((m) => [m.id, m.name])), [mediaTypes]);
+
+  const { data: attachments = [] } = useQuery({
+    queryKey: ["project_attachments_cal", detail?.id],
+    enabled: !!detail,
+    queryFn: async () =>
+      ((await supabase.from("project_attachments").select("id, file_name, file_path").eq("project_id", detail!.id)).data ?? []) as { id: string; file_name: string; file_path: string }[],
+  });
+
+  const downloadFile = async (path: string) => {
+    const { data } = await supabase.storage.from("project-files").createSignedUrl(path, 60);
+    if (data) window.open(data.signedUrl, "_blank");
+  };
+
 
   const { data: assignees = [] } = useQuery({
     queryKey: ["project_assignees_cal"],
@@ -435,6 +459,9 @@ function CalendarioPage() {
                   </Badge>
                 )}
                 {detail.client_id && <Badge variant="secondary">{clientMap.get(detail.client_id) ?? "Cliente"}</Badge>}
+                {canSee("media_type") && detail.media_type_id && mediaMap.get(detail.media_type_id) && (
+                  <Badge variant="outline">{mediaMap.get(detail.media_type_id)}</Badge>
+                )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 <div><span className="text-muted-foreground">Prazo:</span> {detail.due_date ? new Date(detail.due_date + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</div>
@@ -447,6 +474,49 @@ function CalendarioPage() {
               {detail.caption && (
                 <div><p className="text-xs text-muted-foreground mb-1">Legenda</p><p className="whitespace-pre-wrap break-words">{detail.caption}</p></div>
               )}
+
+              {canSee("reference_links") && ((detail.reference_links?.length ?? 0) > 0 || attachments.length > 0) && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Referências</p>
+                  <ul className="space-y-1">
+                    {(detail.reference_links ?? []).map((url, i) => (
+                      <li key={i}>
+                        <a href={url} target="_blank" rel="noreferrer" className="text-info hover:underline inline-flex items-center gap-1 break-all">
+                          <LinkIcon className="h-3 w-3" /> {url}
+                        </a>
+                      </li>
+                    ))}
+                    {attachments.map((a) => (
+                      <li key={a.id} className="flex items-center justify-between gap-2 p-2 rounded bg-muted/50">
+                        <span className="inline-flex items-center gap-2 truncate"><Paperclip className="h-3.5 w-3.5" /><span className="truncate">{a.file_name}</span></span>
+                        <Button variant="ghost" size="sm" onClick={() => downloadFile(a.file_path)}><Download className="h-3.5 w-3.5" /></Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {((canSee("deliverable_path") && detail.deliverable_path) || (canSee("final_link") && detail.final_link)) && (
+                <div className="border rounded-md p-3 bg-muted/30 space-y-2">
+                  <p className="text-xs uppercase text-muted-foreground">Material do cliente</p>
+                  {canSee("deliverable_path") && detail.deliverable_path && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm truncate">Arquivo enviado ✓</span>
+                      <Button variant="outline" size="sm" onClick={() => downloadFile(detail.deliverable_path!)}>
+                        <Download className="h-3.5 w-3.5 mr-1" /> Baixar
+                      </Button>
+                    </div>
+                  )}
+                  {canSee("final_link") && detail.final_link && (
+                    <a href={detail.final_link} target="_blank" rel="noreferrer" className="text-info hover:underline inline-flex items-center gap-1 break-all text-xs">
+                      <LinkIcon className="h-3 w-3" /> {detail.final_link}
+                    </a>
+                  )}
+                </div>
+              )}
+
+              <ProjectChat projectId={detail.id} />
+
             </div>
           )}
           <DialogFooter className="px-6 py-4 shrink-0 border-t gap-2">
