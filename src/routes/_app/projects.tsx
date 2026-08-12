@@ -260,8 +260,8 @@ function ProjectsPage() {
   }, [visibleProjects, filters, assigneesByProject, quick, finalStatusIds, topPriorityId]);
 
 
-  // No Kanban só entram demandas em fases liberadas
-  const kanbanProjects = useMemo(
+  // Kanban e Lista só mostram demandas em fases liberadas
+  const stageVisibleProjects = useMemo(
     () => filteredProjects.filter((p) => !p.status_id || allowedStatusIds.has(p.status_id)),
     [filteredProjects, allowedStatusIds],
   );
@@ -382,12 +382,12 @@ function ProjectsPage() {
         <TabsList>{projSec.can("kanban") && <TabsTrigger value="kanban">Kanban</TabsTrigger>}{projSec.can("list") && <TabsTrigger value="list">Lista</TabsTrigger>}</TabsList>
 
         <TabsContent value="kanban" className="mt-4">
-          <KanbanView projects={kanbanProjects} statuses={allowedStatuses} priorities={priorities}
+          <KanbanView projects={stageVisibleProjects} statuses={allowedStatuses} priorities={priorities}
             assigneesByProject={assigneesByProject} maps={maps} onDetail={setDetailId} />
         </TabsContent>
 
         <TabsContent value="list" className="mt-4">
-          <ListView projects={filteredProjects} visibleCols={visibleCols} maps={maps}
+          <ListView projects={stageVisibleProjects} visibleCols={visibleCols} maps={maps}
             assigneesByProject={assigneesByProject} onDetail={setDetailId}
             canManage={canManageProjects}
             onEdit={(p) => { setEditingProject(p); setOpen(true); }} />
