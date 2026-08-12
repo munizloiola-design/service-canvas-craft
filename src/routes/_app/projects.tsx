@@ -260,8 +260,8 @@ function ProjectsPage() {
   }, [visibleProjects, filters, assigneesByProject, quick, finalStatusIds, topPriorityId]);
 
 
-  // No Kanban só entram demandas em fases liberadas
-  const kanbanProjects = useMemo(
+  // Kanban e Lista só mostram demandas em fases liberadas
+  const stageVisibleProjects = useMemo(
     () => filteredProjects.filter((p) => !p.status_id || allowedStatusIds.has(p.status_id)),
     [filteredProjects, allowedStatusIds],
   );
