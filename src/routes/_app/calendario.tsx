@@ -472,7 +472,7 @@ function CalendarioPage() {
                 <div><p className="text-xs text-muted-foreground mb-1">Legenda</p><p className="whitespace-pre-wrap break-words">{detail.caption}</p></div>
               )}
 
-              {canSee("reference_links") && (detail.reference_links?.length > 0 || attachments.length > 0) && (
+              {canSee("reference_links") && ((detail.reference_links?.length ?? 0) > 0 || attachments.length > 0) && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Referências</p>
                   <ul className="space-y-1">
