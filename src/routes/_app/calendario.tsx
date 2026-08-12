@@ -266,6 +266,58 @@ function CalendarioPage() {
         </div>
       </header>
 
+      {isManager && (
+        <Card className="p-4 mb-4">
+          <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+            <Select value={search.resp || "__all"} onValueChange={(v) => setFilter("resp", v)}>
+              <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todos os responsáveis</SelectItem>
+                {people.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={search.equipe || "__all"} onValueChange={(v) => setFilter("equipe", v)}>
+              <SelectTrigger><SelectValue placeholder="Equipe" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todas as equipes</SelectItem>
+                {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={search.cliente || "__all"} onValueChange={(v) => setFilter("cliente", v)}>
+              <SelectTrigger><SelectValue placeholder="Cliente" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todos os clientes</SelectItem>
+                {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={search.fase || "__all"} onValueChange={(v) => setFilter("fase", v)}>
+              <SelectTrigger><SelectValue placeholder="Fase" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todas as fases</SelectItem>
+                {statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={search.prioridade || "__all"} onValueChange={(v) => setFilter("prioridade", v)}>
+              <SelectTrigger><SelectValue placeholder="Prioridade" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todas as prioridades</SelectItem>
+                {priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {hasFilters && (
+            <div className="flex items-center gap-3 mt-3">
+              <Badge variant="secondary">{shownCount} demanda{shownCount === 1 ? "" : "s"}</Badge>
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" /> Limpar filtros
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
+
+
+
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
           <Button
