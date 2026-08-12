@@ -37,6 +37,7 @@ type Project = {
   id: string; title: string; due_date: string | null; post_date: string | null;
   status_id: string | null; client_id: string | null; assigned_to: string | null; priority_id: string | null;
   description: string | null; caption: string | null; notes: string | null; team_id: string | null;
+  media_type_id: string | null; reference_links: string[] | null; deliverable_path: string | null; final_link: string | null;
 };
 type Status = { id: string; name: string; color: string };
 type Client = { id: string; name: string };
