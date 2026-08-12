@@ -622,7 +622,11 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
   });
   const isColBlocked = useColumnAccess();
   const allowedCols = visibleCols.filter((k) => !isColBlocked(k));
-  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
+  const { user: listUser } = useAuth();
+  const [sort, setSort] = usePersistedState<{ key: string; dir: "asc" | "desc" } | null>(
+    persistKey("projects", "sort", listUser?.id),
+    null,
+  );
 
   const toggleSort = (key: string) => {
     setSort((cur) => {
