@@ -155,8 +155,9 @@ function ProjectsPage() {
   }, [search.detail]);
 
   useEffect(() => {
-    setQuick(search.quick);
-  }, [search.quick]);
+    // URL manda quando vem com filtro rápido; senão mantém o último usado
+    if (search.quick) setQuick(search.quick);
+  }, [search.quick, setQuick]);
 
 
   const { data: projects = [] } = useQuery({
