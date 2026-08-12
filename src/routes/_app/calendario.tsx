@@ -15,7 +15,9 @@ import { useSectionGate } from "@/lib/access-sections";
 import { useAuth } from "@/lib/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, X, Link as LinkIcon, Paperclip, Download } from "lucide-react";
+import { ProjectChat } from "@/components/ProjectChat";
+import { useFieldVisibility } from "@/lib/field-visibility";
 import { toast } from "sonner";
 
 type CalSearch = { resp: string; equipe: string; cliente: string; fase: string; prioridade: string };
