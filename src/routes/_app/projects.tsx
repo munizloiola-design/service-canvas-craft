@@ -132,13 +132,22 @@ function ProjectsPage() {
   const projSec = useSectionGate("/projects");
   const canSeeStage = useStageGate();
 
-  const [view, setView] = useState<"kanban" | "list">(projSec.can("kanban") ? "kanban" : "list");
+  const [view, setView] = usePersistedState<"kanban" | "list">(
+    persistKey("projects", "view", user?.id),
+    projSec.can("kanban") ? "kanban" : "list",
+  );
   const [open, setOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [visibleCols, setVisibleCols] = useState<string[]>(ALL_COLUMNS.map((c) => c.key));
-  const [filters, setFilters] = useState<ActiveFilter[]>([]);
-  const [quick, setQuick] = useState<QuickFilter | undefined>(search.quick);
+  const [visibleCols, setVisibleCols] = usePersistedState<string[]>(
+    persistKey("projects", "cols", user?.id),
+    ALL_COLUMNS.map((c) => c.key),
+  );
+  const [filters, setFilters] = usePersistedState<ActiveFilter[]>(persistKey("projects", "filters", user?.id), []);
+  const [quick, setQuick] = usePersistedState<QuickFilter | undefined>(
+    persistKey("projects", "quick", user?.id),
+    search.quick,
+  );
 
   useEffect(() => {
     if (search.detail) setDetailId(search.detail);
