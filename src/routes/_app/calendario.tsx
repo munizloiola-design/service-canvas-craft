@@ -94,16 +94,50 @@ function CalendarioPage() {
     queryFn: async () => (await supabase.from("priorities").select("id, name, level, color").order("level", { ascending: false })).data as Priority[] ?? [],
   });
 
+  const { data: people = [] } = useQuery({
+    queryKey: ["internal_profiles_cal"],
+    enabled: isManager,
+    queryFn: async () =>
+      ((await supabase.from("internal_profiles").select("id, full_name").order("full_name")).data ?? []) as { id: string; full_name: string }[],
+  });
+  const { data: teams = [] } = useQuery({
+    queryKey: ["teams_cal"],
+    enabled: isManager,
+    queryFn: async () =>
+      ((await supabase.from("teams").select("id, name").order("name")).data ?? []) as { id: string; name: string }[],
+  });
+
   const priorityMap = useMemo(() => new Map(priorities.map((p) => [p.id, p])), [priorities]);
 
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
   const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
 
+  const assigneesByProject = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const a of assignees) {
+      if (!m.has(a.project_id)) m.set(a.project_id, new Set());
+      m.get(a.project_id)!.add(a.user_id);
+    }
+    return m;
+  }, [assignees]);
+
+  const filteredProjects = useMemo(() => {
+    if (!isManager) return projects;
+    return projects.filter((p) => {
+      if (search.resp && p.assigned_to !== search.resp && !assigneesByProject.get(p.id)?.has(search.resp)) return false;
+      if (search.equipe && p.team_id !== search.equipe) return false;
+      if (search.cliente && p.client_id !== search.cliente) return false;
+      if (search.fase && p.status_id !== search.fase) return false;
+      if (search.prioridade && p.priority_id !== search.prioridade) return false;
+      return true;
+    });
+  }, [projects, isManager, search, assigneesByProject]);
+
   const dateField: DateField = tab === "due" ? "due_date" : "post_date";
 
   const eventsByDate = useMemo(() => {
     const m = new Map<string, Project[]>();
-    for (const p of projects) {
+    for (const p of filteredProjects) {
       const d = p[dateField];
       if (!d) continue;
       const key = d.slice(0, 10);
@@ -115,7 +149,13 @@ function CalendarioPage() {
       list.sort((a, b) => level(b) - level(a) || a.title.localeCompare(b.title, "pt-BR"));
     }
     return m;
-  }, [projects, dateField, priorityMap]);
+  }, [filteredProjects, dateField, priorityMap]);
+
+  const shownCount = useMemo(
+    () => filteredProjects.filter((p) => !!p[dateField]).length,
+    [filteredProjects, dateField],
+  );
+
 
   const reschedule = useMutation({
     mutationFn: async ({ id, newDate }: { id: string; newDate: string }) => {
