@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { useSectionGate } from "@/lib/access-sections";
 import { useAuth } from "@/lib/auth-context";
 import { Badge } from "@/components/ui/badge";
@@ -284,7 +285,7 @@ function CalendarioPage() {
           e.dataTransfer.setData("text/project-id", p.id);
           e.dataTransfer.effectAllowed = "move";
         }}
-        onClick={() => setDetail(p)}
+        onClick={() => openDetail(p)}
         className="w-full text-left text-[11px] px-1.5 py-1 rounded truncate cursor-grab active:cursor-grabbing hover:opacity-80 flex items-center gap-1"
         style={st ? { background: `${st.color}25`, color: st.color } : { background: "var(--muted)" }}
         title={`${p.title}${p.client_id ? ` — ${clientMap.get(p.client_id) ?? ""}` : ""}${pr ? ` — ${pr.name}` : ""}`}
@@ -531,21 +532,48 @@ function CalendarioPage() {
                 </div>
               )}
 
-              {((canSee("deliverable_path") && detail.deliverable_path) || (canSee("final_link") && detail.final_link)) && (
+              {(canSee("deliverable_path") || canSee("final_link")) && (
                 <div className="border rounded-md p-3 bg-muted/30 space-y-2">
                   <p className="text-xs uppercase text-muted-foreground">Material do cliente</p>
-                  {canSee("deliverable_path") && detail.deliverable_path && (
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm truncate">Arquivo enviado ✓</span>
-                      <Button variant="outline" size="sm" onClick={() => downloadFile(detail.deliverable_path!)}>
-                        <Download className="h-3.5 w-3.5 mr-1" /> Baixar
-                      </Button>
+                  {canSee("deliverable_path") && (
+                    <div className="space-y-2">
+                      {detail.deliverable_path ? (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm truncate">Arquivo enviado ✓</span>
+                          <Button variant="outline" size="sm" onClick={() => downloadFile(detail.deliverable_path!)}>
+                            <Download className="h-3.5 w-3.5 mr-1" /> Baixar
+                          </Button>
+                        </div>
+                      ) : (
+                        !canEdit("deliverable_path") && <p className="text-xs text-muted-foreground">Nenhum arquivo enviado.</p>
+                      )}
+                      {canEdit("deliverable_path") && (
+                        <Input
+                          type="file"
+                          disabled={uploading}
+                          onChange={(e) => e.target.files?.[0] && uploadDeliverable(e.target.files[0])}
+                        />
+                      )}
                     </div>
                   )}
-                  {canSee("final_link") && detail.final_link && (
-                    <a href={detail.final_link} target="_blank" rel="noreferrer" className="text-info hover:underline inline-flex items-center gap-1 break-all text-xs">
-                      <LinkIcon className="h-3 w-3" /> {detail.final_link}
-                    </a>
+                  {canSee("final_link") && (
+                    canEdit("final_link") ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={linkDraft}
+                          onChange={(e) => setLinkDraft(e.target.value)}
+                          placeholder="https://link do material"
+                          className="h-8 text-xs"
+                        />
+                        <Button size="sm" onClick={saveFinalLink} disabled={savingLink}>Salvar</Button>
+                      </div>
+                    ) : detail.final_link ? (
+                      <a href={detail.final_link} target="_blank" rel="noreferrer" className="text-info hover:underline inline-flex items-center gap-1 break-all text-xs">
+                        <LinkIcon className="h-3 w-3" /> {detail.final_link}
+                      </a>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Nenhum link cadastrado.</p>
+                    )
                   )}
                 </div>
               )}
