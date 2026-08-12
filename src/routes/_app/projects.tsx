@@ -21,6 +21,7 @@ import { useAccess } from "@/lib/access-context";
 import { useSectionGate, useStageGate } from "@/lib/access-sections";
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import { ProjectChat } from "@/components/ProjectChat";
+import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
