@@ -62,7 +62,15 @@ function CalendarioPage() {
   const [detail, setDetail] = useState<Project | null>(null);
   const qc = useQueryClient();
 
-  const { canSee } = useFieldVisibility();
+  const { canSee, canEdit } = useFieldVisibility();
+  const [linkDraft, setLinkDraft] = useState("");
+  const [savingLink, setSavingLink] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const openDetail = (p: Project) => {
+    setLinkDraft(p.final_link ?? "");
+    setDetail(p);
+  };
 
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-cal"],
@@ -90,6 +98,33 @@ function CalendarioPage() {
     const { data } = await supabase.storage.from("project-files").createSignedUrl(path, 60);
     if (data) window.open(data.signedUrl, "_blank");
   };
+
+  const saveFinalLink = async () => {
+    if (!detail) return;
+    setSavingLink(true);
+    const value = linkDraft.trim() || null;
+    const { error } = await supabase.from("projects").update({ final_link: value }).eq("id", detail.id);
+    setSavingLink(false);
+    if (error) { toast.error("Não foi possível salvar o link"); return; }
+    setDetail({ ...detail, final_link: value });
+    qc.invalidateQueries({ queryKey: ["projects-cal"] });
+    toast.success("Link do material salvo");
+  };
+
+  const uploadDeliverable = async (file: File) => {
+    if (!detail) return;
+    setUploading(true);
+    const path = `${detail.id}/deliverable-${Date.now()}-${file.name}`;
+    const up = await supabase.storage.from("project-files").upload(path, file);
+    if (up.error) { setUploading(false); toast.error("Falha no upload"); return; }
+    const { error } = await supabase.from("projects").update({ deliverable_path: path }).eq("id", detail.id);
+    setUploading(false);
+    if (error) { toast.error("Não foi possível salvar o arquivo"); return; }
+    setDetail({ ...detail, deliverable_path: path });
+    qc.invalidateQueries({ queryKey: ["projects-cal"] });
+    toast.success("Material enviado");
+  };
+
 
 
   const { data: assignees = [] } = useQuery({
