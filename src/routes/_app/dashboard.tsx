@@ -343,8 +343,8 @@ function StatsOverview() {
     return projects
       .filter(selected.filter)
       .sort((a, b) => {
-        const pa = priorityLevel.get(a.priority_id) ?? 0;
-        const pb = priorityLevel.get(b.priority_id) ?? 0;
+        const pa = priorityLevel.get(a.priority_id ?? "") ?? 0;
+        const pb = priorityLevel.get(b.priority_id ?? "") ?? 0;
         if (pb !== pa) return pb - pa;
         if (!a.due_date && !b.due_date) return 0;
         if (!a.due_date) return 1;
