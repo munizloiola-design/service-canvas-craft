@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, format, isSameMonth, isSameDay,
   addMonths, subMonths, addWeeks, subWeeks,
