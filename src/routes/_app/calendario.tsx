@@ -459,6 +459,9 @@ function CalendarioPage() {
                   </Badge>
                 )}
                 {detail.client_id && <Badge variant="secondary">{clientMap.get(detail.client_id) ?? "Cliente"}</Badge>}
+                {canSee("media_type") && detail.media_type_id && mediaMap.get(detail.media_type_id) && (
+                  <Badge variant="outline">{mediaMap.get(detail.media_type_id)}</Badge>
+                )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 <div><span className="text-muted-foreground">Prazo:</span> {detail.due_date ? new Date(detail.due_date + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</div>
