@@ -7,8 +7,8 @@ Hoje, clicar em um indicador (Total, Em aberto, Concluídos, Urgentes, Atrasados
 - Clicar em qualquer um dos cinco indicadores abre uma modal com o título do indicador e a contagem (ex.: "Atrasados — 7 demandas").
 - A lista mostra, por demanda: título, cliente, etapa (com a cor do status) e a data de prazo (destacada em vermelho quando atrasada).
 - Ordenação: prioridade (mais alta primeiro) e depois prazo mais próximo.
+- No rodapé da modal, botão principal **"Acesse as demandas"**, que leva para `/projects` mantendo o filtro rápido ativo (`search={{ detail: undefined, quick: s.quick }}`) — o mesmo atalho de hoje, mas dentro da modal.
 - Clicar em uma demanda da lista abre o detalhe dela em Demandas (comportamento atual de abrir a demanda).
-- No rodapé da modal, botão "Ver todas em Demandas", que mantém o atalho de hoje (vai para /projects já com o filtro rápido aplicado).
 - A modal rola internamente e se adapta ao celular; se não houver demandas, mostra um estado vazio.
 - Respeita o escopo atual: usuário comum vê só as demandas em que está marcado; admin/gerente com filtro por membro vê o recorte selecionado. Se o usuário não tem acesso ao menu Demandas, os cartões continuam sem clique.
 
