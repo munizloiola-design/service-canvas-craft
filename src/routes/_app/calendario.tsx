@@ -447,6 +447,49 @@ function CalendarioPage() {
               {detail.caption && (
                 <div><p className="text-xs text-muted-foreground mb-1">Legenda</p><p className="whitespace-pre-wrap break-words">{detail.caption}</p></div>
               )}
+
+              {canSee("reference_links") && (detail.reference_links?.length > 0 || attachments.length > 0) && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Referências</p>
+                  <ul className="space-y-1">
+                    {(detail.reference_links ?? []).map((url, i) => (
+                      <li key={i}>
+                        <a href={url} target="_blank" rel="noreferrer" className="text-info hover:underline inline-flex items-center gap-1 break-all">
+                          <LinkIcon className="h-3 w-3" /> {url}
+                        </a>
+                      </li>
+                    ))}
+                    {attachments.map((a) => (
+                      <li key={a.id} className="flex items-center justify-between gap-2 p-2 rounded bg-muted/50">
+                        <span className="inline-flex items-center gap-2 truncate"><Paperclip className="h-3.5 w-3.5" /><span className="truncate">{a.file_name}</span></span>
+                        <Button variant="ghost" size="sm" onClick={() => downloadFile(a.file_path)}><Download className="h-3.5 w-3.5" /></Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {((canSee("deliverable_path") && detail.deliverable_path) || (canSee("final_link") && detail.final_link)) && (
+                <div className="border rounded-md p-3 bg-muted/30 space-y-2">
+                  <p className="text-xs uppercase text-muted-foreground">Material do cliente</p>
+                  {canSee("deliverable_path") && detail.deliverable_path && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm truncate">Arquivo enviado ✓</span>
+                      <Button variant="outline" size="sm" onClick={() => downloadFile(detail.deliverable_path!)}>
+                        <Download className="h-3.5 w-3.5 mr-1" /> Baixar
+                      </Button>
+                    </div>
+                  )}
+                  {canSee("final_link") && detail.final_link && (
+                    <a href={detail.final_link} target="_blank" rel="noreferrer" className="text-info hover:underline inline-flex items-center gap-1 break-all text-xs">
+                      <LinkIcon className="h-3 w-3" /> {detail.final_link}
+                    </a>
+                  )}
+                </div>
+              )}
+
+              <ProjectChat projectId={detail.id} />
+
             </div>
           )}
           <DialogFooter className="px-6 py-4 shrink-0 border-t gap-2">
