@@ -62,7 +62,6 @@ function CalendarioPage() {
   const [detail, setDetail] = useState<Project | null>(null);
   const qc = useQueryClient();
 
-  const { data: allProjects = [] } = useQuery({
   const { canSee } = useFieldVisibility();
 
   const { data: allProjects = [] } = useQuery({
