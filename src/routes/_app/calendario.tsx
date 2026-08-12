@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
@@ -10,19 +10,31 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSectionGate } from "@/lib/access-sections";
 import { useAuth } from "@/lib/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_app/calendario")({ component: CalendarioPage });
+type CalSearch = { resp: string; equipe: string; cliente: string; fase: string; prioridade: string };
+
+export const Route = createFileRoute("/_app/calendario")({
+  validateSearch: (s: Record<string, unknown>): CalSearch => ({
+    resp: typeof s.resp === "string" ? s.resp : "",
+    equipe: typeof s.equipe === "string" ? s.equipe : "",
+    cliente: typeof s.cliente === "string" ? s.cliente : "",
+    fase: typeof s.fase === "string" ? s.fase : "",
+    prioridade: typeof s.prioridade === "string" ? s.prioridade : "",
+  }),
+  component: CalendarioPage,
+});
 
 type Project = {
   id: string; title: string; due_date: string | null; post_date: string | null;
   status_id: string | null; client_id: string | null; assigned_to: string | null; priority_id: string | null;
-  description: string | null; caption: string | null; notes: string | null;
+  description: string | null; caption: string | null; notes: string | null; team_id: string | null;
 };
 type Status = { id: string; name: string; color: string };
 type Client = { id: string; name: string };
@@ -32,6 +44,13 @@ type DateField = "due_date" | "post_date";
 function CalendarioPage() {
   const { user, isManager } = useAuth();
   const calSec = useSectionGate("/calendario");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/calendario" });
+  const setFilter = (key: keyof CalSearch, value: string) =>
+    navigate({ search: (prev) => ({ ...prev, [key]: value === "__all" ? "" : value }) });
+  const clearFilters = () =>
+    navigate({ search: () => ({ resp: "", equipe: "", cliente: "", fase: "", prioridade: "" }) });
+  const hasFilters = !!(search.resp || search.equipe || search.cliente || search.fase || search.prioridade);
   const [tab, setTab] = useState<"due" | "post">(calSec.can("due") ? "due" : "post");
   const [view, setView] = useState<"month" | "week">(calSec.can("month") ? "month" : "week");
   const [cursor, setCursor] = useState(new Date());
@@ -43,11 +62,12 @@ function CalendarioPage() {
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-cal"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, priority_id, description, caption, notes");
+      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, priority_id, description, caption, notes, team_id");
       if (error) throw error;
       return data as Project[];
     },
   });
+
   const { data: assignees = [] } = useQuery({
     queryKey: ["project_assignees_cal"],
     queryFn: async () =>
@@ -74,16 +94,50 @@ function CalendarioPage() {
     queryFn: async () => (await supabase.from("priorities").select("id, name, level, color").order("level", { ascending: false })).data as Priority[] ?? [],
   });
 
+  const { data: people = [] } = useQuery({
+    queryKey: ["internal_profiles_cal"],
+    enabled: isManager,
+    queryFn: async () =>
+      ((await supabase.from("internal_profiles").select("id, full_name").order("full_name")).data ?? []) as { id: string; full_name: string }[],
+  });
+  const { data: teams = [] } = useQuery({
+    queryKey: ["teams_cal"],
+    enabled: isManager,
+    queryFn: async () =>
+      ((await supabase.from("teams").select("id, name").order("name")).data ?? []) as { id: string; name: string }[],
+  });
+
   const priorityMap = useMemo(() => new Map(priorities.map((p) => [p.id, p])), [priorities]);
 
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
   const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
 
+  const assigneesByProject = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const a of assignees) {
+      if (!m.has(a.project_id)) m.set(a.project_id, new Set());
+      m.get(a.project_id)!.add(a.user_id);
+    }
+    return m;
+  }, [assignees]);
+
+  const filteredProjects = useMemo(() => {
+    if (!isManager) return projects;
+    return projects.filter((p) => {
+      if (search.resp && p.assigned_to !== search.resp && !assigneesByProject.get(p.id)?.has(search.resp)) return false;
+      if (search.equipe && p.team_id !== search.equipe) return false;
+      if (search.cliente && p.client_id !== search.cliente) return false;
+      if (search.fase && p.status_id !== search.fase) return false;
+      if (search.prioridade && p.priority_id !== search.prioridade) return false;
+      return true;
+    });
+  }, [projects, isManager, search, assigneesByProject]);
+
   const dateField: DateField = tab === "due" ? "due_date" : "post_date";
 
   const eventsByDate = useMemo(() => {
     const m = new Map<string, Project[]>();
-    for (const p of projects) {
+    for (const p of filteredProjects) {
       const d = p[dateField];
       if (!d) continue;
       const key = d.slice(0, 10);
@@ -95,7 +149,13 @@ function CalendarioPage() {
       list.sort((a, b) => level(b) - level(a) || a.title.localeCompare(b.title, "pt-BR"));
     }
     return m;
-  }, [projects, dateField, priorityMap]);
+  }, [filteredProjects, dateField, priorityMap]);
+
+  const shownCount = useMemo(
+    () => filteredProjects.filter((p) => !!p[dateField]).length,
+    [filteredProjects, dateField],
+  );
+
 
   const reschedule = useMutation({
     mutationFn: async ({ id, newDate }: { id: string; newDate: string }) => {
@@ -205,6 +265,58 @@ function CalendarioPage() {
           </Tabs>
         </div>
       </header>
+
+      {isManager && (
+        <Card className="p-4 mb-4">
+          <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+            <Select value={search.resp || "__all"} onValueChange={(v) => setFilter("resp", v)}>
+              <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todos os responsáveis</SelectItem>
+                {people.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={search.equipe || "__all"} onValueChange={(v) => setFilter("equipe", v)}>
+              <SelectTrigger><SelectValue placeholder="Equipe" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todas as equipes</SelectItem>
+                {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={search.cliente || "__all"} onValueChange={(v) => setFilter("cliente", v)}>
+              <SelectTrigger><SelectValue placeholder="Cliente" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todos os clientes</SelectItem>
+                {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={search.fase || "__all"} onValueChange={(v) => setFilter("fase", v)}>
+              <SelectTrigger><SelectValue placeholder="Fase" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todas as fases</SelectItem>
+                {statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={search.prioridade || "__all"} onValueChange={(v) => setFilter("prioridade", v)}>
+              <SelectTrigger><SelectValue placeholder="Prioridade" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todas as prioridades</SelectItem>
+                {priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {hasFilters && (
+            <div className="flex items-center gap-3 mt-3">
+              <Badge variant="secondary">{shownCount} demanda{shownCount === 1 ? "" : "s"}</Badge>
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" /> Limpar filtros
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
+
+
 
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
