@@ -828,6 +828,7 @@ function MyProjects() {
     queryKey: ["workflow_statuses"],
     queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color, is_final")).data ?? [],
   });
+  const stageRulesMine = useStageRules();
   const smap = new Map(statuses.map((s) => [s.id, s]));
   const open = mine.filter((p) => !stageRulesMine.isDone(p.status_id));
 
