@@ -10,6 +10,14 @@ type Ctx = {
   allowedMenuKeys: Set<string>;
   fieldView: Set<string>;
   fieldEdit: Set<string>;
+  /** Ordem (sort_order) da fase de início da especialidade; null = sem regra. */
+  startStageOrder: number | null;
+  /** Fases que a especialidade considera como entregue. */
+  doneStatusIds: Set<string>;
+  /** sort_order de cada etapa do fluxo. */
+  statusOrder: Map<string, number>;
+  /** Etapas marcadas como finais no cadastro (fallback global). */
+  finalStatusIds: Set<string>;
   isPrivileged: boolean;
   menuAllowed: (key: string) => boolean;
   canViewField: (key: string) => boolean;
@@ -32,7 +40,12 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     allowedMenuKeys: new Set<string>(),
     fieldView: new Set<string>(),
     fieldEdit: new Set<string>(),
+    startStageOrder: null as number | null,
+    doneStatusIds: new Set<string>(),
+    statusOrder: new Map<string, number>(),
+    finalStatusIds: new Set<string>(),
   });
+
 
   const load = async () => {
     if (!user) {
