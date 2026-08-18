@@ -32,15 +32,16 @@ export function useStageGate() {
 export function useStageRules() {
   const { startStageOrder, doneStatusIds, statusOrder, finalStatusIds, isPrivileged } = useAccess();
 
+  const base = buildStageRules({ startStageOrder, doneStatusIds, statusOrder, finalStatusIds });
+
   const isStarted = (statusId: string | null | undefined) => {
-    if (isPrivileged || startStageOrder === null) return true;
-    if (!statusId) return true;
-    return (statusOrder.get(statusId) ?? 0) >= startStageOrder;
+    if (isPrivileged) return true;
+    return base.isStarted(statusId);
   };
 
   const isDone = (statusId: string | null | undefined) => {
     if (!statusId) return false;
-    if (!isPrivileged && doneStatusIds.size > 0) return doneStatusIds.has(statusId);
+    if (!isPrivileged) return base.isDone(statusId);
     return finalStatusIds.has(statusId);
   };
 
@@ -55,14 +56,21 @@ type RuleInput = {
 };
 
 export function buildStageRules({ startStageOrder, doneStatusIds, statusOrder, finalStatusIds }: RuleInput) {
+  // "Concluído" vale da fase marcada em diante: usa a menor ordem entre as
+  // fases marcadas como conclusão da especialidade.
+  const doneFromOrder = doneStatusIds.size
+    ? Math.min(...Array.from(doneStatusIds).map((id) => statusOrder.get(id) ?? 0))
+    : null;
+
   const isStarted = (statusId: string | null | undefined) => {
     if (startStageOrder === null || !statusId) return true;
     return (statusOrder.get(statusId) ?? 0) >= startStageOrder;
   };
   const isDone = (statusId: string | null | undefined) => {
     if (!statusId) return false;
-    if (doneStatusIds.size > 0) return doneStatusIds.has(statusId);
-    return finalStatusIds.has(statusId);
+    if (finalStatusIds.has(statusId)) return true;
+    if (doneFromOrder === null) return false;
+    return (statusOrder.get(statusId) ?? 0) >= doneFromOrder;
   };
   return { isStarted, isDone };
 }
@@ -81,7 +89,7 @@ export function useStageRulesFor(userId: string | null | undefined) {
     queryFn: async () => {
       const { data: us } = await supabase.from("user_specialties").select("specialty_id").eq("user_id", userId!);
       const ids = (us ?? []).map((r: { specialty_id: string }) => r.specialty_id);
-      if (ids.length === 0) return { start: null as number | null, done: [] as string[] };
+      if (ids.length === 0) return { start: [] as string[], done: [] as string[] };
       const { data: rules } = await supabase
         .from("specialty_stage_rules")
         .select("status_id, is_start, is_done")
@@ -89,7 +97,7 @@ export function useStageRulesFor(userId: string | null | undefined) {
       return {
         start: (rules ?? []).filter((r) => r.is_start).map((r) => r.status_id),
         done: (rules ?? []).filter((r) => r.is_done).map((r) => r.status_id),
-      } as { start: string[] | null; done: string[] };
+      } as { start: string[]; done: string[] };
     },
   });
 
@@ -106,5 +114,6 @@ export function useStageRulesFor(userId: string | null | undefined) {
     finalStatusIds,
   });
 }
+
 
 
