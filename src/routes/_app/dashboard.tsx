@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, createContext, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAccess } from "@/lib/access-context";
-import { useStageRules } from "@/lib/access-sections";
+import { useStageRules, useStageRulesFor } from "@/lib/access-sections";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -306,7 +306,7 @@ function StatsOverview() {
     queryFn: async () => (await supabase.from("clients").select("id, name")).data ?? [],
   });
 
-  const stageRules = useStageRules();
+  const stageRules = useStageRulesFor(useScopeUserId());
   const urgentId = [...priorities].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0]?.id;
   const today = format(new Date(), "yyyy-MM-dd");
   const isDone = (p: { status_id: string | null }) => stageRules.isDone(p.status_id);
@@ -473,7 +473,7 @@ function OverdueProjects() {
   });
   const cmap = new Map(clients.map((c) => [c.id, c.name]));
 
-  const stageRules = useStageRules();
+  const stageRules = useStageRulesFor(useScopeUserId());
   const overdue = visible.filter((p) => !stageRules.isDone(p.status_id));
   const shown = overdue.slice(0, 8);
 
@@ -713,7 +713,7 @@ function TeamLoad() {
   });
 
   const scopeUserId = useScopeUserId();
-  const stageRules = useStageRules();
+  const stageRules = useStageRulesFor(scopeUserId);
   const openProjectIds = new Set(projects.filter((p) => !stageRules.isDone(p.status_id)).map((p) => p.id));
   const counts = new Map<string, number>();
   for (const a of assignees) {
@@ -829,7 +829,7 @@ function MyProjects() {
     queryKey: ["workflow_statuses"],
     queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color, is_final")).data ?? [],
   });
-  const stageRulesMine = useStageRules();
+  const stageRulesMine = useStageRulesFor(useScopeUserId());
   const smap = new Map(statuses.map((s) => [s.id, s]));
   const open = mine.filter((p) => !stageRulesMine.isDone(p.status_id));
 
