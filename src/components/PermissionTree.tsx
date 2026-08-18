@@ -302,9 +302,35 @@ export function PermissionTree({ areaId, specialtyId }: { areaId: string; specia
                                   />
                                   Editar
                                 </label>
+                              ) : i.kind === "Fase" ? (
+                                (() => {
+                                  const statusId = i.key.split("#stage:")[1];
+                                  const sr = stageRuleMap.get(statusId);
+                                  return (
+                                    <>
+                                      <label className="flex items-center gap-1 text-xs text-muted-foreground" title="Fase em que a demanda passa a contar para esta especialidade">
+                                        <Checkbox
+                                          disabled={!m.areaAllowed}
+                                          checked={!!sr?.is_start}
+                                          onCheckedChange={(v) => setStageRule.mutate({ statusId, is_start: !!v, is_done: !!sr?.is_done })}
+                                        />
+                                        Início
+                                      </label>
+                                      <label className="flex items-center gap-1 text-xs text-muted-foreground" title="Fase considerada concluída para esta especialidade">
+                                        <Checkbox
+                                          disabled={!m.areaAllowed}
+                                          checked={!!sr?.is_done}
+                                          onCheckedChange={(v) => setStageRule.mutate({ statusId, is_start: !!sr?.is_start, is_done: !!v })}
+                                        />
+                                        Concluído
+                                      </label>
+                                    </>
+                                  );
+                                })()
                               ) : (
                                 <span className="w-12" />
                               )}
+
                             </div>
                           );
                         })}
