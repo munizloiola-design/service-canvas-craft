@@ -60,7 +60,52 @@ export function PermissionTree({ areaId, specialtyId }: { areaId: string; specia
       ((await supabase.from("workflow_statuses").select("id, name").order("sort_order")).data ?? []) as { id: string; name: string }[],
   });
 
+  const { data: stageRules = [] } = useQuery({
+    queryKey: ["specialty_stage_rules", specialtyId],
+    enabled: !!specialtyId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("specialty_stage_rules")
+        .select("status_id, is_start, is_done")
+        .eq("specialty_id", specialtyId!);
+      if (error) throw error;
+      return (data ?? []) as { status_id: string; is_start: boolean; is_done: boolean }[];
+    },
+  });
+  const stageRuleMap = useMemo(() => new Map(stageRules.map((r) => [r.status_id, r])), [stageRules]);
+
+  const setStageRule = useMutation({
+    mutationFn: async ({ statusId, is_start, is_done }: { statusId: string; is_start: boolean; is_done: boolean }) => {
+      if (!specialtyId) return;
+      if (is_start) {
+        // Apenas uma fase de início por especialidade.
+        const { error: delErr } = await supabase
+          .from("specialty_stage_rules")
+          .update({ is_start: false })
+          .eq("specialty_id", specialtyId)
+          .neq("status_id", statusId);
+        if (delErr) throw delErr;
+      }
+      if (!is_start && !is_done) {
+        const { error } = await supabase
+          .from("specialty_stage_rules")
+          .delete()
+          .eq("specialty_id", specialtyId)
+          .eq("status_id", statusId);
+        if (error) throw error;
+        return;
+      }
+      const { error } = await supabase
+        .from("specialty_stage_rules")
+        .upsert({ specialty_id: specialtyId, status_id: statusId, is_start, is_done }, { onConflict: "specialty_id,status_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["specialty_stage_rules", specialtyId] }),
+    onError: (e: unknown) => { console.error("[acessos]", e); toast.error(describeSupabaseError(e)); },
+  });
+
   const tree = useMemo(() => permissionTree(allowedSet, projectColumns, stages), [allowedSet, projectColumns, stages]);
+
 
 
   const setMenu = useMutation({
