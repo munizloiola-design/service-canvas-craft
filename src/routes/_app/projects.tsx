@@ -18,7 +18,7 @@ import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Cop
 import { toast } from "sonner";
 import { useFieldVisibility } from "@/lib/field-visibility";
 import { useAccess } from "@/lib/access-context";
-import { useSectionGate, useStageGate } from "@/lib/access-sections";
+import { useSectionGate, useStageGate, useStageRules } from "@/lib/access-sections";
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import { ProjectChat } from "@/components/ProjectChat";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
@@ -132,6 +132,7 @@ function ProjectsPage() {
   const search = Route.useSearch();
   const projSec = useSectionGate("/projects");
   const canSeeStage = useStageGate();
+  const stageRules = useStageRules();
 
   const [view, setView] = usePersistedState<"kanban" | "list">(
     persistKey("projects", "view", user?.id),
