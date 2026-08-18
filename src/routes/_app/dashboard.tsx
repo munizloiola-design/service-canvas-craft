@@ -271,8 +271,9 @@ function WidgetRenderer({ widgetKey }: { widgetKey: WidgetKey }) {
 type QuickFilter = "abertas" | "concluidas" | "urgentes" | "atrasadas";
 
 // Demandas do escopo atual (null = toda a equipe, só para gestores).
-function useVisibleProjects<T extends { id: string; assigned_to?: string | null }>(rows: T[]) {
+function useVisibleProjects<T extends { id: string; assigned_to?: string | null; status_id?: string | null }>(rows: T[]) {
   const scopeUserId = useScopeUserId();
+  const stageRules = useStageRulesFor(scopeUserId);
   const { data: assignees = [] } = useQuery({
     queryKey: ["project_assignees_dash"],
     queryFn: async () => (await supabase.from("project_assignees").select("project_id, user_id")).data ?? [],
@@ -280,9 +281,15 @@ function useVisibleProjects<T extends { id: string; assigned_to?: string | null 
   return useMemo(() => {
     if (!scopeUserId) return rows;
     const mine = new Set(assignees.filter((a) => a.user_id === scopeUserId).map((a) => a.project_id));
-    return rows.filter((p) => p.assigned_to === scopeUserId || mine.has(p.id));
+    return rows.filter(
+      (p) =>
+        (p.assigned_to === scopeUserId || mine.has(p.id)) &&
+        ("status_id" in p ? stageRules.isStarted(p.status_id) : true),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, assignees, scopeUserId]);
 }
+
 
 
 function StatsOverview() {
