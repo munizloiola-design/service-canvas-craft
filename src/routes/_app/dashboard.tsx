@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, createContext, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAccess } from "@/lib/access-context";
-import { useStageRules, useStageRulesFor } from "@/lib/access-sections";
+import { useStageRulesFor } from "@/lib/access-sections";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
