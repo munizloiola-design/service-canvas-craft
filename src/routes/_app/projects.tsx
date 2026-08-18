@@ -18,7 +18,7 @@ import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Cop
 import { toast } from "sonner";
 import { useFieldVisibility } from "@/lib/field-visibility";
 import { useAccess } from "@/lib/access-context";
-import { useSectionGate, useStageGate } from "@/lib/access-sections";
+import { useSectionGate, useStageGate, useStageRules } from "@/lib/access-sections";
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import { ProjectChat } from "@/components/ProjectChat";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
@@ -132,6 +132,7 @@ function ProjectsPage() {
   const search = Route.useSearch();
   const projSec = useSectionGate("/projects");
   const canSeeStage = useStageGate();
+  const stageRules = useStageRules();
 
   const [view, setView] = usePersistedState<"kanban" | "list">(
     persistKey("projects", "view", user?.id),
@@ -228,11 +229,13 @@ function ProjectsPage() {
   }, [projects, assigneesByProject, isManager, user]);
 
   // Fases liberadas para a especialidade (Perfis e Acessos → Demandas → Fase)
-  const allowedStatuses = useMemo(() => statuses.filter((s) => canSeeStage(s.id)), [statuses, canSeeStage]);
+  // + fase de início: fases anteriores à fase inicial da especialidade somem
+  const allowedStatuses = useMemo(
+    () => statuses.filter((s) => canSeeStage(s.id) && stageRules.isStarted(s.id)),
+    [statuses, canSeeStage, stageRules],
+  );
   const allowedStatusIds = useMemo(() => new Set(allowedStatuses.map((s) => s.id)), [allowedStatuses]);
 
-
-  const finalStatusIds = useMemo(() => new Set(statuses.filter((s) => s.is_final).map((s) => s.id)), [statuses]);
 
   const topPriorityId = useMemo(
     () => [...priorities].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0]?.id,
@@ -241,12 +244,13 @@ function ProjectsPage() {
 
   const filteredProjects = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
-    const isDone = (p: Project) => !!p.status_id && finalStatusIds.has(p.status_id);
+    const isDone = (p: Project) => stageRules.isDone(p.status_id);
     return visibleProjects.filter((p) => {
       if (quick === "abertas" && isDone(p)) return false;
       if (quick === "concluidas" && !isDone(p)) return false;
       if (quick === "urgentes" && (isDone(p) || p.priority_id !== topPriorityId)) return false;
       if (quick === "atrasadas" && (isDone(p) || !p.due_date || p.due_date >= today)) return false;
+
       for (const f of filters) {
         if (!f.value) continue;
         switch (f.key) {
@@ -268,7 +272,7 @@ function ProjectsPage() {
       }
       return true;
     });
-  }, [visibleProjects, filters, assigneesByProject, quick, finalStatusIds, topPriorityId]);
+  }, [visibleProjects, filters, assigneesByProject, quick, stageRules, topPriorityId]);
 
 
   // Kanban e Lista só mostram demandas em fases liberadas

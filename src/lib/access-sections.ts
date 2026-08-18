@@ -21,3 +21,28 @@ export function useStageGate() {
     !statusId || canViewSection("/projects", `stage:${statusId}`);
 }
 
+/**
+ * Regras de fase por especialidade (Perfis e Acessos):
+ * - fase de início: demandas em fases anteriores somem da tela e das contagens;
+ * - fases de conclusão: o que a especialidade considera entregue (sem regra,
+ *   vale o "final" global do cadastro de etapas).
+ */
+export function useStageRules() {
+  const { startStageOrder, doneStatusIds, statusOrder, finalStatusIds, isPrivileged } = useAccess();
+
+  const isStarted = (statusId: string | null | undefined) => {
+    if (isPrivileged || startStageOrder === null) return true;
+    if (!statusId) return true;
+    return (statusOrder.get(statusId) ?? 0) >= startStageOrder;
+  };
+
+  const isDone = (statusId: string | null | undefined) => {
+    if (!statusId) return false;
+    if (!isPrivileged && doneStatusIds.size > 0) return doneStatusIds.has(statusId);
+    return finalStatusIds.has(statusId);
+  };
+
+  return { isStarted, isDone };
+}
+
+

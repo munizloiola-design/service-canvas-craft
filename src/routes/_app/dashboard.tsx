@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, createContext, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAccess } from "@/lib/access-context";
+import { useStageRules } from "@/lib/access-sections";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -305,10 +306,10 @@ function StatsOverview() {
     queryFn: async () => (await supabase.from("clients").select("id, name")).data ?? [],
   });
 
-  const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));
+  const stageRules = useStageRules();
   const urgentId = [...priorities].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0]?.id;
   const today = format(new Date(), "yyyy-MM-dd");
-  const isDone = (p: { status_id: string | null }) => !!p.status_id && finalIds.has(p.status_id);
+  const isDone = (p: { status_id: string | null }) => stageRules.isDone(p.status_id);
   const total = projects.length;
   const done = projects.filter(isDone).length;
   const open = total - done;
@@ -472,8 +473,8 @@ function OverdueProjects() {
   });
   const cmap = new Map(clients.map((c) => [c.id, c.name]));
 
-  const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));
-  const overdue = visible.filter((p) => !p.status_id || !finalIds.has(p.status_id));
+  const stageRules = useStageRules();
+  const overdue = visible.filter((p) => !stageRules.isDone(p.status_id));
   const shown = overdue.slice(0, 8);
 
   return (
@@ -712,8 +713,8 @@ function TeamLoad() {
   });
 
   const scopeUserId = useScopeUserId();
-  const finalIds = new Set(statuses.filter((s) => s.is_final).map((s) => s.id));
-  const openProjectIds = new Set(projects.filter((p) => !p.status_id || !finalIds.has(p.status_id)).map((p) => p.id));
+  const stageRules = useStageRules();
+  const openProjectIds = new Set(projects.filter((p) => !stageRules.isDone(p.status_id)).map((p) => p.id));
   const counts = new Map<string, number>();
   for (const a of assignees) {
     if (openProjectIds.has(a.project_id)) counts.set(a.user_id, (counts.get(a.user_id) ?? 0) + 1);
@@ -828,8 +829,9 @@ function MyProjects() {
     queryKey: ["workflow_statuses"],
     queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color, is_final")).data ?? [],
   });
+  const stageRulesMine = useStageRules();
   const smap = new Map(statuses.map((s) => [s.id, s]));
-  const open = mine.filter((p) => !p.status_id || !smap.get(p.status_id)?.is_final);
+  const open = mine.filter((p) => !stageRulesMine.isDone(p.status_id));
 
   return (
     <div>

@@ -1711,6 +1711,48 @@ export type Database = {
           },
         ]
       }
+      specialty_stage_rules: {
+        Row: {
+          created_at: string
+          is_done: boolean
+          is_start: boolean
+          specialty_id: string
+          status_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          is_done?: boolean
+          is_start?: boolean
+          specialty_id: string
+          status_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          is_done?: boolean
+          is_start?: boolean
+          specialty_id?: string
+          status_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "specialty_stage_rules_specialty_id_fkey"
+            columns: ["specialty_id"]
+            isOneToOne: false
+            referencedRelation: "provider_specialties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "specialty_stage_rules_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressed_emails: {
         Row: {
           created_at: string

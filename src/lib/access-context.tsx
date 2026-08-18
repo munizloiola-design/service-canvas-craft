@@ -10,6 +10,14 @@ type Ctx = {
   allowedMenuKeys: Set<string>;
   fieldView: Set<string>;
   fieldEdit: Set<string>;
+  /** Ordem (sort_order) da fase de início da especialidade; null = sem regra. */
+  startStageOrder: number | null;
+  /** Fases que a especialidade considera como entregue. */
+  doneStatusIds: Set<string>;
+  /** sort_order de cada etapa do fluxo. */
+  statusOrder: Map<string, number>;
+  /** Etapas marcadas como finais no cadastro (fallback global). */
+  finalStatusIds: Set<string>;
   isPrivileged: boolean;
   menuAllowed: (key: string) => boolean;
   canViewField: (key: string) => boolean;
@@ -32,11 +40,22 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     allowedMenuKeys: new Set<string>(),
     fieldView: new Set<string>(),
     fieldEdit: new Set<string>(),
+    startStageOrder: null as number | null,
+    doneStatusIds: new Set<string>(),
+    statusOrder: new Map<string, number>(),
+    finalStatusIds: new Set<string>(),
   });
 
+
   const load = async () => {
+    const empty = {
+      startStageOrder: null as number | null,
+      doneStatusIds: new Set<string>(),
+      statusOrder: new Map<string, number>(),
+      finalStatusIds: new Set<string>(),
+    };
     if (!user) {
-      setState({ loading: false, areaIds: [], specialtyIds: [], allowedMenuKeys: new Set(), fieldView: new Set(), fieldEdit: new Set() });
+      setState({ loading: false, areaIds: [], specialtyIds: [], allowedMenuKeys: new Set(), fieldView: new Set(), fieldEdit: new Set(), ...empty });
       return;
     }
     const { data: us } = await supabase
@@ -65,8 +84,31 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    setState({ loading: false, areaIds, specialtyIds, allowedMenuKeys, fieldView, fieldEdit });
+    // Regras de fase por especialidade (fase de início e fases que contam como concluídas)
+    const { data: sts } = await supabase.from("workflow_statuses").select("id, sort_order, is_final");
+    const statusOrder = new Map<string, number>((sts ?? []).map((s: any) => [s.id as string, (s.sort_order ?? 0) as number]));
+    const finalStatusIds = new Set<string>((sts ?? []).filter((s: any) => s.is_final).map((s: any) => s.id as string));
+
+    let startStageOrder: number | null = null;
+    const doneStatusIds = new Set<string>();
+    if (specialtyIds.length > 0) {
+      const { data: rules } = await supabase
+        .from("specialty_stage_rules")
+        .select("status_id, is_start, is_done")
+        .in("specialty_id", specialtyIds);
+      for (const r of rules ?? []) {
+        if (r.is_done) doneStatusIds.add(r.status_id);
+        if (r.is_start) {
+          const ord = statusOrder.get(r.status_id) ?? 0;
+          // Com várias especialidades, vale a fase de início mais permissiva.
+          startStageOrder = startStageOrder === null ? ord : Math.min(startStageOrder, ord);
+        }
+      }
+    }
+
+    setState({ loading: false, areaIds, specialtyIds, allowedMenuKeys, fieldView, fieldEdit, startStageOrder, doneStatusIds, statusOrder, finalStatusIds });
   };
+
 
   useEffect(() => { void load(); }, [user?.id]);
 
