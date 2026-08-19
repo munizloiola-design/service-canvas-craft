@@ -526,8 +526,11 @@ function StatsOverview() {
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
           <DialogHeader className="px-6 py-4 shrink-0 border-b">
             <DialogTitle className="text-lg">
-              {selected?.label} — {selected?.value} {selected?.value === 1 ? "demanda" : "demandas"}
+              {selected?.label === "Eficiência"
+                ? `Eficiência ${pct(eff.efficiency)} — ${eff.concluded} ${eff.concluded === 1 ? "demanda concluída" : "demandas concluídas"}`
+                : `${selected?.label} — ${selected?.value} ${selected?.value === 1 ? "demanda" : "demandas"}`}
             </DialogTitle>
+
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
