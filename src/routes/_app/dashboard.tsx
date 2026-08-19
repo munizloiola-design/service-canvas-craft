@@ -401,6 +401,37 @@ function StatsOverview() {
   const urgent = projects.filter((p) => p.priority_id === urgentId && !isDone(p)).length;
   const overdue = projects.filter((p) => !isDone(p) && p.due_date && p.due_date < today).length;
 
+  // Retornos: volta de fase no histórico (+ reprovação do cliente, no cálculo).
+  const { data: transitions = [] } = useQuery({
+    queryKey: ["transitions-regress"],
+    queryFn: async () => (await supabase.from("project_transitions")
+      .select("project_id, from_status_id, to_status_id, created_at").order("created_at")).data ?? [],
+  });
+  const statusSort = useMemo(
+    () => new Map(statuses.map((s) => [s.id, s.sort_order ?? 0])),
+    [statuses],
+  );
+  const { regressedIds, doneDates } = useMemo(() => {
+    const regressed = new Set<string>();
+    const dates = new Map<string, string>();
+    for (const t of transitions) {
+      const from = t.from_status_id ? statusSort.get(t.from_status_id) : undefined;
+      const to = t.to_status_id ? statusSort.get(t.to_status_id) : undefined;
+      if (from !== undefined && to !== undefined && to < from) regressed.add(t.project_id);
+      if (t.to_status_id && stageRules.isDone(t.to_status_id) && !dates.has(t.project_id)) {
+        dates.set(t.project_id, format(new Date(t.created_at), "yyyy-MM-dd"));
+      }
+    }
+    return { regressedIds: regressed, doneDates: dates };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transitions, statusSort]);
+
+  const eff = useMemo(
+    () => computeEfficiency(projects, { isDone: (s) => stageRules.isDone(s), refDates: stageRules.refDates, regressedIds, today, doneDates }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projects, regressedIds, doneDates, today],
+  );
+
   const canProjects = menuAllowed("/projects");
   const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
@@ -409,11 +440,17 @@ function StatsOverview() {
   type StatItem = {
     label: string;
     value: number;
+    display?: string;
+    sub?: string;
+    valueClass?: string;
     icon: typeof Clock;
     color: string;
     quick?: QuickFilter;
     filter: (p: (typeof projects)[number]) => boolean;
   };
+
+  const effClass =
+    eff.efficiency === null ? "" : eff.efficiency >= 0.85 ? "text-success" : eff.efficiency >= 0.6 ? "text-warning" : "text-destructive";
 
   const stats: StatItem[] = [
     { label: "Total", value: total, icon: FolderKanban, color: "text-info", filter: () => true },
@@ -421,7 +458,19 @@ function StatsOverview() {
     { label: "Concluídos", value: done, icon: CheckCircle2, color: "text-success", quick: "concluidas", filter: (p) => isDone(p) },
     { label: "Urgentes", value: urgent, icon: AlertTriangle, color: "text-destructive", quick: "urgentes", filter: (p) => p.priority_id === urgentId && !isDone(p) },
     { label: "Atrasados", value: overdue, icon: AlertTriangle, color: "text-destructive", quick: "atrasadas", filter: (p) => !isDone(p) && !!p.due_date && p.due_date < today },
+    {
+      label: "Eficiência",
+      value: eff.concluded,
+      display: pct(eff.efficiency),
+      sub: `No prazo ${pct(eff.punctuality)} · Retorno ${pct(eff.returnRate)}`,
+      valueClass: effClass,
+      icon: Gauge,
+      color: "text-primary",
+      quick: "concluidas",
+      filter: (p) => isDone(p),
+    },
   ];
+
 
   const selected = stats.find((s) => s.label === openStat);
   const selectedProjects = useMemo(() => {
