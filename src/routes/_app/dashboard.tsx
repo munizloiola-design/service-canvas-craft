@@ -597,9 +597,13 @@ function StatsOverview() {
                         {selected?.label === "Eficiência" && eff.lateIds.has(p.id) && (
                           <Badge variant="destructive" className="text-[10px]">Atrasada</Badge>
                         )}
+                        {wasLate && selected?.label !== "Eficiência" && (
+                          <Badge variant="outline" className="text-[10px]">Resolvida com atraso</Badge>
+                        )}
                         {selected?.label === "Eficiência" && eff.returnedIds.has(p.id) && (
                           <Badge variant="outline" className="text-[10px]">Retornada</Badge>
                         )}
+
                         {p.due_date && (
                           <span className={`text-xs ${isLate ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                             {format(new Date(p.due_date), "dd/MM/yyyy")}
