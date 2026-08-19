@@ -638,15 +638,11 @@ function StatsOverview() {
 
 function OverdueProjects() {
   const today = format(new Date(), "yyyy-MM-dd");
-  const { data: statuses = [] } = useQuery({
-    queryKey: ["workflow_statuses"],
-    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, is_final")).data ?? [],
-  });
   const { data: rows = [] } = useQuery({
-    queryKey: ["overdue-projects", today],
+    queryKey: ["overdue-candidates"],
     queryFn: async () => (await supabase.from("projects")
       .select("id, title, due_date, post_date, client_id, status_id, assigned_to")
-      .lt("due_date", today)
+      .or(`due_date.lt.${today},post_date.lt.${today}`)
       .order("due_date")).data ?? [],
   });
   const visible = useVisibleProjects(rows);
@@ -656,8 +652,15 @@ function OverdueProjects() {
   });
   const cmap = new Map(clients.map((c) => [c.id, c.name]));
 
-  const stageRules = useStageRulesFor(useScopeUserId());
-  const overdue = visible.filter((p) => !stageRules.isDone(p.status_id));
+  const { lateness } = useLateness(visible);
+  const daysLate = (id: string) => {
+    const deadline = lateness.deadlines.get(id);
+    if (!deadline) return 1;
+    return Math.max(1, Math.round(differenceInSeconds(new Date(today), new Date(deadline)) / 86400));
+  };
+  const overdue = visible
+    .filter((p) => lateness.openLateIds.has(p.id))
+    .sort((a, b) => daysLate(b.id) - daysLate(a.id));
   const shown = overdue.slice(0, 8);
 
   return (
@@ -668,20 +671,21 @@ function OverdueProjects() {
       {overdue.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma demanda atrasada.</p>}
       <div className="divide-y">
         {shown.map((p) => {
-          const days = Math.max(1, Math.round(differenceInSeconds(new Date(today), new Date(p.due_date!)) / 86400));
+          const deadline = lateness.deadlines.get(p.id);
           return (
             <Link key={p.id} to="/projects" search={{ detail: p.id, quick: undefined }} className="flex items-center justify-between py-2 hover:bg-muted/30 -mx-1 px-1 rounded">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate">{p.title}</p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {p.client_id ? cmap.get(p.client_id) : "—"} · {format(new Date(p.due_date!), "dd/MM")}
+                  {p.client_id ? cmap.get(p.client_id) : "—"}{deadline ? ` · ${format(new Date(deadline), "dd/MM")}` : ""}
                 </p>
               </div>
-              <Badge variant="destructive" className="ml-2 text-xs shrink-0">{days}d</Badge>
+              <Badge variant="destructive" className="ml-2 text-xs shrink-0">{daysLate(p.id)}d</Badge>
             </Link>
           );
         })}
       </div>
+
       {overdue.length > shown.length && (
         <Link to="/projects" search={{ detail: undefined, quick: "atrasadas" }} className="block mt-3 text-xs text-primary hover:underline">
           Ver todas ({overdue.length})
