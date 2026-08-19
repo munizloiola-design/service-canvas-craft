@@ -6,7 +6,7 @@ Hoje "Atrasados" só conta demanda que **ainda está aberta** com prazo vencido 
 
 ## Como vai ficar
 
-O atraso passa a ser um fato histórico: **atrasou uma vez, conta como atrasada**, mesmo depois de resolvida.
+O atraso passa a ser um fato histórico: **atrasou uma vez, conta como atrasada apenas para o calculo, pois quando sair do quadro kanban de finalização não contabiliza nos atrasados do dashboard**, mesmo depois de resolvida.
 
 Uma demanda é atrasada quando:
 
