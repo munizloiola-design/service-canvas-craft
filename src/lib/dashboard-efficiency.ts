@@ -42,22 +42,61 @@ export function isReturned(p: EffProject, regressedIds: Set<string>) {
   return p.client_decision === "reprovado" || regressedIds.has(p.id);
 }
 
+export type LatenessResult = {
+  /** Atrasou alguma vez (aberta vencida ou concluída após a data de referência). */
+  lateIds: Set<string>;
+  /** Atrasadas que ainda não foram concluídas. */
+  openLateIds: Set<string>;
+  /** Atrasadas que já foram entregues (só entram no cálculo de eficiência). */
+  resolvedLateIds: Set<string>;
+  /** Data de referência efetiva por demanda (yyyy-MM-dd). */
+  deadlines: Map<string, string>;
+};
+
+/**
+ * Atraso segundo as regras do perfil: data de referência (prazo ou postagem)
+ * e definição de "concluído" da especialidade.
+ */
+export function computeLateness(
+  projects: EffProject[],
+  opts: Pick<EfficiencyInput, "isDone" | "refDates" | "today" | "doneDates">,
+): LatenessResult {
+  const { isDone, refDates, today, doneDates } = opts;
+  const lateIds = new Set<string>();
+  const openLateIds = new Set<string>();
+  const resolvedLateIds = new Set<string>();
+  const deadlines = new Map<string, string>();
+
+  for (const p of projects) {
+    const dates = refDates(p);
+    if (!dates.length) continue;
+    const deadline = [...dates].sort()[0];
+    deadlines.set(p.id, deadline);
+    const done = isDone(p.status_id);
+    const finished = done ? (doneDates?.get(p.id) ?? today) : today;
+    if (finished > deadline) {
+      lateIds.add(p.id);
+      if (done) resolvedLateIds.add(p.id);
+      else openLateIds.add(p.id);
+    }
+  }
+
+  return { lateIds, openLateIds, resolvedLateIds, deadlines };
+}
+
 export function computeEfficiency(projects: EffProject[], opts: EfficiencyInput): EfficiencyResult {
-  const { isDone, refDates, regressedIds, today, doneDates } = opts;
+  const { isDone, regressedIds } = opts;
   const concludedList = projects.filter((p) => isDone(p.status_id));
+  const { lateIds: allLate } = computeLateness(projects, opts);
 
   const lateIds = new Set<string>();
   const returnedIds = new Set<string>();
 
   for (const p of concludedList) {
-    const dates = refDates(p);
-    if (dates.length) {
-      const deadline = dates.sort()[0];
-      const finished = doneDates?.get(p.id) ?? today;
-      if (finished > deadline) lateIds.add(p.id);
-    }
+    if (allLate.has(p.id)) lateIds.add(p.id);
     if (isReturned(p, regressedIds)) returnedIds.add(p.id);
   }
+
 
   const concluded = concludedList.length;
   if (concluded === 0) {

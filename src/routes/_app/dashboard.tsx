@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAccess } from "@/lib/access-context";
 import { useStageRulesFor } from "@/lib/access-sections";
-import { computeEfficiency, pct } from "@/lib/dashboard-efficiency";
+import { computeEfficiency, computeLateness, pct } from "@/lib/dashboard-efficiency";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 
 import { Card } from "@/components/ui/card";
@@ -366,52 +366,26 @@ function useVisibleProjects<
   }, [rows, assignees, scopeUserId, monthRange]);
 }
 
-
-
-
-function StatsOverview() {
-  const { menuAllowed } = useAccess();
-  const [openStat, setOpenStat] = useState<string | null>(null);
-  const { data: allProjects = [] } = useQuery({
-    queryKey: ["projects-stats"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, post_date, assigned_to, client_id, team_id, client_decision, client_decided_at")).data ?? [],
-  });
-
-  const projects = useVisibleProjects(allProjects);
-  const { data: statuses = [] } = useQuery({
+/**
+ * Atraso e retornos segundo as regras de fase/data do perfil em escopo.
+ * Compartilhado pelos indicadores gerais e pelo widget de atrasadas.
+ */
+function useLateness<T extends { id: string; status_id?: string | null; due_date?: string | null; post_date?: string | null }>(
+  projects: T[],
+) {
+  const stageRules = useStageRulesFor(useScopeUserId());
+  const today = format(new Date(), "yyyy-MM-dd");
+  const { data: statusRows = [] } = useQuery({
     queryKey: ["workflow_statuses_sorted"],
     queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, is_final, color, sort_order")).data ?? [],
   });
-
-  const { data: priorities = [] } = useQuery({
-    queryKey: ["priorities"],
-    queryFn: async () => (await supabase.from("priorities").select("id, name, level")).data ?? [],
-  });
-  const { data: clients = [] } = useQuery({
-    queryKey: ["clients"],
-    queryFn: async () => (await supabase.from("clients").select("id, name")).data ?? [],
-  });
-
-  const stageRules = useStageRulesFor(useScopeUserId());
-  const urgentId = [...priorities].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0]?.id;
-  const today = format(new Date(), "yyyy-MM-dd");
-  const isDone = (p: { status_id: string | null }) => stageRules.isDone(p.status_id);
-  const total = projects.length;
-  const done = projects.filter(isDone).length;
-  const open = total - done;
-  const urgent = projects.filter((p) => p.priority_id === urgentId && !isDone(p)).length;
-  const overdue = projects.filter((p) => !isDone(p) && p.due_date && p.due_date < today).length;
-
-  // Retornos: volta de fase no histórico (+ reprovação do cliente, no cálculo).
   const { data: transitions = [] } = useQuery({
     queryKey: ["transitions-regress"],
     queryFn: async () => (await supabase.from("project_transitions")
       .select("project_id, from_status_id, to_status_id, created_at").order("created_at")).data ?? [],
   });
-  const statusSort = useMemo(
-    () => new Map(statuses.map((s) => [s.id, s.sort_order ?? 0])),
-    [statuses],
-  );
+  const statusSort = useMemo(() => new Map(statusRows.map((s) => [s.id, s.sort_order ?? 0])), [statusRows]);
+
   const { regressedIds, doneDates } = useMemo(() => {
     const regressed = new Set<string>();
     const dates = new Map<string, string>();
@@ -427,11 +401,58 @@ function StatsOverview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transitions, statusSort]);
 
+  const lateness = useMemo(
+    () => computeLateness(projects, {
+      isDone: (s) => stageRules.isDone(s),
+      refDates: stageRules.refDates,
+      today,
+      doneDates,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projects, doneDates, today],
+  );
+
+  return { stageRules, today, regressedIds, doneDates, lateness, statuses: statusRows };
+}
+
+
+function StatsOverview() {
+  const { menuAllowed } = useAccess();
+  const [openStat, setOpenStat] = useState<string | null>(null);
+  const { data: allProjects = [] } = useQuery({
+    queryKey: ["projects-stats"],
+    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, post_date, assigned_to, client_id, team_id, client_decision, client_decided_at")).data ?? [],
+  });
+
+  const projects = useVisibleProjects(allProjects);
+  const { stageRules, today, regressedIds, doneDates, lateness, statuses } = useLateness(projects);
+
+  const { data: priorities = [] } = useQuery({
+    queryKey: ["priorities"],
+    queryFn: async () => (await supabase.from("priorities").select("id, name, level")).data ?? [],
+  });
+  const { data: clients = [] } = useQuery({
+    queryKey: ["clients"],
+    queryFn: async () => (await supabase.from("clients").select("id, name")).data ?? [],
+  });
+
+  const urgentId = [...priorities].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0]?.id;
+  const isDone = (p: { status_id: string | null }) => stageRules.isDone(p.status_id);
+  const total = projects.length;
+  const done = projects.filter(isDone).length;
+  const open = total - done;
+  const urgent = projects.filter((p) => p.priority_id === urgentId && !isDone(p)).length;
+  // Card conta só o que ainda está atrasado em aberto; o que saiu para a fase
+  // de conclusão entra apenas no cálculo da eficiência.
+  const overdue = lateness.openLateIds.size;
+  const resolvedLate = lateness.resolvedLateIds.size;
+
   const eff = useMemo(
     () => computeEfficiency(projects, { isDone: (s) => stageRules.isDone(s), refDates: stageRules.refDates, regressedIds, today, doneDates }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [projects, regressedIds, doneDates, today],
   );
+
 
   const canProjects = menuAllowed("/projects");
   const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
@@ -458,7 +479,16 @@ function StatsOverview() {
     { label: "Em aberto", value: open, icon: Clock, color: "text-warning", quick: "abertas", filter: (p) => !isDone(p) },
     { label: "Concluídos", value: done, icon: CheckCircle2, color: "text-success", quick: "concluidas", filter: (p) => isDone(p) },
     { label: "Urgentes", value: urgent, icon: AlertTriangle, color: "text-destructive", quick: "urgentes", filter: (p) => p.priority_id === urgentId && !isDone(p) },
-    { label: "Atrasados", value: overdue, icon: AlertTriangle, color: "text-destructive", quick: "atrasadas", filter: (p) => !isDone(p) && !!p.due_date && p.due_date < today },
+    {
+      label: "Atrasados",
+      value: overdue,
+      sub: resolvedLate ? `+${resolvedLate} resolvidas com atraso` : undefined,
+      icon: AlertTriangle,
+      color: "text-destructive",
+      quick: "atrasadas",
+      filter: (p) => lateness.openLateIds.has(p.id),
+    },
+
     {
       label: "Eficiência",
       value: eff.concluded,
@@ -540,7 +570,9 @@ function StatsOverview() {
               <div className="divide-y">
                 {selectedProjects.map((p) => {
                   const status = p.status_id ? statusMap.get(p.status_id) : null;
-                  const isLate = !isDone(p) && !!p.due_date && p.due_date < today;
+                  const isLate = lateness.openLateIds.has(p.id);
+                  const wasLate = lateness.resolvedLateIds.has(p.id);
+
                   return (
                     <Link
                       key={p.id}
@@ -565,9 +597,13 @@ function StatsOverview() {
                         {selected?.label === "Eficiência" && eff.lateIds.has(p.id) && (
                           <Badge variant="destructive" className="text-[10px]">Atrasada</Badge>
                         )}
+                        {wasLate && selected?.label !== "Eficiência" && (
+                          <Badge variant="outline" className="text-[10px]">Resolvida com atraso</Badge>
+                        )}
                         {selected?.label === "Eficiência" && eff.returnedIds.has(p.id) && (
                           <Badge variant="outline" className="text-[10px]">Retornada</Badge>
                         )}
+
                         {p.due_date && (
                           <span className={`text-xs ${isLate ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                             {format(new Date(p.due_date), "dd/MM/yyyy")}
@@ -602,15 +638,11 @@ function StatsOverview() {
 
 function OverdueProjects() {
   const today = format(new Date(), "yyyy-MM-dd");
-  const { data: statuses = [] } = useQuery({
-    queryKey: ["workflow_statuses"],
-    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, is_final")).data ?? [],
-  });
   const { data: rows = [] } = useQuery({
-    queryKey: ["overdue-projects", today],
+    queryKey: ["overdue-candidates"],
     queryFn: async () => (await supabase.from("projects")
       .select("id, title, due_date, post_date, client_id, status_id, assigned_to")
-      .lt("due_date", today)
+      .or(`due_date.lt.${today},post_date.lt.${today}`)
       .order("due_date")).data ?? [],
   });
   const visible = useVisibleProjects(rows);
@@ -620,8 +652,15 @@ function OverdueProjects() {
   });
   const cmap = new Map(clients.map((c) => [c.id, c.name]));
 
-  const stageRules = useStageRulesFor(useScopeUserId());
-  const overdue = visible.filter((p) => !stageRules.isDone(p.status_id));
+  const { lateness } = useLateness(visible);
+  const daysLate = (id: string) => {
+    const deadline = lateness.deadlines.get(id);
+    if (!deadline) return 1;
+    return Math.max(1, Math.round(differenceInSeconds(new Date(today), new Date(deadline)) / 86400));
+  };
+  const overdue = visible
+    .filter((p) => lateness.openLateIds.has(p.id))
+    .sort((a, b) => daysLate(b.id) - daysLate(a.id));
   const shown = overdue.slice(0, 8);
 
   return (
@@ -632,20 +671,21 @@ function OverdueProjects() {
       {overdue.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma demanda atrasada.</p>}
       <div className="divide-y">
         {shown.map((p) => {
-          const days = Math.max(1, Math.round(differenceInSeconds(new Date(today), new Date(p.due_date!)) / 86400));
+          const deadline = lateness.deadlines.get(p.id);
           return (
             <Link key={p.id} to="/projects" search={{ detail: p.id, quick: undefined }} className="flex items-center justify-between py-2 hover:bg-muted/30 -mx-1 px-1 rounded">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate">{p.title}</p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {p.client_id ? cmap.get(p.client_id) : "—"} · {format(new Date(p.due_date!), "dd/MM")}
+                  {p.client_id ? cmap.get(p.client_id) : "—"}{deadline ? ` · ${format(new Date(deadline), "dd/MM")}` : ""}
                 </p>
               </div>
-              <Badge variant="destructive" className="ml-2 text-xs shrink-0">{days}d</Badge>
+              <Badge variant="destructive" className="ml-2 text-xs shrink-0">{daysLate(p.id)}d</Badge>
             </Link>
           );
         })}
       </div>
+
       {overdue.length > shown.length && (
         <Link to="/projects" search={{ detail: undefined, quick: "atrasadas" }} className="block mt-3 text-xs text-primary hover:underline">
           Ver todas ({overdue.length})
