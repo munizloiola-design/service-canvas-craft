@@ -199,7 +199,32 @@ function DashboardPage() {
           <h1 className="text-3xl font-semibold tracking-tight text-gradient">Dashboard</h1>
           <p className="text-muted-foreground mt-1">Visão geral da operação. Personalize os widgets.</p>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap">
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" className="h-9 w-9 p-0" disabled={monthValue === "all"}
+              onClick={() => shiftMonth(-1)} aria-label="Mês anterior">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Select value={monthValue} onValueChange={setMonthValue}>
+              <SelectTrigger className="w-[200px] h-9">
+                <Calendar className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os períodos</SelectItem>
+                {monthOptions.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {format(new Date(`${m}-01T00:00:00`), "MMMM 'de' yyyy", { locale: ptBR })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" className="h-9 w-9 p-0" disabled={monthValue === "all"}
+              onClick={() => shiftMonth(1)} aria-label="Próximo mês">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
           {isManager && (
             <Select value={scopeUser} onValueChange={setScopeUser}>
               <SelectTrigger className="w-[220px] h-9">
@@ -214,6 +239,7 @@ function DashboardPage() {
               </SelectContent>
             </Select>
           )}
+
 
           {editMode && available.length > 0 && (
             <Dialog>
