@@ -59,6 +59,33 @@ export function PermissionTree({ areaId, specialtyId }: { areaId: string; specia
     queryFn: async () =>
       ((await supabase.from("workflow_statuses").select("id, name").order("sort_order")).data ?? []) as { id: string; name: string }[],
   });
+  const { data: dateBasis } = useQuery({
+    queryKey: ["specialty_date_basis", specialtyId],
+    enabled: !!specialtyId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("provider_specialties")
+        .select("date_basis")
+        .eq("id", specialtyId!)
+        .maybeSingle();
+      return (data?.date_basis ?? "due") as "due" | "post";
+    },
+  });
+
+  const setDateBasis = useMutation({
+    mutationFn: async (basis: "due" | "post") => {
+      if (!specialtyId) return;
+      const { error } = await supabase.from("provider_specialties").update({ date_basis: basis }).eq("id", specialtyId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["specialty_date_basis", specialtyId] });
+      qc.invalidateQueries({ queryKey: ["stage_rules"] });
+      toast.success("Data de referência atualizada");
+    },
+    onError: (e) => toast.error(describeSupabaseError(e)),
+  });
+
 
   const { data: stageRules = [] } = useQuery({
     queryKey: ["specialty_stage_rules", specialtyId],
