@@ -338,25 +338,34 @@ function WidgetRenderer({ widgetKey }: { widgetKey: WidgetKey }) {
 
 type QuickFilter = "abertas" | "concluidas" | "urgentes" | "atrasadas";
 
-// Demandas do escopo atual (null = toda a equipe, só para gestores).
-function useVisibleProjects<T extends { id: string; assigned_to?: string | null; status_id?: string | null }>(rows: T[]) {
+// Demandas do escopo atual (null = toda a equipe, só para gestores) e do mês selecionado.
+function useVisibleProjects<
+  T extends { id: string; assigned_to?: string | null; status_id?: string | null; due_date?: string | null; post_date?: string | null },
+>(rows: T[]) {
   const scopeUserId = useScopeUserId();
+  const monthRange = useMonthRange();
   const stageRules = useStageRulesFor(scopeUserId);
   const { data: assignees = [] } = useQuery({
     queryKey: ["project_assignees_dash"],
     queryFn: async () => (await supabase.from("project_assignees").select("project_id, user_id")).data ?? [],
   });
   return useMemo(() => {
-    if (!scopeUserId) return rows;
     const mine = new Set(assignees.filter((a) => a.user_id === scopeUserId).map((a) => a.project_id));
-    return rows.filter(
-      (p) =>
-        (p.assigned_to === scopeUserId || mine.has(p.id)) &&
-        ("status_id" in p ? stageRules.isStarted(p.status_id) : true),
-    );
+    return rows.filter((p) => {
+      if (scopeUserId) {
+        if (!(p.assigned_to === scopeUserId || mine.has(p.id))) return false;
+        if ("status_id" in p && !stageRules.isStarted(p.status_id)) return false;
+      }
+      if (monthRange) {
+        const dates = stageRules.refDates(p);
+        if (!dates.some((d) => d >= monthRange.start && d <= monthRange.end)) return false;
+      }
+      return true;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, assignees, scopeUserId]);
+  }, [rows, assignees, scopeUserId, monthRange]);
 }
+
 
 
 
