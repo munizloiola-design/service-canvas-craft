@@ -374,8 +374,9 @@ function StatsOverview() {
   const [openStat, setOpenStat] = useState<string | null>(null);
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-stats"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, assigned_to, client_id, team_id")).data ?? [],
+    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, post_date, assigned_to, client_id, team_id, client_decision, client_decided_at")).data ?? [],
   });
+
   const projects = useVisibleProjects(allProjects);
   const { data: statuses = [] } = useQuery({
     queryKey: ["workflow_statuses"],
