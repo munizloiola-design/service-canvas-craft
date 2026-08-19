@@ -570,7 +570,9 @@ function StatsOverview() {
               <div className="divide-y">
                 {selectedProjects.map((p) => {
                   const status = p.status_id ? statusMap.get(p.status_id) : null;
-                  const isLate = !isDone(p) && !!p.due_date && p.due_date < today;
+                  const isLate = lateness.openLateIds.has(p.id);
+                  const wasLate = lateness.resolvedLateIds.has(p.id);
+
                   return (
                     <Link
                       key={p.id}
