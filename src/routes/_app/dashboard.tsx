@@ -366,7 +366,54 @@ function useVisibleProjects<
   }, [rows, assignees, scopeUserId, monthRange]);
 }
 
+/**
+ * Atraso e retornos segundo as regras de fase/data do perfil em escopo.
+ * Compartilhado pelos indicadores gerais e pelo widget de atrasadas.
+ */
+function useLateness<T extends { id: string; status_id?: string | null; due_date?: string | null; post_date?: string | null }>(
+  projects: T[],
+) {
+  const stageRules = useStageRulesFor(useScopeUserId());
+  const today = format(new Date(), "yyyy-MM-dd");
+  const { data: statusRows = [] } = useQuery({
+    queryKey: ["workflow_statuses_sorted"],
+    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, is_final, color, sort_order")).data ?? [],
+  });
+  const { data: transitions = [] } = useQuery({
+    queryKey: ["transitions-regress"],
+    queryFn: async () => (await supabase.from("project_transitions")
+      .select("project_id, from_status_id, to_status_id, created_at").order("created_at")).data ?? [],
+  });
+  const statusSort = useMemo(() => new Map(statusRows.map((s) => [s.id, s.sort_order ?? 0])), [statusRows]);
 
+  const { regressedIds, doneDates } = useMemo(() => {
+    const regressed = new Set<string>();
+    const dates = new Map<string, string>();
+    for (const t of transitions) {
+      const from = t.from_status_id ? statusSort.get(t.from_status_id) : undefined;
+      const to = t.to_status_id ? statusSort.get(t.to_status_id) : undefined;
+      if (from !== undefined && to !== undefined && to < from) regressed.add(t.project_id);
+      if (t.to_status_id && stageRules.isDone(t.to_status_id) && !dates.has(t.project_id)) {
+        dates.set(t.project_id, format(new Date(t.created_at), "yyyy-MM-dd"));
+      }
+    }
+    return { regressedIds: regressed, doneDates: dates };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transitions, statusSort]);
+
+  const lateness = useMemo(
+    () => computeLateness(projects, {
+      isDone: (s) => stageRules.isDone(s),
+      refDates: stageRules.refDates,
+      today,
+      doneDates,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projects, doneDates, today],
+  );
+
+  return { stageRules, today, regressedIds, doneDates, lateness, statuses: statusRows };
+}
 
 
 function StatsOverview() {
