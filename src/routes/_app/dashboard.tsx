@@ -562,6 +562,12 @@ function StatsOverview() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
+                        {selected?.label === "Eficiência" && eff.lateIds.has(p.id) && (
+                          <Badge variant="destructive" className="text-[10px]">Atrasada</Badge>
+                        )}
+                        {selected?.label === "Eficiência" && eff.returnedIds.has(p.id) && (
+                          <Badge variant="outline" className="text-[10px]">Retornada</Badge>
+                        )}
                         {p.due_date && (
                           <span className={`text-xs ${isLate ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                             {format(new Date(p.due_date), "dd/MM/yyyy")}
@@ -569,6 +575,7 @@ function StatsOverview() {
                         )}
                         <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />
                       </div>
+
                     </Link>
                   );
                 })}
