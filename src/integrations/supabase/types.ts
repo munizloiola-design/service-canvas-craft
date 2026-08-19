@@ -1585,6 +1585,7 @@ export type Database = {
         Row: {
           area_id: string
           created_at: string
+          date_basis: string
           id: string
           name: string
           sort_order: number
@@ -1593,6 +1594,7 @@ export type Database = {
         Insert: {
           area_id: string
           created_at?: string
+          date_basis?: string
           id?: string
           name: string
           sort_order?: number
@@ -1601,6 +1603,7 @@ export type Database = {
         Update: {
           area_id?: string
           created_at?: string
+          date_basis?: string
           id?: string
           name?: string
           sort_order?: number
