@@ -425,10 +425,7 @@ function StatsOverview() {
   });
 
   const projects = useVisibleProjects(allProjects);
-  const { data: statuses = [] } = useQuery({
-    queryKey: ["workflow_statuses_sorted"],
-    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, is_final, color, sort_order")).data ?? [],
-  });
+  const { stageRules, today, regressedIds, doneDates, lateness, statuses } = useLateness(projects);
 
   const { data: priorities = [] } = useQuery({
     queryKey: ["priorities"],
@@ -439,46 +436,23 @@ function StatsOverview() {
     queryFn: async () => (await supabase.from("clients").select("id, name")).data ?? [],
   });
 
-  const stageRules = useStageRulesFor(useScopeUserId());
   const urgentId = [...priorities].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0]?.id;
-  const today = format(new Date(), "yyyy-MM-dd");
   const isDone = (p: { status_id: string | null }) => stageRules.isDone(p.status_id);
   const total = projects.length;
   const done = projects.filter(isDone).length;
   const open = total - done;
   const urgent = projects.filter((p) => p.priority_id === urgentId && !isDone(p)).length;
-  const overdue = projects.filter((p) => !isDone(p) && p.due_date && p.due_date < today).length;
-
-  // Retornos: volta de fase no histórico (+ reprovação do cliente, no cálculo).
-  const { data: transitions = [] } = useQuery({
-    queryKey: ["transitions-regress"],
-    queryFn: async () => (await supabase.from("project_transitions")
-      .select("project_id, from_status_id, to_status_id, created_at").order("created_at")).data ?? [],
-  });
-  const statusSort = useMemo(
-    () => new Map(statuses.map((s) => [s.id, s.sort_order ?? 0])),
-    [statuses],
-  );
-  const { regressedIds, doneDates } = useMemo(() => {
-    const regressed = new Set<string>();
-    const dates = new Map<string, string>();
-    for (const t of transitions) {
-      const from = t.from_status_id ? statusSort.get(t.from_status_id) : undefined;
-      const to = t.to_status_id ? statusSort.get(t.to_status_id) : undefined;
-      if (from !== undefined && to !== undefined && to < from) regressed.add(t.project_id);
-      if (t.to_status_id && stageRules.isDone(t.to_status_id) && !dates.has(t.project_id)) {
-        dates.set(t.project_id, format(new Date(t.created_at), "yyyy-MM-dd"));
-      }
-    }
-    return { regressedIds: regressed, doneDates: dates };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transitions, statusSort]);
+  // Card conta só o que ainda está atrasado em aberto; o que saiu para a fase
+  // de conclusão entra apenas no cálculo da eficiência.
+  const overdue = lateness.openLateIds.size;
+  const resolvedLate = lateness.resolvedLateIds.size;
 
   const eff = useMemo(
     () => computeEfficiency(projects, { isDone: (s) => stageRules.isDone(s), refDates: stageRules.refDates, regressedIds, today, doneDates }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [projects, regressedIds, doneDates, today],
   );
+
 
   const canProjects = menuAllowed("/projects");
   const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
