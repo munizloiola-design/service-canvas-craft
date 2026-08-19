@@ -96,6 +96,24 @@ function DashboardPage() {
   // Colaborador só enxerga o próprio escopo.
   const scopeUserId = isManager ? (scopeUser === "all" ? null : scopeUser) : (user?.id ?? null);
 
+  const [monthValue, setMonthValue] = usePersistedState<string>(
+    user ? persistKey("dashboard", "month", user.id) : null,
+    format(new Date(), "yyyy-MM"),
+  );
+  const monthRange = useMemo(() => monthRangeOf(monthValue), [monthValue]);
+  const shiftMonth = (delta: number) => {
+    if (monthValue === "all") return;
+    setMonthValue(format(addMonths(new Date(`${monthValue}-01T00:00:00`), delta), "yyyy-MM"));
+  };
+  const monthOptions = useMemo(() => {
+    const base = startOfMonth(new Date());
+    const arr: string[] = [];
+    for (let i = -12; i <= 3; i++) arr.push(format(addMonths(base, i), "yyyy-MM"));
+    return arr.reverse();
+  }, []);
+
+
+
 
   const canSee = (k: WidgetKey) => {
     const m = WIDGETS[k]?.menu;
