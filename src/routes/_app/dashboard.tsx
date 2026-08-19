@@ -265,17 +265,20 @@ function DashboardPage() {
       </header>
 
       <DashboardScopeContext.Provider value={scopeUserId}>
-        <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {widgets.map((w) => (
-                <SortableWidget key={w.id} widget={w} editMode={editMode}
-                  onRemove={() => remove.mutate(w.id)} />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+        <DashboardMonthContext.Provider value={monthRange}>
+          <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {widgets.map((w) => (
+                  <SortableWidget key={w.id} widget={w} editMode={editMode}
+                    onRemove={() => remove.mutate(w.id)} />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </DashboardMonthContext.Provider>
       </DashboardScopeContext.Provider>
+
 
 
       {widgets.length === 0 && !isLoading && (
