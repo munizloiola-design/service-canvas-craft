@@ -5,16 +5,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAccess } from "@/lib/access-context";
 import { useStageRulesFor } from "@/lib/access-sections";
+import { computeEfficiency, pct } from "@/lib/dashboard-efficiency";
+import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   FolderKanban, Clock, CheckCircle2, AlertTriangle, Users, DollarSign, TrendingUp, Calendar,
-  Plus, X, Pencil, GripVertical, Wrench, Repeat, ArrowUpRight,
+  Plus, X, Pencil, GripVertical, Wrench, Repeat, ArrowUpRight, Gauge, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, Cell } from "recharts";
-import { format, subMonths, startOfMonth, endOfMonth, differenceInYears, differenceInSeconds } from "date-fns";
+import {
+  format, subMonths, addMonths, startOfMonth, endOfMonth, differenceInYears, differenceInSeconds,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,6 +35,23 @@ const fmt = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", c
 // Escopo do dashboard: null = toda a equipe (só gestores); caso contrário, id da pessoa.
 const DashboardScopeContext = createContext<string | null>(null);
 const useScopeUserId = () => useContext(DashboardScopeContext);
+
+// Período do dashboard: null = todos os períodos.
+type MonthRange = { start: string; end: string; label: string };
+const DashboardMonthContext = createContext<MonthRange | null>(null);
+const useMonthRange = () => useContext(DashboardMonthContext);
+
+const monthRangeOf = (value: string): MonthRange | null => {
+  if (value === "all") return null;
+  const d = new Date(`${value}-01T00:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return {
+    start: format(startOfMonth(d), "yyyy-MM-dd"),
+    end: format(endOfMonth(d), "yyyy-MM-dd"),
+    label: format(d, "MMMM 'de' yyyy", { locale: ptBR }),
+  };
+};
+
 
 
 // Widget catalog — `menu` é a chave de menu (Perfis e Acessos) exigida para ver o widget.
