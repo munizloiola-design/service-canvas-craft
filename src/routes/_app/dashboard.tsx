@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAccess } from "@/lib/access-context";
 import { useStageRulesFor } from "@/lib/access-sections";
-import { computeEfficiency, pct } from "@/lib/dashboard-efficiency";
+import { computeEfficiency, computeLateness, pct } from "@/lib/dashboard-efficiency";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 
 import { Card } from "@/components/ui/card";
