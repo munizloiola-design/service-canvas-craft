@@ -479,7 +479,16 @@ function StatsOverview() {
     { label: "Em aberto", value: open, icon: Clock, color: "text-warning", quick: "abertas", filter: (p) => !isDone(p) },
     { label: "Concluídos", value: done, icon: CheckCircle2, color: "text-success", quick: "concluidas", filter: (p) => isDone(p) },
     { label: "Urgentes", value: urgent, icon: AlertTriangle, color: "text-destructive", quick: "urgentes", filter: (p) => p.priority_id === urgentId && !isDone(p) },
-    { label: "Atrasados", value: overdue, icon: AlertTriangle, color: "text-destructive", quick: "atrasadas", filter: (p) => !isDone(p) && !!p.due_date && p.due_date < today },
+    {
+      label: "Atrasados",
+      value: overdue,
+      sub: resolvedLate ? `+${resolvedLate} resolvidas com atraso` : undefined,
+      icon: AlertTriangle,
+      color: "text-destructive",
+      quick: "atrasadas",
+      filter: (p) => lateness.openLateIds.has(p.id),
+    },
+
     {
       label: "Eficiência",
       value: eff.concluded,
