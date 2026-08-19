@@ -255,7 +255,22 @@ export function PermissionTree({ areaId, specialtyId }: { areaId: string; specia
 
                     {open && specialtyId && (
                       <div className="border-t px-2 py-2 space-y-1">
+                        {m.entry.key === "/projects" && (
+                          <div className="flex flex-wrap items-center gap-2 pb-2 mb-1 border-b text-xs">
+                            <span className="text-muted-foreground">Data de referência do mês:</span>
+                            {(["due", "post"] as const).map((v) => (
+                              <label key={v} className="flex items-center gap-1 text-muted-foreground">
+                                <Checkbox
+                                  checked={(dateBasis ?? "due") === v}
+                                  onCheckedChange={() => setDateBasis.mutate(v)}
+                                />
+                                {v === "due" ? "Entrega (prazo)" : "Postagem"}
+                              </label>
+                            ))}
+                          </div>
+                        )}
                         <div className="flex justify-end gap-2 pb-1">
+
                           <Button
                             size="sm"
                             variant="ghost"
