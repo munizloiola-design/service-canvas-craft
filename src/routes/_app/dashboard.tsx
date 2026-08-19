@@ -492,7 +492,7 @@ function StatsOverview() {
   return (
     <div>
       <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">Indicadores gerais</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {stats.map((s) => {
           const Icon = s.icon;
           const inner = (
@@ -501,9 +501,11 @@ function StatsOverview() {
                 <span className="text-[10px] uppercase text-muted-foreground">{s.label}</span>
                 <Icon className={`h-3.5 w-3.5 ${s.color}`} />
               </div>
-              <p className="text-2xl font-semibold">{s.value}</p>
+              <p className={`text-2xl font-semibold ${s.valueClass ?? ""}`}>{s.display ?? s.value}</p>
+              {s.sub && <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{s.sub}</p>}
             </>
           );
+
           if (!canProjects) {
             return <div key={s.label} className="bg-muted/40 rounded-md p-3">{inner}</div>;
           }
