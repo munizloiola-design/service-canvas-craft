@@ -609,7 +609,7 @@ function OverdueProjects() {
   const { data: rows = [] } = useQuery({
     queryKey: ["overdue-projects", today],
     queryFn: async () => (await supabase.from("projects")
-      .select("id, title, due_date, client_id, status_id, assigned_to")
+      .select("id, title, due_date, post_date, client_id, status_id, assigned_to")
       .lt("due_date", today)
       .order("due_date")).data ?? [],
   });
@@ -700,7 +700,7 @@ function CashFlow() {
 function ProjectsByStatus() {
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-by-status"],
-    queryFn: async () => (await supabase.from("projects").select("id, status_id, assigned_to")).data ?? [],
+    queryFn: async () => (await supabase.from("projects").select("id, status_id, assigned_to, due_date, post_date")).data ?? [],
   });
   const projects = useVisibleProjects(allProjects);
 
@@ -788,7 +788,7 @@ function UpcomingDeadlines() {
   const { data: allProjects = [] } = useQuery({
     queryKey: ["upcoming"],
     queryFn: async () => (await supabase.from("projects")
-      .select("id, title, due_date, client_id, status_id, assigned_to")
+      .select("id, title, due_date, post_date, client_id, status_id, assigned_to")
       .gte("due_date", format(new Date(), "yyyy-MM-dd"))
       .order("due_date").limit(60)).data ?? [],
   });
@@ -919,7 +919,7 @@ function EquipmentDepreciated() {
 function RecentProjects() {
   const { data: allProjects = [] } = useQuery({
     queryKey: ["recent-projects"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, client_id, due_date, status_id, assigned_to").order("created_at", { ascending: false }).limit(60)).data ?? [],
+    queryFn: async () => (await supabase.from("projects").select("id, title, client_id, due_date, post_date, status_id, assigned_to").order("created_at", { ascending: false }).limit(60)).data ?? [],
   });
   const projects = useVisibleProjects(allProjects).slice(0, 5);
 
@@ -966,7 +966,7 @@ function MyProjects() {
       const ids = (pa ?? []).map((r) => r.project_id);
       const { data } = await supabase
         .from("projects")
-        .select("id, title, due_date, status_id, assigned_to")
+        .select("id, title, due_date, post_date, status_id, assigned_to")
         .order("due_date", { ascending: true })
         .limit(50);
       return (data ?? []).filter((p) => p.assigned_to === user!.id || ids.includes(p.id)).slice(0, 6);
