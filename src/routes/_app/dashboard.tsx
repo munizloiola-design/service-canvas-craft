@@ -5,16 +5,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAccess } from "@/lib/access-context";
 import { useStageRulesFor } from "@/lib/access-sections";
+import { computeEfficiency, pct } from "@/lib/dashboard-efficiency";
+import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   FolderKanban, Clock, CheckCircle2, AlertTriangle, Users, DollarSign, TrendingUp, Calendar,
-  Plus, X, Pencil, GripVertical, Wrench, Repeat, ArrowUpRight,
+  Plus, X, Pencil, GripVertical, Wrench, Repeat, ArrowUpRight, Gauge, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, Cell } from "recharts";
-import { format, subMonths, startOfMonth, endOfMonth, differenceInYears, differenceInSeconds } from "date-fns";
+import {
+  format, subMonths, addMonths, startOfMonth, endOfMonth, differenceInYears, differenceInSeconds,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,6 +35,23 @@ const fmt = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", c
 // Escopo do dashboard: null = toda a equipe (só gestores); caso contrário, id da pessoa.
 const DashboardScopeContext = createContext<string | null>(null);
 const useScopeUserId = () => useContext(DashboardScopeContext);
+
+// Período do dashboard: null = todos os períodos.
+type MonthRange = { start: string; end: string; label: string };
+const DashboardMonthContext = createContext<MonthRange | null>(null);
+const useMonthRange = () => useContext(DashboardMonthContext);
+
+const monthRangeOf = (value: string): MonthRange | null => {
+  if (value === "all") return null;
+  const d = new Date(`${value}-01T00:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return {
+    start: format(startOfMonth(d), "yyyy-MM-dd"),
+    end: format(endOfMonth(d), "yyyy-MM-dd"),
+    label: format(d, "MMMM 'de' yyyy", { locale: ptBR }),
+  };
+};
+
 
 
 // Widget catalog — `menu` é a chave de menu (Perfis e Acessos) exigida para ver o widget.
@@ -74,6 +95,24 @@ function DashboardPage() {
 
   // Colaborador só enxerga o próprio escopo.
   const scopeUserId = isManager ? (scopeUser === "all" ? null : scopeUser) : (user?.id ?? null);
+
+  const [monthValue, setMonthValue] = usePersistedState<string>(
+    user ? persistKey("dashboard", "month", user.id) : null,
+    format(new Date(), "yyyy-MM"),
+  );
+  const monthRange = useMemo(() => monthRangeOf(monthValue), [monthValue]);
+  const shiftMonth = (delta: number) => {
+    if (monthValue === "all") return;
+    setMonthValue(format(addMonths(new Date(`${monthValue}-01T00:00:00`), delta), "yyyy-MM"));
+  };
+  const monthOptions = useMemo(() => {
+    const base = startOfMonth(new Date());
+    const arr: string[] = [];
+    for (let i = -12; i <= 3; i++) arr.push(format(addMonths(base, i), "yyyy-MM"));
+    return arr.reverse();
+  }, []);
+
+
 
 
   const canSee = (k: WidgetKey) => {
@@ -160,7 +199,32 @@ function DashboardPage() {
           <h1 className="text-3xl font-semibold tracking-tight text-gradient">Dashboard</h1>
           <p className="text-muted-foreground mt-1">Visão geral da operação. Personalize os widgets.</p>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap">
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" className="h-9 w-9 p-0" disabled={monthValue === "all"}
+              onClick={() => shiftMonth(-1)} aria-label="Mês anterior">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Select value={monthValue} onValueChange={setMonthValue}>
+              <SelectTrigger className="w-[200px] h-9">
+                <Calendar className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os períodos</SelectItem>
+                {monthOptions.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {format(new Date(`${m}-01T00:00:00`), "MMMM 'de' yyyy", { locale: ptBR })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" className="h-9 w-9 p-0" disabled={monthValue === "all"}
+              onClick={() => shiftMonth(1)} aria-label="Próximo mês">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
           {isManager && (
             <Select value={scopeUser} onValueChange={setScopeUser}>
               <SelectTrigger className="w-[220px] h-9">
@@ -175,6 +239,7 @@ function DashboardPage() {
               </SelectContent>
             </Select>
           )}
+
 
           {editMode && available.length > 0 && (
             <Dialog>
@@ -200,17 +265,20 @@ function DashboardPage() {
       </header>
 
       <DashboardScopeContext.Provider value={scopeUserId}>
-        <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {widgets.map((w) => (
-                <SortableWidget key={w.id} widget={w} editMode={editMode}
-                  onRemove={() => remove.mutate(w.id)} />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+        <DashboardMonthContext.Provider value={monthRange}>
+          <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {widgets.map((w) => (
+                  <SortableWidget key={w.id} widget={w} editMode={editMode}
+                    onRemove={() => remove.mutate(w.id)} />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </DashboardMonthContext.Provider>
       </DashboardScopeContext.Provider>
+
 
 
       {widgets.length === 0 && !isLoading && (
@@ -270,25 +338,34 @@ function WidgetRenderer({ widgetKey }: { widgetKey: WidgetKey }) {
 
 type QuickFilter = "abertas" | "concluidas" | "urgentes" | "atrasadas";
 
-// Demandas do escopo atual (null = toda a equipe, só para gestores).
-function useVisibleProjects<T extends { id: string; assigned_to?: string | null; status_id?: string | null }>(rows: T[]) {
+// Demandas do escopo atual (null = toda a equipe, só para gestores) e do mês selecionado.
+function useVisibleProjects<
+  T extends { id: string; assigned_to?: string | null; status_id?: string | null; due_date?: string | null; post_date?: string | null },
+>(rows: T[]) {
   const scopeUserId = useScopeUserId();
+  const monthRange = useMonthRange();
   const stageRules = useStageRulesFor(scopeUserId);
   const { data: assignees = [] } = useQuery({
     queryKey: ["project_assignees_dash"],
     queryFn: async () => (await supabase.from("project_assignees").select("project_id, user_id")).data ?? [],
   });
   return useMemo(() => {
-    if (!scopeUserId) return rows;
     const mine = new Set(assignees.filter((a) => a.user_id === scopeUserId).map((a) => a.project_id));
-    return rows.filter(
-      (p) =>
-        (p.assigned_to === scopeUserId || mine.has(p.id)) &&
-        ("status_id" in p ? stageRules.isStarted(p.status_id) : true),
-    );
+    return rows.filter((p) => {
+      if (scopeUserId) {
+        if (!(p.assigned_to === scopeUserId || mine.has(p.id))) return false;
+        if ("status_id" in p && !stageRules.isStarted(p.status_id)) return false;
+      }
+      if (monthRange) {
+        const dates = stageRules.refDates(p);
+        if (!dates.some((d) => d >= monthRange.start && d <= monthRange.end)) return false;
+      }
+      return true;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, assignees, scopeUserId]);
+  }, [rows, assignees, scopeUserId, monthRange]);
 }
+
 
 
 
@@ -297,13 +374,15 @@ function StatsOverview() {
   const [openStat, setOpenStat] = useState<string | null>(null);
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-stats"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, assigned_to, client_id, team_id")).data ?? [],
+    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, post_date, assigned_to, client_id, team_id, client_decision, client_decided_at")).data ?? [],
   });
+
   const projects = useVisibleProjects(allProjects);
   const { data: statuses = [] } = useQuery({
-    queryKey: ["workflow_statuses"],
-    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, is_final, color")).data ?? [],
+    queryKey: ["workflow_statuses_sorted"],
+    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, is_final, color, sort_order")).data ?? [],
   });
+
   const { data: priorities = [] } = useQuery({
     queryKey: ["priorities"],
     queryFn: async () => (await supabase.from("priorities").select("id, name, level")).data ?? [],
@@ -323,6 +402,37 @@ function StatsOverview() {
   const urgent = projects.filter((p) => p.priority_id === urgentId && !isDone(p)).length;
   const overdue = projects.filter((p) => !isDone(p) && p.due_date && p.due_date < today).length;
 
+  // Retornos: volta de fase no histórico (+ reprovação do cliente, no cálculo).
+  const { data: transitions = [] } = useQuery({
+    queryKey: ["transitions-regress"],
+    queryFn: async () => (await supabase.from("project_transitions")
+      .select("project_id, from_status_id, to_status_id, created_at").order("created_at")).data ?? [],
+  });
+  const statusSort = useMemo(
+    () => new Map(statuses.map((s) => [s.id, s.sort_order ?? 0])),
+    [statuses],
+  );
+  const { regressedIds, doneDates } = useMemo(() => {
+    const regressed = new Set<string>();
+    const dates = new Map<string, string>();
+    for (const t of transitions) {
+      const from = t.from_status_id ? statusSort.get(t.from_status_id) : undefined;
+      const to = t.to_status_id ? statusSort.get(t.to_status_id) : undefined;
+      if (from !== undefined && to !== undefined && to < from) regressed.add(t.project_id);
+      if (t.to_status_id && stageRules.isDone(t.to_status_id) && !dates.has(t.project_id)) {
+        dates.set(t.project_id, format(new Date(t.created_at), "yyyy-MM-dd"));
+      }
+    }
+    return { regressedIds: regressed, doneDates: dates };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transitions, statusSort]);
+
+  const eff = useMemo(
+    () => computeEfficiency(projects, { isDone: (s) => stageRules.isDone(s), refDates: stageRules.refDates, regressedIds, today, doneDates }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projects, regressedIds, doneDates, today],
+  );
+
   const canProjects = menuAllowed("/projects");
   const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
@@ -331,11 +441,17 @@ function StatsOverview() {
   type StatItem = {
     label: string;
     value: number;
+    display?: string;
+    sub?: string;
+    valueClass?: string;
     icon: typeof Clock;
     color: string;
     quick?: QuickFilter;
     filter: (p: (typeof projects)[number]) => boolean;
   };
+
+  const effClass =
+    eff.efficiency === null ? "" : eff.efficiency >= 0.85 ? "text-success" : eff.efficiency >= 0.6 ? "text-warning" : "text-destructive";
 
   const stats: StatItem[] = [
     { label: "Total", value: total, icon: FolderKanban, color: "text-info", filter: () => true },
@@ -343,7 +459,19 @@ function StatsOverview() {
     { label: "Concluídos", value: done, icon: CheckCircle2, color: "text-success", quick: "concluidas", filter: (p) => isDone(p) },
     { label: "Urgentes", value: urgent, icon: AlertTriangle, color: "text-destructive", quick: "urgentes", filter: (p) => p.priority_id === urgentId && !isDone(p) },
     { label: "Atrasados", value: overdue, icon: AlertTriangle, color: "text-destructive", quick: "atrasadas", filter: (p) => !isDone(p) && !!p.due_date && p.due_date < today },
+    {
+      label: "Eficiência",
+      value: eff.concluded,
+      display: pct(eff.efficiency),
+      sub: `No prazo ${pct(eff.punctuality)} · Retorno ${pct(eff.returnRate)}`,
+      valueClass: effClass,
+      icon: Gauge,
+      color: "text-primary",
+      quick: "concluidas",
+      filter: (p) => isDone(p),
+    },
   ];
+
 
   const selected = stats.find((s) => s.label === openStat);
   const selectedProjects = useMemo(() => {
@@ -364,7 +492,7 @@ function StatsOverview() {
   return (
     <div>
       <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">Indicadores gerais</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {stats.map((s) => {
           const Icon = s.icon;
           const inner = (
@@ -373,9 +501,11 @@ function StatsOverview() {
                 <span className="text-[10px] uppercase text-muted-foreground">{s.label}</span>
                 <Icon className={`h-3.5 w-3.5 ${s.color}`} />
               </div>
-              <p className="text-2xl font-semibold">{s.value}</p>
+              <p className={`text-2xl font-semibold ${s.valueClass ?? ""}`}>{s.display ?? s.value}</p>
+              {s.sub && <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{s.sub}</p>}
             </>
           );
+
           if (!canProjects) {
             return <div key={s.label} className="bg-muted/40 rounded-md p-3">{inner}</div>;
           }
@@ -396,8 +526,11 @@ function StatsOverview() {
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
           <DialogHeader className="px-6 py-4 shrink-0 border-b">
             <DialogTitle className="text-lg">
-              {selected?.label} — {selected?.value} {selected?.value === 1 ? "demanda" : "demandas"}
+              {selected?.label === "Eficiência"
+                ? `Eficiência ${pct(eff.efficiency)} — ${eff.concluded} ${eff.concluded === 1 ? "demanda concluída" : "demandas concluídas"}`
+                : `${selected?.label} — ${selected?.value} ${selected?.value === 1 ? "demanda" : "demandas"}`}
             </DialogTitle>
+
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
@@ -429,6 +562,12 @@ function StatsOverview() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
+                        {selected?.label === "Eficiência" && eff.lateIds.has(p.id) && (
+                          <Badge variant="destructive" className="text-[10px]">Atrasada</Badge>
+                        )}
+                        {selected?.label === "Eficiência" && eff.returnedIds.has(p.id) && (
+                          <Badge variant="outline" className="text-[10px]">Retornada</Badge>
+                        )}
                         {p.due_date && (
                           <span className={`text-xs ${isLate ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                             {format(new Date(p.due_date), "dd/MM/yyyy")}
@@ -436,6 +575,7 @@ function StatsOverview() {
                         )}
                         <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />
                       </div>
+
                     </Link>
                   );
                 })}
@@ -469,7 +609,7 @@ function OverdueProjects() {
   const { data: rows = [] } = useQuery({
     queryKey: ["overdue-projects", today],
     queryFn: async () => (await supabase.from("projects")
-      .select("id, title, due_date, client_id, status_id, assigned_to")
+      .select("id, title, due_date, post_date, client_id, status_id, assigned_to")
       .lt("due_date", today)
       .order("due_date")).data ?? [],
   });
@@ -560,7 +700,7 @@ function CashFlow() {
 function ProjectsByStatus() {
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-by-status"],
-    queryFn: async () => (await supabase.from("projects").select("id, status_id, assigned_to")).data ?? [],
+    queryFn: async () => (await supabase.from("projects").select("id, status_id, assigned_to, due_date, post_date")).data ?? [],
   });
   const projects = useVisibleProjects(allProjects);
 
@@ -648,7 +788,7 @@ function UpcomingDeadlines() {
   const { data: allProjects = [] } = useQuery({
     queryKey: ["upcoming"],
     queryFn: async () => (await supabase.from("projects")
-      .select("id, title, due_date, client_id, status_id, assigned_to")
+      .select("id, title, due_date, post_date, client_id, status_id, assigned_to")
       .gte("due_date", format(new Date(), "yyyy-MM-dd"))
       .order("due_date").limit(60)).data ?? [],
   });
@@ -779,7 +919,7 @@ function EquipmentDepreciated() {
 function RecentProjects() {
   const { data: allProjects = [] } = useQuery({
     queryKey: ["recent-projects"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, client_id, due_date, status_id, assigned_to").order("created_at", { ascending: false }).limit(60)).data ?? [],
+    queryFn: async () => (await supabase.from("projects").select("id, title, client_id, due_date, post_date, status_id, assigned_to").order("created_at", { ascending: false }).limit(60)).data ?? [],
   });
   const projects = useVisibleProjects(allProjects).slice(0, 5);
 
@@ -826,7 +966,7 @@ function MyProjects() {
       const ids = (pa ?? []).map((r) => r.project_id);
       const { data } = await supabase
         .from("projects")
-        .select("id, title, due_date, status_id, assigned_to")
+        .select("id, title, due_date, post_date, status_id, assigned_to")
         .order("due_date", { ascending: true })
         .limit(50);
       return (data ?? []).filter((p) => p.assigned_to === user!.id || ids.includes(p.id)).slice(0, 6);

@@ -45,22 +45,33 @@ export function useStageRules() {
     return finalStatusIds.has(statusId);
   };
 
-  return { isStarted, isDone };
+  return { ...base, isStarted, isDone };
 }
+
+export type DateBasis = "due" | "post";
 
 type RuleInput = {
   startStageOrder: number | null;
   doneStatusIds: Set<string>;
   statusOrder: Map<string, number>;
   finalStatusIds: Set<string>;
+  dateBases?: DateBasis[];
 };
 
-export function buildStageRules({ startStageOrder, doneStatusIds, statusOrder, finalStatusIds }: RuleInput) {
+export function buildStageRules({
+  startStageOrder,
+  doneStatusIds,
+  statusOrder,
+  finalStatusIds,
+  dateBases,
+}: RuleInput) {
   // "Concluído" vale da fase marcada em diante: usa a menor ordem entre as
   // fases marcadas como conclusão da especialidade.
   const doneFromOrder = doneStatusIds.size
     ? Math.min(...Array.from(doneStatusIds).map((id) => statusOrder.get(id) ?? 0))
     : null;
+
+  const bases: DateBasis[] = dateBases && dateBases.length ? dateBases : ["due"];
 
   const isStarted = (statusId: string | null | undefined) => {
     if (startStageOrder === null || !statusId) return true;
@@ -72,7 +83,18 @@ export function buildStageRules({ startStageOrder, doneStatusIds, statusOrder, f
     if (doneFromOrder === null) return false;
     return (statusOrder.get(statusId) ?? 0) >= doneFromOrder;
   };
-  return { isStarted, isDone };
+  /** Datas de referência da demanda conforme a(s) especialidade(s). */
+  const refDates = (p: { due_date?: string | null; post_date?: string | null }) => {
+    const out: string[] = [];
+    for (const b of bases) {
+      const primary = b === "post" ? p.post_date : p.due_date;
+      const fallback = b === "post" ? p.due_date : p.post_date;
+      const d = primary ?? fallback;
+      if (d) out.push(d);
+    }
+    return Array.from(new Set(out));
+  };
+  return { isStarted, isDone, refDates, dateBases: bases };
 }
 
 /**
@@ -87,9 +109,19 @@ export function useStageRulesFor(userId: string | null | undefined) {
     queryKey: ["stage-rules-for", userId],
     enabled: !!userId,
     queryFn: async () => {
-      const { data: us } = await supabase.from("user_specialties").select("specialty_id").eq("user_id", userId!);
+      const { data: us } = await supabase
+        .from("user_specialties")
+        .select("specialty_id, provider_specialties(date_basis)")
+        .eq("user_id", userId!);
       const ids = (us ?? []).map((r: { specialty_id: string }) => r.specialty_id);
-      if (ids.length === 0) return { start: [] as string[], done: [] as string[] };
+      const bases = Array.from(
+        new Set(
+          (us ?? [])
+            .map((r: any) => (r.provider_specialties?.date_basis as DateBasis | undefined) ?? "due")
+            .filter(Boolean),
+        ),
+      ) as DateBasis[];
+      if (ids.length === 0) return { start: [] as string[], done: [] as string[], bases: [] as DateBasis[] };
       const { data: rules } = await supabase
         .from("specialty_stage_rules")
         .select("status_id, is_start, is_done")
@@ -97,7 +129,8 @@ export function useStageRulesFor(userId: string | null | undefined) {
       return {
         start: (rules ?? []).filter((r) => r.is_start).map((r) => r.status_id),
         done: (rules ?? []).filter((r) => r.is_done).map((r) => r.status_id),
-      } as { start: string[]; done: string[] };
+        bases,
+      } as { start: string[]; done: string[]; bases: DateBasis[] };
     },
   });
 
@@ -112,8 +145,10 @@ export function useStageRulesFor(userId: string | null | undefined) {
     doneStatusIds: new Set(data.done),
     statusOrder,
     finalStatusIds,
+    dateBases: data.bases,
   });
 }
+
 
 
 

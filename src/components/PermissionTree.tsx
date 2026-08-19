@@ -59,6 +59,33 @@ export function PermissionTree({ areaId, specialtyId }: { areaId: string; specia
     queryFn: async () =>
       ((await supabase.from("workflow_statuses").select("id, name").order("sort_order")).data ?? []) as { id: string; name: string }[],
   });
+  const { data: dateBasis } = useQuery({
+    queryKey: ["specialty_date_basis", specialtyId],
+    enabled: !!specialtyId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("provider_specialties")
+        .select("date_basis")
+        .eq("id", specialtyId!)
+        .maybeSingle();
+      return (data?.date_basis ?? "due") as "due" | "post";
+    },
+  });
+
+  const setDateBasis = useMutation({
+    mutationFn: async (basis: "due" | "post") => {
+      if (!specialtyId) return;
+      const { error } = await supabase.from("provider_specialties").update({ date_basis: basis }).eq("id", specialtyId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["specialty_date_basis", specialtyId] });
+      qc.invalidateQueries({ queryKey: ["stage_rules"] });
+      toast.success("Data de referência atualizada");
+    },
+    onError: (e) => toast.error(describeSupabaseError(e)),
+  });
+
 
   const { data: stageRules = [] } = useQuery({
     queryKey: ["specialty_stage_rules", specialtyId],
@@ -255,7 +282,22 @@ export function PermissionTree({ areaId, specialtyId }: { areaId: string; specia
 
                     {open && specialtyId && (
                       <div className="border-t px-2 py-2 space-y-1">
+                        {m.entry.key === "/projects" && (
+                          <div className="flex flex-wrap items-center gap-2 pb-2 mb-1 border-b text-xs">
+                            <span className="text-muted-foreground">Data de referência do mês:</span>
+                            {(["due", "post"] as const).map((v) => (
+                              <label key={v} className="flex items-center gap-1 text-muted-foreground">
+                                <Checkbox
+                                  checked={(dateBasis ?? "due") === v}
+                                  onCheckedChange={() => setDateBasis.mutate(v)}
+                                />
+                                {v === "due" ? "Entrega (prazo)" : "Postagem"}
+                              </label>
+                            ))}
+                          </div>
+                        )}
                         <div className="flex justify-end gap-2 pb-1">
+
                           <Button
                             size="sm"
                             variant="ghost"
