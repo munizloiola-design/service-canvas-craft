@@ -372,8 +372,11 @@ function useVisibleProjects<
 function useLateness<T extends { id: string; status_id?: string | null; due_date?: string | null; post_date?: string | null }>(
   projects: T[],
 ) {
-  const stageRules = useStageRulesFor(useScopeUserId());
+  const scopeUserId = useScopeUserId();
+  const stageRules = useStageRulesFor(scopeUserId);
+  const projectBases = useProjectDateBases();
   const today = format(new Date(), "yyyy-MM-dd");
+
   const { data: statusRows = [] } = useQuery({
     queryKey: ["workflow_statuses_sorted"],
     queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, is_final, color, sort_order")).data ?? [],
