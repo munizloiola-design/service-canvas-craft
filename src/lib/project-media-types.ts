@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -15,12 +16,14 @@ export function useProjectMediaTypes() {
     },
   });
 
-  const map = new Map<string, string[]>();
-  for (const r of data) {
-    if (!map.has(r.project_id)) map.set(r.project_id, []);
-    map.get(r.project_id)!.push(r.media_type_id);
-  }
-  return map;
+  return useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const r of data) {
+      if (!map.has(r.project_id)) map.set(r.project_id, []);
+      map.get(r.project_id)!.push(r.media_type_id);
+    }
+    return map;
+  }, [data]);
 }
 
 /** Tipos de mídia de uma demanda, com fallback para o campo antigo. */

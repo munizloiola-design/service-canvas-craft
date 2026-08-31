@@ -361,7 +361,7 @@ function ProjectsPage() {
               <DropdownMenuLabel>Adicionar filtro</DropdownMenuLabel>
               {(Object.keys(FILTER_LABELS) as FilterKey[]).map((k) => (
                 <DropdownMenuCheckboxItem key={k} checked={filters.some((f) => f.key === k)}
-                  onCheckedChange={(v) => setFilters((cur) => v ? [...cur, { key: k, value: "" }] : cur.filter((f) => f.key !== k))}>
+                  onCheckedChange={(v) => setFilters((cur) => v ? [...cur.map(normalizeFilter), { key: k, values: [] }] : cur.map(normalizeFilter).filter((f) => f.key !== k))}>
                   {FILTER_LABELS[k]}
                 </DropdownMenuCheckboxItem>
               ))}
@@ -423,16 +423,15 @@ function ProjectsPage() {
           {filters.map((f, i) => (
             <div key={`${f.key}-${i}`} className="flex items-center gap-1 bg-muted/50 rounded-md pl-2 pr-1 py-1">
               <span className="text-xs font-medium">{FILTER_LABELS[f.key]}:</span>
-              {f.key === "due_from" || f.key === "due_to" || f.key === "post_from" || f.key === "post_to" ? (
-                <Input type="date" value={f.value} className="h-7 text-xs w-36"
-                  onChange={(e) => setFilters((cur) => cur.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} />
+              {DATE_FILTERS.includes(f.key) ? (
+                <Input type="date" value={f.values[0] ?? ""} className="h-7 text-xs w-36"
+                  onChange={(e) => setFilters((cur) => cur.map(normalizeFilter).map((x, j) => j === i ? { ...x, values: e.target.value ? [e.target.value] : [] } : x))} />
               ) : (
-                <Select value={f.value} onValueChange={(v) => setFilters((cur) => cur.map((x, j) => j === i ? { ...x, value: v } : x))}>
-                  <SelectTrigger className="h-7 text-xs w-44"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                  <SelectContent>
-                    {filterOptions[f.key].map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <MultiSelectFilter
+                  options={filterOptions[f.key]}
+                  values={f.values}
+                  onChange={(vals) => setFilters((cur) => cur.map(normalizeFilter).map((x, j) => j === i ? { ...x, values: vals } : x))}
+                />
               )}
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
                 onClick={() => setFilters((cur) => cur.filter((_, j) => j !== i))}><X className="h-3 w-3" /></Button>
