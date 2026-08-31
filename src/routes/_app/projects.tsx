@@ -22,6 +22,8 @@ import { useSectionGate, useStageGate, useStageRules } from "@/lib/access-sectio
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import { ProjectChat } from "@/components/ProjectChat";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
+import { MultiSelectFilter } from "@/components/MultiSelectFilter";
+import { useProjectMediaTypes, mediaIdsOf, syncProjectMediaTypes } from "@/lib/project-media-types";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
@@ -252,6 +254,8 @@ function ProjectsPage() {
     () => [...priorities].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0]?.id,
     [priorities],
   );
+
+  const projectMediaMap = useProjectMediaTypes();
 
   const filteredProjects = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
