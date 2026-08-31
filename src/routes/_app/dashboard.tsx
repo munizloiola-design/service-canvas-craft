@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   FolderKanban, Clock, CheckCircle2, AlertTriangle, Users, DollarSign, TrendingUp, Calendar,
-  Plus, X, Pencil, GripVertical, Wrench, Repeat, ArrowUpRight, ChevronLeft, ChevronRight,
+  Plus, X, Pencil, GripVertical, Wrench, Repeat, ArrowUpRight, ChevronLeft, ChevronRight, Gauge, RotateCcw,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, Cell } from "recharts";
 import {
