@@ -271,27 +271,33 @@ function ProjectsPage() {
       if (quick === "atrasadas" && (isDone(p) || !p.due_date || p.due_date >= today)) return false;
 
       for (const f of filters) {
-        if (!f.value) continue;
+        if (!f.values.length) continue;
+        const v0 = f.values[0];
+        const has = (val: string | null | undefined) => f.values.includes(val ?? "");
         switch (f.key) {
-          case "client": if (p.client_id !== f.value) return false; break;
-          case "status": if ((p.status_id ?? "") !== f.value) return false; break;
-          case "priority": if ((p.priority_id ?? "") !== f.value) return false; break;
-          case "media": if ((p.media_type_id ?? "") !== f.value) return false; break;
-          case "decision": if ((p.client_decision ?? "pending") !== f.value) return false; break;
-          case "assignee": {
-            const ass = assigneesByProject.get(p.id) ?? [];
-            if (!ass.some((a) => a.user_id === f.value)) return false;
+          case "client": if (!has(p.client_id)) return false; break;
+          case "status": if (!has(p.status_id)) return false; break;
+          case "priority": if (!has(p.priority_id)) return false; break;
+          case "media": {
+            const ids = mediaIdsOf(projectMediaMap, p);
+            if (!ids.some((id) => f.values.includes(id))) return false;
             break;
           }
-          case "due_from": if (!p.due_date || p.due_date < f.value) return false; break;
-          case "due_to": if (!p.due_date || p.due_date > f.value) return false; break;
-          case "post_from": if (!p.post_date || p.post_date < f.value) return false; break;
-          case "post_to": if (!p.post_date || p.post_date > f.value) return false; break;
+          case "decision": if (!has(p.client_decision ?? "pending")) return false; break;
+          case "assignee": {
+            const ass = assigneesByProject.get(p.id) ?? [];
+            if (!ass.some((a) => f.values.includes(a.user_id))) return false;
+            break;
+          }
+          case "due_from": if (!p.due_date || p.due_date < v0) return false; break;
+          case "due_to": if (!p.due_date || p.due_date > v0) return false; break;
+          case "post_from": if (!p.post_date || p.post_date < v0) return false; break;
+          case "post_to": if (!p.post_date || p.post_date > v0) return false; break;
         }
       }
       return true;
     });
-  }, [visibleProjects, filters, assigneesByProject, quick, stageRules, topPriorityId, query, maps]);
+  }, [visibleProjects, filters, assigneesByProject, quick, stageRules, topPriorityId, query, maps, projectMediaMap]);
 
 
   // Kanban e Lista só mostram demandas em fases liberadas
