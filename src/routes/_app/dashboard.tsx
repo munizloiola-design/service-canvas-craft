@@ -616,7 +616,7 @@ function StatsOverview() {
           </div>
         </div>
         <div className="mt-4">
-          <h4 className="text-3xl font-bold">{s.display ?? s.value}</h4>
+          <h4 className={`text-3xl font-bold ${s.valueClass ?? ""}`}>{s.display ?? s.value}</h4>
           {s.sub && <p className="text-[10px] text-muted-foreground mt-1 leading-tight">{s.sub}</p>}
           <div className="w-full bg-muted h-1.5 rounded-full mt-4 overflow-hidden">
             <div className={`${meta.barColor} h-full rounded-full`} style={{ width: `${meta.ratio}%` }} />
