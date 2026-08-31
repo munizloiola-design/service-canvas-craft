@@ -331,12 +331,22 @@ export function PermissionTree({ areaId, specialtyId }: { areaId: string; specia
                           const cur = ruleMap.get(i.key);
                           const canView = cur?.can_view ?? false;
                           const canEdit = cur?.can_edit ?? false;
+                          const idx = i.kind === "Fase" ? stageIndex.get(i.key.split("#stage:")[1]) ?? null : null;
+                          const inOpenRange =
+                            idx != null &&
+                            (startIndex == null || idx >= startIndex) &&
+                            (doneFromIndex == null || idx < doneFromIndex);
+                          const isDoneRange = idx != null && doneFromIndex != null && idx >= doneFromIndex;
+                          const beforeStart = idx != null && startIndex != null && idx < startIndex;
                           return (
                             <div key={i.key} className="flex items-center gap-2 text-sm rounded hover:bg-accent px-2 py-1">
                               <span className="text-[10px] uppercase text-muted-foreground w-12 shrink-0">{i.kind}</span>
-                              <span className="flex-1">
+                              <span className={`flex-1 ${beforeStart ? "opacity-50" : ""}`}>
                                 {i.label}
                                 {!cur && <Badge variant="secondary" className="ml-2 text-[10px]">Novo</Badge>}
+                                {beforeStart && <Badge variant="outline" className="ml-2 text-[10px]">não conta</Badge>}
+                                {inOpenRange && <Badge variant="secondary" className="ml-2 text-[10px]">em aberto</Badge>}
+                                {isDoneRange && <Badge variant="outline" className="ml-2 text-[10px] border-emerald-500/50 text-emerald-600">entregue</Badge>}
                               </span>
                               <label className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <Checkbox
