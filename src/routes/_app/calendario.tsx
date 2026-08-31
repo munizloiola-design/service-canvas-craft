@@ -20,6 +20,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ChevronLeft, ChevronRight, ExternalLink, X, Link as LinkIcon, Paperclip, Download, Trash2 } from "lucide-react";
 import { ProjectChat } from "@/components/ProjectChat";
 import { useFieldVisibility } from "@/lib/field-visibility";
+import { MultiSelectFilter } from "@/components/MultiSelectFilter";
+import { useProjectMediaTypes, mediaIdsOf } from "@/lib/project-media-types";
 import { toast } from "sonner";
 
 type CalSearch = { resp: string; equipe: string; cliente: string; fase: string; prioridade: string };
@@ -79,6 +81,8 @@ function CalendarioPage() {
   }, [filtersKey, search]);
   const setFilter = (key: keyof CalSearch, value: string) =>
     navigate({ search: (prev) => ({ ...prev, [key]: value === "__all" ? "" : value }) });
+  const listOf = (v: string) => (v ? v.split(",").filter(Boolean) : []);
+  const setMulti = (key: keyof CalSearch, values: string[]) => setFilter(key, values.join(","));
   const clearFilters = () =>
     navigate({ search: () => ({ resp: "", equipe: "", cliente: "", fase: "", prioridade: "" }) });
   const hasFilters = !!(search.resp || search.equipe || search.cliente || search.fase || search.prioridade);
@@ -97,6 +101,7 @@ function CalendarioPage() {
   const qc = useQueryClient();
 
   const { canSee, canEdit } = useFieldVisibility();
+  const projectMediaMap = useProjectMediaTypes();
   const [linkDraft, setLinkDraft] = useState("");
   const [savingLink, setSavingLink] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -245,13 +250,23 @@ function CalendarioPage() {
   const filteredProjects = useMemo(() => {
     if (!isManager) return projects;
     return projects.filter((p) => {
-      if (search.resp && p.assigned_to !== search.resp && !assigneesByProject.get(p.id)?.has(search.resp)) return false;
-      if (search.equipe && p.team_id !== search.equipe) return false;
-      if (search.cliente && p.client_id !== search.cliente) return false;
-      if (search.fase && p.status_id !== search.fase) return false;
-      if (search.prioridade && p.priority_id !== search.prioridade) return false;
+      const resp = listOf(search.resp);
+      if (resp.length) {
+        const ass = assigneesByProject.get(p.id);
+        const ok = resp.some((r) => p.assigned_to === r || ass?.has(r));
+        if (!ok) return false;
+      }
+      const equipe = listOf(search.equipe);
+      if (equipe.length && !equipe.includes(p.team_id ?? "")) return false;
+      const cliente = listOf(search.cliente);
+      if (cliente.length && !cliente.includes(p.client_id ?? "")) return false;
+      const fase = listOf(search.fase);
+      if (fase.length && !fase.includes(p.status_id ?? "")) return false;
+      const prioridade = listOf(search.prioridade);
+      if (prioridade.length && !prioridade.includes(p.priority_id ?? "")) return false;
       return true;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects, isManager, search, assigneesByProject]);
 
   const dateField: DateField = tab === "due" ? "due_date" : "post_date";
@@ -390,41 +405,21 @@ function CalendarioPage() {
       {isManager && (
         <Card className="p-4 mb-4">
           <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
-            <Select value={search.resp || "__all"} onValueChange={(v) => setFilter("resp", v)}>
-              <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todos os responsáveis</SelectItem>
-                {people.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={search.equipe || "__all"} onValueChange={(v) => setFilter("equipe", v)}>
-              <SelectTrigger><SelectValue placeholder="Equipe" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todas as equipes</SelectItem>
-                {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={search.cliente || "__all"} onValueChange={(v) => setFilter("cliente", v)}>
-              <SelectTrigger><SelectValue placeholder="Cliente" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todos os clientes</SelectItem>
-                {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={search.fase || "__all"} onValueChange={(v) => setFilter("fase", v)}>
-              <SelectTrigger><SelectValue placeholder="Fase" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todas as fases</SelectItem>
-                {statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={search.prioridade || "__all"} onValueChange={(v) => setFilter("prioridade", v)}>
-              <SelectTrigger><SelectValue placeholder="Prioridade" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todas as prioridades</SelectItem>
-                {priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <MultiSelectFilter className="h-10 w-full" placeholder="Todos os responsáveis"
+              options={people.map((p) => ({ value: p.id, label: p.full_name }))}
+              values={listOf(search.resp)} onChange={(v) => setMulti("resp", v)} />
+            <MultiSelectFilter className="h-10 w-full" placeholder="Todas as equipes"
+              options={teams.map((t) => ({ value: t.id, label: t.name }))}
+              values={listOf(search.equipe)} onChange={(v) => setMulti("equipe", v)} />
+            <MultiSelectFilter className="h-10 w-full" placeholder="Todos os clientes"
+              options={clients.map((c) => ({ value: c.id, label: c.name }))}
+              values={listOf(search.cliente)} onChange={(v) => setMulti("cliente", v)} />
+            <MultiSelectFilter className="h-10 w-full" placeholder="Todas as fases"
+              options={statuses.map((st) => ({ value: st.id, label: st.name }))}
+              values={listOf(search.fase)} onChange={(v) => setMulti("fase", v)} />
+            <MultiSelectFilter className="h-10 w-full" placeholder="Todas as prioridades"
+              options={priorities.map((p) => ({ value: p.id, label: p.name }))}
+              values={listOf(search.prioridade)} onChange={(v) => setMulti("prioridade", v)} />
           </div>
           {hasFilters && (
             <div className="flex items-center gap-3 mt-3">
@@ -556,8 +551,8 @@ function CalendarioPage() {
                   </Badge>
                 )}
                 {detail.client_id && <Badge variant="secondary">{clientMap.get(detail.client_id) ?? "Cliente"}</Badge>}
-                {canSee("media_type") && detail.media_type_id && mediaMap.get(detail.media_type_id) && (
-                  <Badge variant="outline">{mediaMap.get(detail.media_type_id)}</Badge>
+                {canSee("media_type") && mediaIdsOf(projectMediaMap, detail).map((id) => mediaMap.get(id)).filter(Boolean).length > 0 && (
+                  <Badge variant="outline">{mediaIdsOf(projectMediaMap, detail).map((id) => mediaMap.get(id)).filter(Boolean).join(", ")}</Badge>
                 )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
