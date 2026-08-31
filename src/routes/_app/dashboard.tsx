@@ -444,10 +444,7 @@ function StatsOverview() {
   const overdue = lateness.openLateIds.size;
   const resolvedLate = lateness.resolvedLateIds.size;
 
-  const eff = useMemo(
-    () => computeEfficiency(projects, { isDone: (s) => stageRules.isDone(s), refDates: stageRules.refDates, regressedIds, today, doneDates }),
-    [projects, regressedIds, doneDates, today, stageRules],
-  );
+  // Taxa de eficiência desativada na tela (cálculo mantido em dashboard-efficiency.ts).
 
 
   const canProjects = menuAllowed("/projects");
@@ -467,8 +464,6 @@ function StatsOverview() {
     filter: (p: (typeof projects)[number]) => boolean;
   };
 
-  const effClass =
-    eff.efficiency === null ? "" : eff.efficiency >= 0.85 ? "text-success" : eff.efficiency >= 0.6 ? "text-warning" : "text-destructive";
 
   const stats: StatItem[] = [
     { label: "Total", value: total, icon: FolderKanban, color: "text-info", filter: () => true },
@@ -485,17 +480,6 @@ function StatsOverview() {
       filter: (p) => lateness.openLateIds.has(p.id),
     },
 
-    {
-      label: "Eficiência",
-      value: eff.concluded,
-      display: pct(eff.efficiency),
-      sub: `No prazo ${pct(eff.punctuality)} · Retorno ${pct(eff.returnRate)}`,
-      valueClass: effClass,
-      icon: Gauge,
-      color: "text-primary",
-      quick: "concluidas",
-      filter: (p) => isDone(p),
-    },
   ];
 
 
