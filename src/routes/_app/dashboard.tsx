@@ -499,37 +499,119 @@ function StatsOverview() {
       });
   }, [selected, projects, priorityLevel]);
 
-  return (
-    <div>
-      <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">Indicadores gerais</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {stats.map((s) => {
-          const Icon = s.icon;
-          const inner = (
-            <>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] uppercase text-muted-foreground">{s.label}</span>
-                <Icon className={`h-3.5 w-3.5 ${s.color}`} />
-              </div>
-              <p className={`text-2xl font-semibold ${s.valueClass ?? ""}`}>{s.display ?? s.value}</p>
-              {s.sub && <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{s.sub}</p>}
-            </>
-          );
+  const [totalStat, ...secondaryStats] = stats;
 
-          if (!canProjects) {
-            return <div key={s.label} className="bg-muted/40 rounded-md p-3">{inner}</div>;
-          }
-          return (
-            <button
-              key={s.label}
-              onClick={() => setOpenStat(s.label)}
-              className="group bg-muted/40 rounded-md p-3 text-left transition-all hover:bg-muted hover:shadow-sm hover:-translate-y-0.5 relative"
-            >
-              {inner}
-              <ArrowUpRight className="h-3 w-3 absolute bottom-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
-          );
-        })}
+  const totalSpark = useMemo(
+    () => [35, 55, 40, 70, 50, 80, 45],
+    [],
+  );
+
+  const secondaryMeta = (s: StatItem) => {
+    const ratio = total > 0 ? Math.round((s.value / total) * 100) : 0;
+    switch (s.label) {
+      case "Em aberto":
+        return { barColor: "bg-warning", dotColor: "bg-warning", ratio };
+      case "Concluídos":
+        return { barColor: "bg-success", dotColor: "bg-success", ratio };
+      case "Urgentes":
+        return { barColor: "bg-destructive", dotColor: "bg-destructive", ratio };
+      case "Atrasados":
+        return { barColor: "bg-destructive", dotColor: "bg-destructive", ratio };
+      default:
+        return { barColor: "bg-primary", dotColor: "bg-primary", ratio };
+    }
+  };
+
+  const renderTotal = () => {
+    const inner = (
+      <>
+        <div className="absolute -inset-0.5 bg-gradient-to-br from-primary to-primary/60 rounded-2xl blur opacity-20 group-hover:opacity-35 transition duration-500" />
+        <div className="relative z-10 flex flex-col h-full justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">{totalStat.label}</p>
+            <h3 className="text-5xl font-bold tracking-tighter">{totalStat.value}</h3>
+          </div>
+          <div className="mt-6">
+            <div className="flex items-end gap-1.5 h-10">
+              {totalSpark.map((h, i) => (
+                <div key={i} className="flex-1 bg-primary/15 rounded-t-sm relative overflow-hidden">
+                  <div className="absolute bottom-0 w-full bg-primary/60 rounded-t-sm" style={{ height: `${h}%` }} />
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-primary mt-3 font-medium">Visão consolidada de todas as demandas</p>
+          </div>
+        </div>
+      </>
+    );
+    if (!canProjects) {
+      return (
+        <div className="relative h-full glass-strong rounded-2xl p-6 overflow-hidden">
+          {inner}
+        </div>
+      );
+    }
+    return (
+      <button
+        onClick={() => setOpenStat(totalStat.label)}
+        className="group relative w-full h-full text-left glass-strong rounded-2xl p-6 transition-all hover:shadow-elevated overflow-hidden"
+      >
+        {inner}
+      </button>
+    );
+  };
+
+  const renderSecondary = (s: StatItem) => {
+    const meta = secondaryMeta(s);
+    const Icon = s.icon;
+    const inner = (
+      <>
+        <div className="flex items-start justify-between">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{s.label}</p>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${meta.dotColor} shadow-[0_0_8px_currentColor]`} />
+            <Icon className={`h-4 w-4 ${s.color}`} />
+          </div>
+        </div>
+        <div className="mt-4">
+          <h4 className="text-3xl font-bold">{s.display ?? s.value}</h4>
+          {s.sub && <p className="text-[10px] text-muted-foreground mt-1 leading-tight">{s.sub}</p>}
+          <div className="w-full bg-muted h-1.5 rounded-full mt-4 overflow-hidden">
+            <div className={`${meta.barColor} h-full rounded-full`} style={{ width: `${meta.ratio}%` }} />
+          </div>
+        </div>
+      </>
+    );
+    if (!canProjects) {
+      return (
+        <div key={s.label} className="glass rounded-2xl p-5">
+          {inner}
+        </div>
+      );
+    }
+    return (
+      <button
+        key={s.label}
+        onClick={() => setOpenStat(s.label)}
+        className="group glass rounded-2xl p-5 text-left transition-all hover:bg-white/60 dark:hover:bg-black/40 hover:shadow-elevated"
+      >
+        {inner}
+      </button>
+    );
+  };
+
+  return (
+    <div className="glass rounded-2xl p-5 md:p-6">
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-base font-semibold tracking-tight">Indicadores gerais</h3>
+        <span className="px-2.5 py-1 bg-primary/10 text-primary text-[10px] font-medium rounded-full border border-primary/20">
+          Atualizado agora
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-5 relative group">{renderTotal()}</div>
+        <div className="lg:col-span-7 grid grid-cols-2 gap-4">{secondaryStats.map(renderSecondary)}</div>
       </div>
 
       <Dialog open={!!openStat} onOpenChange={(o) => !o && setOpenStat(null)}>
