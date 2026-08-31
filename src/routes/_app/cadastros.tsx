@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_app/cadastros")({ component: CadastrosPa
 
 type Field = { name: string; label: string; type?: "text" | "textarea" | "number" | "color" | "email"; required?: boolean };
 
-const TABLES: { key: string; label: string; fields: Field[]; orderBy?: string }[] = [
+const TABLES: { key: string; label: string; fields: Field[]; orderBy?: string; reorderable?: boolean }[] = [
   {
     key: "media_types", label: "Tipos de mídia",
     fields: [
@@ -40,6 +40,7 @@ const TABLES: { key: string; label: string; fields: Field[]; orderBy?: string }[
       { name: "sort_order", label: "Ordem", type: "number" },
     ],
     orderBy: "sort_order",
+    reorderable: true,
   },
   {
     key: "priorities", label: "Prioridades",
