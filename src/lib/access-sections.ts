@@ -154,6 +154,60 @@ export function useStageRulesFor(userId: string | null | undefined) {
   }, [userId, data, own, statusOrder, finalStatusIds]);
 }
 
+/**
+ * Bases de data (Prazo/Postagem) por demanda, deduzidas das especialidades dos
+ * responsáveis marcados nela. Usado na visão geral (sem filtro de membro),
+ * onde cada demanda deve respeitar a base de quem trabalha nela.
+ */
+export function useProjectDateBases() {
+  const { data: assignees = [] } = useQuery({
+    queryKey: ["project_assignees_bases"],
+    queryFn: async () =>
+      (await supabase.from("project_assignees").select("project_id, user_id")).data ?? [],
+  });
 
+  const { data: userBases } = useQuery({
+    queryKey: ["user_specialty_bases"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("user_specialties")
+        .select("user_id, provider_specialties(date_basis)");
+      const map = new Map<string, Set<DateBasis>>();
+      for (const r of (data ?? []) as any[]) {
+        const basis = ((r.provider_specialties?.date_basis as DateBasis | undefined) ?? "due") as DateBasis;
+        if (!map.has(r.user_id)) map.set(r.user_id, new Set<DateBasis>());
+        map.get(r.user_id)!.add(basis);
+      }
+      return map;
+    },
+  });
 
+  return useMemo(() => {
+    const byProject = new Map<string, DateBasis[]>();
+    if (!userBases) return byProject;
+    for (const a of assignees as { project_id: string; user_id: string }[]) {
+      const bases = userBases.get(a.user_id);
+      if (!bases || bases.size === 0) continue;
+      const cur = new Set<DateBasis>(byProject.get(a.project_id) ?? []);
+      bases.forEach((b) => cur.add(b));
+      byProject.set(a.project_id, Array.from(cur));
+    }
+    return byProject;
+  }, [assignees, userBases]);
+}
+
+/** Datas de referência de uma demanda para um conjunto de bases. */
+export function refDatesForBases(
+  p: { due_date?: string | null; post_date?: string | null },
+  bases: DateBasis[],
+) {
+  const out: string[] = [];
+  for (const b of bases) {
+    const primary = b === "post" ? p.post_date : p.due_date;
+    const fallback = b === "post" ? p.due_date : p.post_date;
+    const d = primary ?? fallback;
+    if (d) out.push(d);
+  }
+  return Array.from(new Set(out));
+}
 

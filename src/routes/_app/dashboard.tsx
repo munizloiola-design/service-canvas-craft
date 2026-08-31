@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, createContext, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAccess } from "@/lib/access-context";
-import { useStageRulesFor } from "@/lib/access-sections";
+import { useStageRulesFor, useProjectDateBases, refDatesForBases } from "@/lib/access-sections";
 import { computeLateness } from "@/lib/dashboard-efficiency";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 
@@ -372,8 +372,11 @@ function useVisibleProjects<
 function useLateness<T extends { id: string; status_id?: string | null; due_date?: string | null; post_date?: string | null }>(
   projects: T[],
 ) {
-  const stageRules = useStageRulesFor(useScopeUserId());
+  const scopeUserId = useScopeUserId();
+  const stageRules = useStageRulesFor(scopeUserId);
+  const projectBases = useProjectDateBases();
   const today = format(new Date(), "yyyy-MM-dd");
+
   const { data: statusRows = [] } = useQuery({
     queryKey: ["workflow_statuses_sorted"],
     queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, is_final, color, sort_order")).data ?? [],
@@ -399,23 +402,37 @@ function useLateness<T extends { id: string; status_id?: string | null; due_date
     return { regressedIds: regressed, doneDates: dates };
   }, [transitions, statusSort, stageRules]);
 
+  // Sem filtro de membro, a data de referência de cada demanda segue a base
+  // (Prazo/Postagem) das especialidades dos responsáveis marcados nela.
+  const refDates = useMemo(() => {
+    if (scopeUserId) return stageRules.refDates;
+    return (p: { id?: string; due_date?: string | null; post_date?: string | null }) => {
+      const bases = p.id ? projectBases.get(p.id) : undefined;
+      if (bases && bases.length) return refDatesForBases(p, bases);
+      return stageRules.refDates(p);
+    };
+  }, [scopeUserId, stageRules, projectBases]);
+
   const lateness = useMemo(
     () => computeLateness(projects, {
       isDone: (s) => stageRules.isDone(s),
-      refDates: stageRules.refDates,
+      refDates,
       today,
       doneDates,
     }),
-    [projects, doneDates, today, stageRules],
+    [projects, doneDates, today, stageRules, refDates],
   );
 
   return { stageRules, today, regressedIds, doneDates, lateness, statuses: statusRows };
+
 }
 
 
 function StatsOverview() {
   const { menuAllowed } = useAccess();
+  const statsScopeUserId = useScopeUserId();
   const [openStat, setOpenStat] = useState<string | null>(null);
+
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-stats"],
     queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, post_date, assigned_to, client_id, team_id, client_decision, client_decided_at")).data ?? [],
@@ -497,7 +514,10 @@ function StatsOverview() {
       label: "Eficiência",
       value: lateAll,
       display: efficiency === null ? "—" : `${Math.round(efficiency * 100)}%`,
-      sub: efficiency === null ? undefined : `${onTime} de ${total} no prazo`,
+      sub: efficiency === null
+        ? undefined
+        : `${onTime} de ${total} no prazo · ${statsScopeUserId ? "regras do perfil" : "etapa final do fluxo"}`,
+
       valueClass:
         efficiency === null ? undefined
           : efficiency > 0.85 ? "text-success"
