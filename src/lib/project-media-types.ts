@@ -40,14 +40,17 @@ export function mediaIdsOf(
 
 /** Regrava os tipos de mídia da demanda. */
 export async function syncProjectMediaTypes(projectId: string, mediaTypeIds: string[]) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const from = supabase.from as any;
-  const { error: delErr } = await from("project_media_types").delete().eq("project_id", projectId);
+  const { error: delErr } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .from("project_media_types" as any)
+    .delete()
+    .eq("project_id", projectId);
   if (delErr) throw delErr;
   const unique = [...new Set(mediaTypeIds.filter(Boolean))];
   if (!unique.length) return;
-  const { error } = await from("project_media_types").insert(
-    unique.map((id) => ({ project_id: projectId, media_type_id: id })),
-  );
+  const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .from("project_media_types" as any)
+    .insert(unique.map((id) => ({ project_id: projectId, media_type_id: id })) as any);
   if (error) throw error;
 }
