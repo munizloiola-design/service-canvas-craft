@@ -402,17 +402,29 @@ function useLateness<T extends { id: string; status_id?: string | null; due_date
     return { regressedIds: regressed, doneDates: dates };
   }, [transitions, statusSort, stageRules]);
 
+  // Sem filtro de membro, a data de referência de cada demanda segue a base
+  // (Prazo/Postagem) das especialidades dos responsáveis marcados nela.
+  const refDates = useMemo(() => {
+    if (scopeUserId) return stageRules.refDates;
+    return (p: { id?: string; due_date?: string | null; post_date?: string | null }) => {
+      const bases = p.id ? projectBases.get(p.id) : undefined;
+      if (bases && bases.length) return refDatesForBases(p, bases);
+      return stageRules.refDates(p);
+    };
+  }, [scopeUserId, stageRules, projectBases]);
+
   const lateness = useMemo(
     () => computeLateness(projects, {
       isDone: (s) => stageRules.isDone(s),
-      refDates: stageRules.refDates,
+      refDates,
       today,
       doneDates,
     }),
-    [projects, doneDates, today, stageRules],
+    [projects, doneDates, today, stageRules, refDates],
   );
 
   return { stageRules, today, regressedIds, doneDates, lateness, statuses: statusRows };
+
 }
 
 
