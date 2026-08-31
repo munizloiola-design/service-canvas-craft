@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useAccess } from "@/lib/access-context";
 import { useStageRulesFor, useProjectDateBases, refDatesForBases } from "@/lib/access-sections";
 import { computeLateness } from "@/lib/dashboard-efficiency";
+import { parseLocalDate } from "@/lib/dates";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 
 import { Card } from "@/components/ui/card";
@@ -724,7 +725,7 @@ function StatsOverview() {
 
                         {p.due_date && (
                           <span className={`text-xs ${isLate ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                            {format(new Date(p.due_date), "dd/MM/yyyy")}
+                            {format(parseLocalDate(p.due_date), "dd/MM/yyyy")}
                           </span>
                         )}
                         <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />
@@ -970,7 +971,7 @@ function UpcomingDeadlines() {
               <p className="text-xs text-muted-foreground truncate">{p.client_id ? cmap.get(p.client_id) : "—"}</p>
             </div>
             <Badge variant="outline" className="ml-2 text-xs">
-              {format(new Date(p.due_date!), "dd/MM")}
+              {format(parseLocalDate(p.due_date!), "dd/MM")}
             </Badge>
           </Link>
         ))}

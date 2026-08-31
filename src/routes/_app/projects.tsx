@@ -24,6 +24,7 @@ import { ProjectChat } from "@/components/ProjectChat";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 import { MultiSelectFilter } from "@/components/MultiSelectFilter";
 import { useProjectMediaTypes, mediaIdsOf, syncProjectMediaTypes } from "@/lib/project-media-types";
+import { formatDateBR } from "@/lib/dates";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
@@ -310,6 +311,20 @@ function ProjectsPage() {
     [filteredProjects, allowedStatusIds],
   );
 
+  // Lista: membros veem por padrão apenas o que ainda não está entregue
+  // (conforme regra de início/conclusão da especialidade). Gerentes/admins
+  // mantêm a visão geral.
+  const [showDone, setShowDone] = usePersistedState<boolean>(
+    persistKey("projects", "show-done", user?.id),
+    isManager,
+  );
+  const listProjects = useMemo(
+    () => (isManager || showDone
+      ? stageVisibleProjects
+      : stageVisibleProjects.filter((p) => !stageRules.isDone(p.status_id))),
+    [stageVisibleProjects, isManager, showDone, stageRules],
+  );
+
   const filterOptions: Record<FilterKey, { value: string; label: string }[]> = {
     client: clients.map((c) => ({ value: c.id, label: c.name })),
     assignee: members.map((m) => ({ value: m.id, label: m.full_name })),
@@ -367,6 +382,16 @@ function ProjectsPage() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          {view === "list" && !isManager && (
+            <Button
+              variant={showDone ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setShowDone((v) => !v)}
+              title={showDone ? "Ocultar demandas entregues" : "Mostrar demandas entregues"}
+            >
+              <Eye className="h-4 w-4 mr-1" /> Entregues
+            </Button>
+          )}
           {view === "list" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -450,7 +475,7 @@ function ProjectsPage() {
         </TabsContent>
 
         <TabsContent value="list" className="mt-4">
-          <ListView projects={stageVisibleProjects} visibleCols={visibleCols} maps={maps}
+          <ListView projects={listProjects} visibleCols={visibleCols} maps={maps}
             assigneesByProject={assigneesByProject} onDetail={setDetailId}
             canManage={canManageProjects}
             onEdit={(p) => { setEditingProject(p); setOpen(true); }} />
@@ -655,7 +680,7 @@ function KanbanCard({ project: p, statuses, priorities: _priorities, maps, assig
         </div>
       )}
       <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground mt-2">
-        {p.due_date && canSee("due_date" as never) && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(p.due_date).toLocaleDateString("pt-BR")}</span>}
+        {p.due_date && canSee("due_date" as never) && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDateBR(p.due_date)}</span>}
         {ass.length > 0 && <span>{ass.length} resp.</span>}
       </div>
       <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
@@ -779,8 +804,8 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
                 {allowedCols.includes("status") && <td className="px-3 py-2">{st ? <Badge className="border-0" style={{ background: `${st.color}25`, color: st.color }}>{st.name}</Badge> : "—"}</td>}
                 {allowedCols.includes("priority") && <td className="px-3 py-2">{pr ? <Badge className="border-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge> : "—"}</td>}
                 {allowedCols.includes("assignees") && <td className="px-3 py-2 text-xs text-muted-foreground">{ass.map((a) => maps.member.get(a.user_id) as string ?? "?").join(", ") || "—"}</td>}
-                {allowedCols.includes("due_date") && <td className="px-3 py-2 text-muted-foreground">{p.due_date ? new Date(p.due_date).toLocaleDateString("pt-BR") : "—"}</td>}
-                {allowedCols.includes("post_date") && <td className="px-3 py-2 text-muted-foreground">{p.post_date ? new Date(p.post_date).toLocaleDateString("pt-BR") : "—"}</td>}
+                {allowedCols.includes("due_date") && <td className="px-3 py-2 text-muted-foreground">{formatDateBR(p.due_date)}</td>}
+                {allowedCols.includes("post_date") && <td className="px-3 py-2 text-muted-foreground">{formatDateBR(p.post_date)}</td>}
                 <td className="px-2">
                   <div className="flex items-center justify-end gap-0.5">
                     <Button variant="ghost" size="sm" title="Ver detalhes" onClick={() => onDetail(p.id)}>
@@ -1382,9 +1407,9 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
                 </Select>
               </div>
             )}
-            {canSee("start_date") && <Info label="Início" value={project.start_date ? new Date(project.start_date).toLocaleDateString("pt-BR") : "—"} />}
-            {canSee("due_date") && <Info label="Prazo" value={project.due_date ? new Date(project.due_date).toLocaleDateString("pt-BR") : "—"} />}
-            {canSee("post_date") && <Info label="Postagem" value={project.post_date ? new Date(project.post_date).toLocaleDateString("pt-BR") : "—"} />}
+            {canSee("start_date") && <Info label="Início" value={formatDateBR(project.start_date)} />}
+            {canSee("due_date") && <Info label="Prazo" value={formatDateBR(project.due_date)} />}
+            {canSee("post_date") && <Info label="Postagem" value={formatDateBR(project.post_date)} />}
             {pr && canSee("priority") && <Info label="Prioridade atual" value={pr.name} />}
           </div>
 
