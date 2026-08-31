@@ -1363,7 +1363,20 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
                 {attachments.map((a) => (
                   <li key={a.id} className="flex items-center justify-between gap-2 p-2 rounded bg-muted/50">
                     <span className="inline-flex items-center gap-2 truncate"><Paperclip className="h-3.5 w-3.5" /><span className="truncate">{a.file_name}</span></span>
-                    <Button variant="ghost" size="sm" onClick={() => downloadFile(a.file_path)}><Download className="h-3.5 w-3.5" /></Button>
+                    <span className="flex items-center gap-1 shrink-0">
+                      <Button variant="ghost" size="sm" onClick={() => downloadFile(a.file_path)}><Download className="h-3.5 w-3.5" /></Button>
+                      {canManageProjects && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          aria-label={`Excluir ${a.file_name}`}
+                          onClick={() => { if (confirm(`Excluir o anexo ${a.file_name}?`)) removeAttachment.mutate({ id: a.id, file_path: a.file_path }); }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
