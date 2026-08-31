@@ -133,6 +133,17 @@ export function PermissionTree({ areaId, specialtyId }: { areaId: string; specia
 
   const tree = useMemo(() => permissionTree(allowedSet, projectColumns, stages), [allowedSet, projectColumns, stages]);
 
+  // Índices (na ordem do cadastro) da fase de início e da primeira fase de conclusão.
+  const stageIndex = useMemo(() => new Map(stages.map((s, i) => [s.id, i])), [stages]);
+  const startIndex = useMemo(() => {
+    const r = stageRules.find((x) => x.is_start);
+    return r ? (stageIndex.get(r.status_id) ?? null) : null;
+  }, [stageRules, stageIndex]);
+  const doneFromIndex = useMemo(() => {
+    const idxs = stageRules.filter((x) => x.is_done).map((x) => stageIndex.get(x.status_id)).filter((i): i is number => i != null);
+    return idxs.length ? Math.min(...idxs) : null;
+  }, [stageRules, stageIndex]);
+
 
 
   const setMenu = useMutation({
