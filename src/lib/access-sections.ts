@@ -136,19 +136,21 @@ export function useStageRulesFor(userId: string | null | undefined) {
     },
   });
 
-  if (!userId || !data) return own;
+  return useMemo(() => {
+    if (!userId || !data) return own;
 
-  const startIds = Array.isArray(data.start) ? data.start : [];
-  const startStageOrder = startIds.length
-    ? Math.min(...startIds.map((id) => statusOrder.get(id) ?? 0))
-    : null;
-  return buildStageRules({
-    startStageOrder,
-    doneStatusIds: new Set(data.done),
-    statusOrder,
-    finalStatusIds,
-    dateBases: data.bases,
-  });
+    const startIds = Array.isArray(data.start) ? data.start : [];
+    const startStageOrder = startIds.length
+      ? Math.min(...startIds.map((id) => statusOrder.get(id) ?? 0))
+      : null;
+    return buildStageRules({
+      startStageOrder,
+      doneStatusIds: new Set(data.done),
+      statusOrder,
+      finalStatusIds,
+      dateBases: data.bases,
+    });
+  }, [userId, data, own, statusOrder, finalStatusIds]);
 }
 
 
