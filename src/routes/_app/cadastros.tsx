@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, GripVertical, Lock, Unlock } from "lucide-react";
+import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 
 
@@ -18,7 +22,7 @@ export const Route = createFileRoute("/_app/cadastros")({ component: CadastrosPa
 
 type Field = { name: string; label: string; type?: "text" | "textarea" | "number" | "color" | "email"; required?: boolean };
 
-const TABLES: { key: string; label: string; fields: Field[]; orderBy?: string }[] = [
+const TABLES: { key: string; label: string; fields: Field[]; orderBy?: string; reorderable?: boolean }[] = [
   {
     key: "media_types", label: "Tipos de mídia",
     fields: [
@@ -36,6 +40,7 @@ const TABLES: { key: string; label: string; fields: Field[]; orderBy?: string }[
       { name: "sort_order", label: "Ordem", type: "number" },
     ],
     orderBy: "sort_order",
+    reorderable: true,
   },
   {
     key: "priorities", label: "Prioridades",
@@ -141,6 +146,36 @@ function CrudTable({ table }: { table: typeof TABLES[number] }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const reorder = useMutation({
+    mutationFn: async (ordered: Record<string, unknown>[]) => {
+      for (let i = 0; i < ordered.length; i++) {
+        if (Number(ordered[i].sort_order) === i + 1) continue;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase.from as any)(table.key)
+          .update({ sort_order: i + 1 }).eq("id", ordered[i].id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: [table.key] }); toast.success("Ordem atualizada"); },
+    onError: (e: Error) => { qc.invalidateQueries({ queryKey: [table.key] }); toast.error(e.message); },
+  });
+
+  const [locked, setLocked] = usePersistedState(`cadastros:lock:${table.key}`, true);
+  const [dragRows, setDragRows] = useState<Record<string, unknown>[] | null>(null);
+  const list = dragRows ?? rows;
+  const canDrag = !!table.reorderable && !locked;
+
+  const onDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const from = list.findIndex((r) => String(r.id) === active.id);
+    const to = list.findIndex((r) => String(r.id) === over.id);
+    if (from < 0 || to < 0) return;
+    const next = arrayMove(list, from, to);
+    setDragRows(next);
+    reorder.mutate(next, { onSettled: () => setDragRows(null) });
+  };
+
   const primaryField = table.fields[0].name;
   const secondaryField = table.fields[1]?.name;
 
@@ -148,6 +183,18 @@ function CrudTable({ table }: { table: typeof TABLES[number] }) {
     <Card className="p-4">
       <div className="flex justify-between items-center mb-4">
         <span className="text-sm text-muted-foreground">{rows.length} registro(s)</span>
+        <div className="flex items-center gap-2">
+        {table.reorderable && (
+          <Button
+            size="sm"
+            variant={locked ? "outline" : "secondary"}
+            onClick={() => setLocked(!locked)}
+            title={locked ? "Desbloquear ordenação" : "Bloquear ordenação"}
+          >
+            {locked ? <Lock className="h-4 w-4 mr-1" /> : <Unlock className="h-4 w-4 mr-1" />}
+            {locked ? "Ordem bloqueada" : "Ordem liberada"}
+          </Button>
+        )}
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
           <DialogTrigger asChild>
             <Button size="sm" onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-1" /> Novo</Button>
@@ -192,32 +239,85 @@ function CrudTable({ table }: { table: typeof TABLES[number] }) {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
+      {table.reorderable && (
+        <p className="text-xs text-muted-foreground mb-2">
+          {locked ? "Clique no cadeado para liberar e reordenar as etapas arrastando." : "Arraste pelo ícone à esquerda para reordenar as etapas."}
+        </p>
+      )}
+
       <div className="border rounded-md divide-y">
-        {rows.length === 0 && <p className="p-4 md:p-8 text-center text-sm text-muted-foreground">Nenhum registro</p>}
-        {rows.map((r) => (
-          <div key={String(r.id)} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40">
-            {"color" in r && r.color ? (
-              <span className="h-4 w-4 rounded-full border shrink-0" style={{ background: String(r.color) }} />
-            ) : null}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{r[primaryField] != null ? String(r[primaryField]) : "—"}</p>
-              {secondaryField && r[secondaryField] != null && (
-                <p className="text-xs text-muted-foreground truncate">{String(r[secondaryField])}</p>
-              )}
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => { setEditing(r); setOpen(true); }}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive"
-              onClick={() => { if (confirm("Remover?")) remove.mutate(String(r.id)); }}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ))}
+        {list.length === 0 && <p className="p-4 md:p-8 text-center text-sm text-muted-foreground">Nenhum registro</p>}
+        <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={list.map((r) => String(r.id))} strategy={verticalListSortingStrategy}>
+            {list.map((r) => (
+              <CrudRow
+                key={String(r.id)}
+                row={r}
+                canDrag={canDrag}
+                primaryField={primaryField}
+                secondaryField={secondaryField}
+                onEdit={() => { setEditing(r); setOpen(true); }}
+                onRemove={() => { if (confirm("Remover?")) remove.mutate(String(r.id)); }}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
       </div>
     </Card>
+  );
+}
+
+function CrudRow({
+  row: r, canDrag, primaryField, secondaryField, onEdit, onRemove,
+}: {
+  row: Record<string, unknown>;
+  canDrag: boolean;
+  primaryField: string;
+  secondaryField?: string;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: String(r.id),
+    disabled: !canDrag,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }}
+      className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40 bg-card"
+    >
+      {canDrag && (
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground shrink-0"
+          aria-label="Reordenar"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      )}
+      {"color" in r && r.color ? (
+        <span className="h-4 w-4 rounded-full border shrink-0" style={{ background: String(r.color) }} />
+      ) : null}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{r[primaryField] != null ? String(r[primaryField]) : "—"}</p>
+        {secondaryField && r[secondaryField] != null && (
+          <p className="text-xs text-muted-foreground truncate">{String(r[secondaryField])}</p>
+        )}
+      </div>
+      <Button variant="ghost" size="sm" onClick={onEdit}>
+        <Pencil className="h-3.5 w-3.5" />
+      </Button>
+      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={onRemove}>
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+    </div>
   );
 }
 

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   FolderKanban, Clock, CheckCircle2, AlertTriangle, Users, DollarSign, TrendingUp, Calendar,
-  Plus, X, Pencil, GripVertical, Wrench, Repeat, ArrowUpRight, ChevronLeft, ChevronRight,
+  Plus, X, Pencil, GripVertical, Wrench, Repeat, ArrowUpRight, ChevronLeft, ChevronRight, Gauge, RotateCcw,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, Cell } from "recharts";
 import {
@@ -444,7 +444,21 @@ function StatsOverview() {
   const overdue = lateness.openLateIds.size;
   const resolvedLate = lateness.resolvedLateIds.size;
 
-  // Taxa de eficiência desativada na tela (cálculo mantido em dashboard-efficiency.ts).
+  // Eficiência = demandas sem atraso ÷ total (considera atrasos já resolvidos).
+  const lateAll = lateness.lateIds.size;
+  const onTime = Math.max(0, total - lateAll);
+  const efficiency = total > 0 ? onTime / total : null;
+
+  // Correção = demandas que voltaram de fase ou foram reprovadas pelo cliente.
+  const correctionIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of projects) {
+      if (regressedIds.has(p.id) || (p as { client_decision?: string | null }).client_decision === "reprovado") s.add(p.id);
+    }
+    return s;
+  }, [projects, regressedIds]);
+
+
 
 
   const canProjects = menuAllowed("/projects");
@@ -479,7 +493,28 @@ function StatsOverview() {
       quick: "atrasadas",
       filter: (p) => lateness.openLateIds.has(p.id),
     },
-
+    {
+      label: "Eficiência",
+      value: lateAll,
+      display: efficiency === null ? "—" : `${Math.round(efficiency * 100)}%`,
+      sub: efficiency === null ? undefined : `${onTime} de ${total} no prazo`,
+      valueClass:
+        efficiency === null ? undefined
+          : efficiency > 0.85 ? "text-success"
+          : efficiency >= 0.6 ? "text-warning"
+          : "text-destructive",
+      icon: Gauge,
+      color: "text-primary",
+      filter: (p) => lateness.lateIds.has(p.id),
+    },
+    {
+      label: "Correção",
+      value: correctionIds.size,
+      sub: "Voltaram de fase ou reprovadas",
+      icon: RotateCcw,
+      color: "text-warning",
+      filter: (p) => correctionIds.has(p.id),
+    },
   ];
 
 
@@ -517,6 +552,13 @@ function StatsOverview() {
         return { barColor: "bg-destructive", dotColor: "bg-destructive", ratio };
       case "Atrasados":
         return { barColor: "bg-destructive", dotColor: "bg-destructive", ratio };
+      case "Eficiência": {
+        const eff = efficiency === null ? 0 : Math.round(efficiency * 100);
+        const color = efficiency === null ? "bg-muted-foreground" : efficiency > 0.85 ? "bg-success" : efficiency >= 0.6 ? "bg-warning" : "bg-destructive";
+        return { barColor: color, dotColor: color, ratio: eff };
+      }
+      case "Correção":
+        return { barColor: "bg-warning", dotColor: "bg-warning", ratio };
       default:
         return { barColor: "bg-primary", dotColor: "bg-primary", ratio };
     }
@@ -574,7 +616,7 @@ function StatsOverview() {
           </div>
         </div>
         <div className="mt-4">
-          <h4 className="text-3xl font-bold">{s.display ?? s.value}</h4>
+          <h4 className={`text-3xl font-bold ${s.valueClass ?? ""}`}>{s.display ?? s.value}</h4>
           {s.sub && <p className="text-[10px] text-muted-foreground mt-1 leading-tight">{s.sub}</p>}
           <div className="w-full bg-muted h-1.5 rounded-full mt-4 overflow-hidden">
             <div className={`${meta.barColor} h-full rounded-full`} style={{ width: `${meta.ratio}%` }} />
