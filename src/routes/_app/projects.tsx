@@ -24,6 +24,7 @@ import { ProjectChat } from "@/components/ProjectChat";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 import { MultiSelectFilter } from "@/components/MultiSelectFilter";
 import { useProjectMediaTypes, mediaIdsOf, syncProjectMediaTypes } from "@/lib/project-media-types";
+import { formatDateBR } from "@/lib/dates";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
@@ -655,7 +656,7 @@ function KanbanCard({ project: p, statuses, priorities: _priorities, maps, assig
         </div>
       )}
       <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground mt-2">
-        {p.due_date && canSee("due_date" as never) && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(p.due_date).toLocaleDateString("pt-BR")}</span>}
+        {p.due_date && canSee("due_date" as never) && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDateBR(p.due_date)}</span>}
         {ass.length > 0 && <span>{ass.length} resp.</span>}
       </div>
       <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
