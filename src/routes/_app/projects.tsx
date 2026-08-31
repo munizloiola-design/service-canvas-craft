@@ -97,7 +97,16 @@ function comparePriorityThenDue(a: Project, b: Project, maps: Record<string, Map
 }
 
 type FilterKey = "client" | "assignee" | "status" | "priority" | "media" | "decision" | "due_from" | "due_to" | "post_from" | "post_to";
-type ActiveFilter = { key: FilterKey; value: string };
+type ActiveFilter = { key: FilterKey; values: string[] };
+const DATE_FILTERS: FilterKey[] = ["due_from", "due_to", "post_from", "post_to"];
+
+/** Aceita o formato antigo ({ value: string }) salvo no navegador. */
+function normalizeFilter(f: ActiveFilter | { key: FilterKey; value?: string }): ActiveFilter {
+  const values = (f as ActiveFilter).values;
+  if (Array.isArray(values)) return { key: f.key, values };
+  const legacy = (f as { value?: string }).value;
+  return { key: f.key, values: legacy ? [legacy] : [] };
+}
 
 const FILTER_LABELS: Record<FilterKey, string> = {
   client: "Cliente", assignee: "Responsável", status: "Etapa", priority: "Prioridade",
