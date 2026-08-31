@@ -780,8 +780,8 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
                 {allowedCols.includes("status") && <td className="px-3 py-2">{st ? <Badge className="border-0" style={{ background: `${st.color}25`, color: st.color }}>{st.name}</Badge> : "—"}</td>}
                 {allowedCols.includes("priority") && <td className="px-3 py-2">{pr ? <Badge className="border-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge> : "—"}</td>}
                 {allowedCols.includes("assignees") && <td className="px-3 py-2 text-xs text-muted-foreground">{ass.map((a) => maps.member.get(a.user_id) as string ?? "?").join(", ") || "—"}</td>}
-                {allowedCols.includes("due_date") && <td className="px-3 py-2 text-muted-foreground">{p.due_date ? new Date(p.due_date).toLocaleDateString("pt-BR") : "—"}</td>}
-                {allowedCols.includes("post_date") && <td className="px-3 py-2 text-muted-foreground">{p.post_date ? new Date(p.post_date).toLocaleDateString("pt-BR") : "—"}</td>}
+                {allowedCols.includes("due_date") && <td className="px-3 py-2 text-muted-foreground">{formatDateBR(p.due_date)}</td>}
+                {allowedCols.includes("post_date") && <td className="px-3 py-2 text-muted-foreground">{formatDateBR(p.post_date)}</td>}
                 <td className="px-2">
                   <div className="flex items-center justify-end gap-0.5">
                     <Button variant="ghost" size="sm" title="Ver detalhes" onClick={() => onDetail(p.id)}>
@@ -1383,9 +1383,9 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
                 </Select>
               </div>
             )}
-            {canSee("start_date") && <Info label="Início" value={project.start_date ? new Date(project.start_date).toLocaleDateString("pt-BR") : "—"} />}
-            {canSee("due_date") && <Info label="Prazo" value={project.due_date ? new Date(project.due_date).toLocaleDateString("pt-BR") : "—"} />}
-            {canSee("post_date") && <Info label="Postagem" value={project.post_date ? new Date(project.post_date).toLocaleDateString("pt-BR") : "—"} />}
+            {canSee("start_date") && <Info label="Início" value={formatDateBR(project.start_date)} />}
+            {canSee("due_date") && <Info label="Prazo" value={formatDateBR(project.due_date)} />}
+            {canSee("post_date") && <Info label="Postagem" value={formatDateBR(project.post_date)} />}
             {pr && canSee("priority") && <Info label="Prioridade atual" value={pr.name} />}
           </div>
 
