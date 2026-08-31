@@ -32,20 +32,22 @@ export function useStageGate() {
 export function useStageRules() {
   const { startStageOrder, doneStatusIds, statusOrder, finalStatusIds, isPrivileged } = useAccess();
 
-  const base = buildStageRules({ startStageOrder, doneStatusIds, statusOrder, finalStatusIds });
+  return useMemo(() => {
+    const base = buildStageRules({ startStageOrder, doneStatusIds, statusOrder, finalStatusIds });
 
-  const isStarted = (statusId: string | null | undefined) => {
-    if (isPrivileged) return true;
-    return base.isStarted(statusId);
-  };
+    const isStarted = (statusId: string | null | undefined) => {
+      if (isPrivileged) return true;
+      return base.isStarted(statusId);
+    };
 
-  const isDone = (statusId: string | null | undefined) => {
-    if (!statusId) return false;
-    if (!isPrivileged) return base.isDone(statusId);
-    return finalStatusIds.has(statusId);
-  };
+    const isDone = (statusId: string | null | undefined) => {
+      if (!statusId) return false;
+      if (!isPrivileged) return base.isDone(statusId);
+      return finalStatusIds.has(statusId);
+    };
 
-  return { ...base, isStarted, isDone };
+    return { ...base, isStarted, isDone };
+  }, [startStageOrder, doneStatusIds, statusOrder, finalStatusIds, isPrivileged]);
 }
 
 export type DateBasis = "due" | "post";
