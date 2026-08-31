@@ -627,6 +627,7 @@ function KanbanCard({ project: p, statuses, priorities: _priorities, maps, assig
     touchAction: "none",
     ...(pr?.color ? { background: `${pr.color}1A`, borderLeft: `3px solid ${pr.color}` } : {}),
   };
+  const cardMediaIds = mediaIdsOf(projectMediaMapForCards, p);
   return (
     <Card ref={setNodeRef} style={style} {...attributes} {...listeners}
       className="p-2.5 hover:shadow-md cursor-grab active:cursor-grabbing"
@@ -636,7 +637,13 @@ function KanbanCard({ project: p, statuses, priorities: _priorities, maps, assig
         {pr && canSee("priority" as never) && <Badge className="border-0 text-[10px] shrink-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge>}
       </div>
       {p.client_id && canSee("client_id" as never) && <p className="text-xs text-muted-foreground">{maps.client.get(p.client_id) as string}</p>}
-      {p.media_type_id && canSee("media_type" as never) && <span className="inline-block text-[10px] bg-secondary px-1.5 py-0.5 rounded mt-1">{maps.media.get(p.media_type_id) as string}</span>}
+      {canSee("media_type" as never) && cardMediaIds.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1">
+          {cardMediaIds.map((id) => (
+            <span key={id} className="inline-block text-[10px] bg-secondary px-1.5 py-0.5 rounded">{maps.media.get(id) as string}</span>
+          ))}
+        </div>
+      )}
       <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground mt-2">
         {p.due_date && canSee("due_date" as never) && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(p.due_date).toLocaleDateString("pt-BR")}</span>}
         {ass.length > 0 && <span>{ass.length} resp.</span>}
@@ -659,6 +666,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
   canManage?: boolean;
   onEdit?: (p: Project) => void;
 }) {
+  const listMediaMap = useProjectMediaTypes();
   const qc = useQueryClient();
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -697,7 +705,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
       switch (sort.key) {
         case "title": return p.title ?? "";
         case "client": return p.client_id ? txt(maps.client.get(p.client_id)) : "";
-        case "media": return p.media_type_id ? txt(maps.media.get(p.media_type_id)) : "";
+        case "media": return mediaIdsOf(listMediaMap, p).map((id) => txt(maps.media.get(id))).join(", ");
         case "status": {
           const st = p.status_id ? (maps.status.get(p.status_id) as { sort_order?: number } | undefined) : undefined;
           return st?.sort_order ?? Number.POSITIVE_INFINITY;
@@ -724,7 +732,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
       if (typeof va === "number" && typeof vb === "number") return (va - vb) * mul;
       return String(va).localeCompare(String(vb), "pt-BR") * mul;
     });
-  }, [projects, sort, maps, assigneesByProject]);
+  }, [projects, sort, maps, assigneesByProject, listMediaMap]);
 
   return (
     <Card className="overflow-x-auto">
@@ -757,7 +765,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
               <tr key={p.id} className="border-b hover:bg-muted/30">
                 {allowedCols.includes("title") && <td className="px-3 py-2 font-medium">{p.title}</td>}
                 {allowedCols.includes("client") && <td className="px-3 py-2 text-muted-foreground">{p.client_id ? (maps.client.get(p.client_id) as string) : "—"}</td>}
-                {allowedCols.includes("media") && <td className="px-3 py-2 text-muted-foreground">{p.media_type_id ? (maps.media.get(p.media_type_id) as string) : "—"}</td>}
+                {allowedCols.includes("media") && <td className="px-3 py-2 text-muted-foreground">{mediaIdsOf(listMediaMap, p).map((id) => maps.media.get(id) as string).filter(Boolean).join(", ") || "—"}</td>}
                 {allowedCols.includes("status") && <td className="px-3 py-2">{st ? <Badge className="border-0" style={{ background: `${st.color}25`, color: st.color }}>{st.name}</Badge> : "—"}</td>}
                 {allowedCols.includes("priority") && <td className="px-3 py-2">{pr ? <Badge className="border-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge> : "—"}</td>}
                 {allowedCols.includes("assignees") && <td className="px-3 py-2 text-xs text-muted-foreground">{ass.map((a) => maps.member.get(a.user_id) as string ?? "?").join(", ") || "—"}</td>}
@@ -1329,6 +1337,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
   if (!project) return null;
   const validationUrl = project.client_token ? `${typeof window !== "undefined" ? window.location.origin : ""}/v/${project.client_token}` : null;
   const pr = project.priority_id ? (maps.priority.get(project.priority_id) as Priority | undefined) : null;
+  const detailMediaMap = useProjectMediaTypes();
 
   return (
     <Dialog open={!!project} onOpenChange={(o) => !o && onClose()}>
@@ -1344,7 +1353,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {canSee("client_id") && <Info label="Cliente" value={project.client_id ? (maps.client.get(project.client_id) as string) : "—"} />}
-            {canSee("media_type") && <Info label="Tipo de mídia" value={project.media_type_id ? (maps.media.get(project.media_type_id) as string) : "—"} />}
+            {canSee("media_type") && <Info label="Tipo de mídia" value={mediaIdsOf(detailMediaMap, project).map((id) => maps.media.get(id) as string).filter(Boolean).join(", ") || "—"} />}
             <div>
               <Label className="text-xs text-muted-foreground">Etapa</Label>
               <Select value={project.status_id ?? ""} onValueChange={(v) => updateField.mutate({ status_id: v })}>
