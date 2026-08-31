@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Link as LinkIcon, Download } from "lucide-react";
+import { formatDateBR } from "@/lib/dates";
 
 export const Route = createFileRoute("/portal/calendario")({ component: PortalCalendario });
 
@@ -110,8 +111,8 @@ function PortalCalendario() {
             <div className="space-y-3 text-sm">
               {detail.description && <p className="whitespace-pre-wrap text-muted-foreground">{detail.description}</p>}
               <div className="grid grid-cols-2 gap-2 text-xs">
-                {detail.due_date && <div><span className="text-muted-foreground">Prazo:</span> {new Date(detail.due_date).toLocaleDateString("pt-BR")}</div>}
-                {detail.post_date && <div><span className="text-muted-foreground">Postagem:</span> {new Date(detail.post_date).toLocaleDateString("pt-BR")}</div>}
+                {detail.due_date && <div><span className="text-muted-foreground">Prazo:</span> {formatDateBR(detail.due_date)}</div>}
+                {detail.post_date && <div><span className="text-muted-foreground">Postagem:</span> {formatDateBR(detail.post_date)}</div>}
                 {detail.client_decision && <div><span className="text-muted-foreground">Status:</span> <strong className="capitalize">{detail.client_decision}</strong></div>}
               </div>
               {detail.reference_links?.length > 0 && (

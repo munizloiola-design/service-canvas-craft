@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Download, Link as LinkIcon, Check, X } from "lucide-react";
+import { formatDateBR } from "@/lib/dates";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/portal/pendentes")({ component: PortalPendentes });
@@ -74,8 +75,8 @@ function PortalPendentes() {
               </div>
               {p.description && <p className="text-sm text-muted-foreground whitespace-pre-wrap mb-3">{p.description}</p>}
               <div className="flex gap-4 text-xs text-muted-foreground mb-3">
-                {p.due_date && <span>Prazo: {new Date(p.due_date).toLocaleDateString("pt-BR")}</span>}
-                {p.post_date && <span>Postagem: {new Date(p.post_date).toLocaleDateString("pt-BR")}</span>}
+                {p.due_date && <span>Prazo: {formatDateBR(p.due_date)}</span>}
+                {p.post_date && <span>Postagem: {formatDateBR(p.post_date)}</span>}
               </div>
               {p.reference_links?.length > 0 && (
                 <ul className="text-xs space-y-0.5 mb-3">

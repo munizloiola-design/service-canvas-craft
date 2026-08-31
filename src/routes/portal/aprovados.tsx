@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download } from "lucide-react";
+import { formatDateBR } from "@/lib/dates";
 
 export const Route = createFileRoute("/portal/aprovados")({ component: PortalAprovados });
 
@@ -47,8 +48,8 @@ function PortalAprovados() {
                 </div>
                 {p.description && <p className="text-sm text-muted-foreground line-clamp-2">{p.description}</p>}
                 <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-2">
-                  {p.post_date && <span>Postagem: {new Date(p.post_date).toLocaleDateString("pt-BR")}</span>}
-                  {p.client_decided_at && <span>Aprovado em: {new Date(p.client_decided_at).toLocaleDateString("pt-BR")}</span>}
+                  {p.post_date && <span>Postagem: {formatDateBR(p.post_date)}</span>}
+                  {p.client_decided_at && <span>Aprovado em: {formatDateBR(p.client_decided_at)}</span>}
                 </div>
                 {p.client_feedback && <p className="text-xs italic mt-1">"{p.client_feedback}"</p>}
               </div>
