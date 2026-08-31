@@ -1213,7 +1213,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
   const { isManager } = useAuth();
   const { menuAllowed } = useAccess();
   const canManageProjects = menuAllowed("/projects");
-  const { canSee } = useFieldVisibility();
+  const { canSee, canEdit } = useFieldVisibility();
 
   const { data: attachments = [] } = useQuery({
     queryKey: ["attachments", project?.id], enabled: !!project?.id,
@@ -1255,6 +1255,19 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
     if (up.error) { toast.error(up.error.message); return; }
     updateField.mutate({ deliverable_path: path });
   };
+
+  const removeDeliverable = useMutation({
+    mutationFn: async (path: string) => {
+      await supabase.storage.from("project-files").remove([path]);
+      const { error } = await supabase.from("projects").update({ deliverable_path: null }).eq("id", project!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Material removido");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const downloadFile = async (path: string) => {
     const { data, error } = await supabase.storage.from("project-files").createSignedUrl(path, 60);
@@ -1389,7 +1402,15 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
               {project.deliverable_path ? (
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm truncate">Arquivo enviado ✓</span>
-                  <Button variant="outline" size="sm" onClick={() => downloadFile(project.deliverable_path!)}><Download className="h-3.5 w-3.5 mr-1" /> Baixar</Button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button variant="outline" size="sm" onClick={() => downloadFile(project.deliverable_path!)}><Download className="h-3.5 w-3.5 mr-1" /> Baixar</Button>
+                    {canEdit("deliverable_path") && (
+                      <Button variant="outline" size="sm" className="text-destructive" disabled={removeDeliverable.isPending}
+                        onClick={() => { if (confirm("Excluir o arquivo do material?")) removeDeliverable.mutate(project.deliverable_path!); }}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <Input type="file" onChange={(e) => e.target.files?.[0] && uploadDeliverable(e.target.files[0])} />
