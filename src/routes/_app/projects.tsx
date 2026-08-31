@@ -627,7 +627,7 @@ function KanbanCard({ project: p, statuses, priorities: _priorities, maps, assig
     touchAction: "none",
     ...(pr?.color ? { background: `${pr.color}1A`, borderLeft: `3px solid ${pr.color}` } : {}),
   };
-  const cardMediaIds = mediaIdsOf(projectMediaMapForCards, p);
+  const cardMediaIds = mediaIdsOf(cardMediaMap, p);
   return (
     <Card ref={setNodeRef} style={style} {...attributes} {...listeners}
       className="p-2.5 hover:shadow-md cursor-grab active:cursor-grabbing"
