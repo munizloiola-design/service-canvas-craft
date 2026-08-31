@@ -255,7 +255,7 @@ function AppLayout() {
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="h-9 w-9"><Menu className="h-5 w-5" /></Button>
             </SheetTrigger>
-            <SheetContent side="left" style={sidebarStyle} className="p-0 w-72 text-sidebar-foreground flex flex-col">
+            <SheetContent side="left" style={sidebarStyle} className="p-0 w-72 text-sidebar-foreground flex flex-col dark:!bg-sidebar/95 dark:border-primary/15">
               <SheetTitle className="sr-only">Menu</SheetTitle>
               {SidebarContent}
             </SheetContent>
