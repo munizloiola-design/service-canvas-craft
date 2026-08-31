@@ -213,7 +213,7 @@ function AppLayout() {
     <div className="min-h-screen flex">
       <aside
         style={sidebarStyle}
-        className={`hidden md:flex shrink-0 border-r border-white/30 dark:border-white/10 bg-white/55 dark:bg-white/5 backdrop-blur-xl text-sidebar-foreground flex-col overflow-hidden transition-[width] duration-200 shadow-[0_8px_32px_0_rgba(15,23,42,0.05)] ${
+        className={`hidden md:flex shrink-0 border-r border-white/30 dark:border-primary/15 bg-white/55 dark:!bg-sidebar/95 backdrop-blur-xl text-sidebar-foreground flex-col overflow-hidden transition-[width] duration-200 shadow-[0_8px_32px_0_rgba(15,23,42,0.05)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.35)] ${
           desktopCollapsed ? "w-0 border-r-0" : "w-64"
         }`}
       >
