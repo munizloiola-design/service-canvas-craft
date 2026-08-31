@@ -362,8 +362,7 @@ function useVisibleProjects<
       }
       return true;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, assignees, scopeUserId, monthRange]);
+  }, [rows, assignees, scopeUserId, monthRange, stageRules]);
 }
 
 /**
