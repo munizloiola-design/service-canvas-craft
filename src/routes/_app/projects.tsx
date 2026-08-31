@@ -281,7 +281,7 @@ function ProjectsPage() {
       }
       return true;
     });
-  }, [visibleProjects, filters, assigneesByProject, quick, stageRules, topPriorityId]);
+  }, [visibleProjects, filters, assigneesByProject, quick, stageRules, topPriorityId, query, maps]);
 
 
   // Kanban e Lista só mostram demandas em fases liberadas
