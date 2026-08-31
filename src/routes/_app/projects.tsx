@@ -1234,6 +1234,20 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["projects"] }); toast.success("Removido"); onClose(); },
   });
 
+  const removeAttachment = useMutation({
+    mutationFn: async (att: { id: string; file_path: string }) => {
+      await supabase.storage.from("project-files").remove([att.file_path]);
+      const { error } = await supabase.from("project_attachments").delete().eq("id", att.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["attachments"] });
+      qc.invalidateQueries({ queryKey: ["project_attachments_cal"] });
+      toast.success("Anexo removido");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const uploadDeliverable = async (file: File) => {
     if (!project) return;
     const path = `${project.id}/deliverable_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
