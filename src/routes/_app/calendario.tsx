@@ -17,7 +17,7 @@ import { useSectionGate } from "@/lib/access-sections";
 import { useAuth } from "@/lib/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, ExternalLink, X, Link as LinkIcon, Paperclip, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, X, Link as LinkIcon, Paperclip, Download, Trash2 } from "lucide-react";
 import { ProjectChat } from "@/components/ProjectChat";
 import { useFieldVisibility } from "@/lib/field-visibility";
 import { toast } from "sonner";
@@ -132,6 +132,20 @@ function CalendarioPage() {
     const { data } = await supabase.storage.from("project-files").createSignedUrl(path, 60);
     if (data) window.open(data.signedUrl, "_blank");
   };
+
+  const removeAttachment = useMutation({
+    mutationFn: async (att: { id: string; file_path: string }) => {
+      await supabase.storage.from("project-files").remove([att.file_path]);
+      const { error } = await supabase.from("project_attachments").delete().eq("id", att.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["project_attachments_cal"] });
+      qc.invalidateQueries({ queryKey: ["attachments"] });
+      toast.success("Anexo removido");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const saveFinalLink = async () => {
     if (!detail) return;
@@ -558,7 +572,20 @@ function CalendarioPage() {
                     {attachments.map((a) => (
                       <li key={a.id} className="flex items-center justify-between gap-2 p-2 rounded bg-muted/50">
                         <span className="inline-flex items-center gap-2 truncate"><Paperclip className="h-3.5 w-3.5" /><span className="truncate">{a.file_name}</span></span>
-                        <Button variant="ghost" size="sm" onClick={() => downloadFile(a.file_path)}><Download className="h-3.5 w-3.5" /></Button>
+                        <span className="flex items-center gap-1 shrink-0">
+                          <Button variant="ghost" size="sm" onClick={() => downloadFile(a.file_path)}><Download className="h-3.5 w-3.5" /></Button>
+                          {canEdit("reference_links") && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive"
+                              aria-label={`Excluir ${a.file_name}`}
+                              onClick={() => { if (confirm(`Excluir o anexo ${a.file_name}?`)) removeAttachment.mutate({ id: a.id, file_path: a.file_path }); }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </span>
                       </li>
                     ))}
                   </ul>

@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAccess } from "@/lib/access-context";
 import { useStageRulesFor } from "@/lib/access-sections";
-import { computeEfficiency, computeLateness, pct } from "@/lib/dashboard-efficiency";
+import { computeLateness } from "@/lib/dashboard-efficiency";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 
 import { Card } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   FolderKanban, Clock, CheckCircle2, AlertTriangle, Users, DollarSign, TrendingUp, Calendar,
-  Plus, X, Pencil, GripVertical, Wrench, Repeat, ArrowUpRight, Gauge, ChevronLeft, ChevronRight,
+  Plus, X, Pencil, GripVertical, Wrench, Repeat, ArrowUpRight, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, Cell } from "recharts";
 import {
@@ -444,10 +444,7 @@ function StatsOverview() {
   const overdue = lateness.openLateIds.size;
   const resolvedLate = lateness.resolvedLateIds.size;
 
-  const eff = useMemo(
-    () => computeEfficiency(projects, { isDone: (s) => stageRules.isDone(s), refDates: stageRules.refDates, regressedIds, today, doneDates }),
-    [projects, regressedIds, doneDates, today, stageRules],
-  );
+  // Taxa de eficiência desativada na tela (cálculo mantido em dashboard-efficiency.ts).
 
 
   const canProjects = menuAllowed("/projects");
@@ -467,8 +464,6 @@ function StatsOverview() {
     filter: (p: (typeof projects)[number]) => boolean;
   };
 
-  const effClass =
-    eff.efficiency === null ? "" : eff.efficiency >= 0.85 ? "text-success" : eff.efficiency >= 0.6 ? "text-warning" : "text-destructive";
 
   const stats: StatItem[] = [
     { label: "Total", value: total, icon: FolderKanban, color: "text-info", filter: () => true },
@@ -485,17 +480,6 @@ function StatsOverview() {
       filter: (p) => lateness.openLateIds.has(p.id),
     },
 
-    {
-      label: "Eficiência",
-      value: eff.concluded,
-      display: pct(eff.efficiency),
-      sub: `No prazo ${pct(eff.punctuality)} · Retorno ${pct(eff.returnRate)}`,
-      valueClass: effClass,
-      icon: Gauge,
-      color: "text-primary",
-      quick: "concluidas",
-      filter: (p) => isDone(p),
-    },
   ];
 
 
@@ -552,9 +536,7 @@ function StatsOverview() {
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
           <DialogHeader className="px-6 py-4 shrink-0 border-b">
             <DialogTitle className="text-lg">
-              {selected?.label === "Eficiência"
-                ? `Eficiência ${pct(eff.efficiency)} — ${eff.concluded} ${eff.concluded === 1 ? "demanda concluída" : "demandas concluídas"}`
-                : `${selected?.label} — ${selected?.value} ${selected?.value === 1 ? "demanda" : "demandas"}`}
+              {`${selected?.label} — ${selected?.value} ${selected?.value === 1 ? "demanda" : "demandas"}`}
             </DialogTitle>
 
           </DialogHeader>
@@ -590,14 +572,8 @@ function StatsOverview() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {selected?.label === "Eficiência" && eff.lateIds.has(p.id) && (
-                          <Badge variant="destructive" className="text-[10px]">Atrasada</Badge>
-                        )}
-                        {wasLate && selected?.label !== "Eficiência" && (
+                        {wasLate && (
                           <Badge variant="outline" className="text-[10px]">Resolvida com atraso</Badge>
-                        )}
-                        {selected?.label === "Eficiência" && eff.returnedIds.has(p.id) && (
-                          <Badge variant="outline" className="text-[10px]">Retornada</Badge>
                         )}
 
                         {p.due_date && (

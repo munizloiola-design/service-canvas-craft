@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter, Pencil, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter, Pencil, ArrowUp, ArrowDown, ArrowUpDown, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useFieldVisibility } from "@/lib/field-visibility";
 import { useAccess } from "@/lib/access-context";
@@ -146,6 +146,7 @@ function ProjectsPage() {
     ALL_COLUMNS.map((c) => c.key),
   );
   const [filters, setFilters] = usePersistedState<ActiveFilter[]>(persistKey("projects", "filters", user?.id), []);
+  const [query, setQuery] = usePersistedState<string>(persistKey("projects", "search", user?.id), "");
   const [quick, setQuick] = usePersistedState<QuickFilter | undefined>(
     persistKey("projects", "quick", user?.id),
     search.quick,
@@ -245,7 +246,15 @@ function ProjectsPage() {
   const filteredProjects = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     const isDone = (p: Project) => stageRules.isDone(p.status_id);
+    const norm = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const term = norm(query.trim());
     return visibleProjects.filter((p) => {
+      if (term) {
+        const haystack = norm(
+          [p.title, maps.client.get(p.client_id ?? "") ?? "", p.caption ?? "", p.description ?? "", p.notes ?? ""].join(" "),
+        );
+        if (!haystack.includes(term)) return false;
+      }
       if (quick === "abertas" && isDone(p)) return false;
       if (quick === "concluidas" && !isDone(p)) return false;
       if (quick === "urgentes" && (isDone(p) || p.priority_id !== topPriorityId)) return false;
@@ -272,7 +281,7 @@ function ProjectsPage() {
       }
       return true;
     });
-  }, [visibleProjects, filters, assigneesByProject, quick, stageRules, topPriorityId]);
+  }, [visibleProjects, filters, assigneesByProject, quick, stageRules, topPriorityId, query, maps]);
 
 
   // Kanban e Lista só mostram demandas em fases liberadas
@@ -303,7 +312,27 @@ function ProjectsPage() {
           <h1 className="text-3xl font-semibold tracking-tight">Demandas</h1>
           <p className="text-muted-foreground mt-1">Acompanhe o fluxo da agência ponta a ponta.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center flex-wrap">
+          <div className="relative">
+            <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Pesquisar demandas..."
+              className="h-9 pl-8 w-56"
+              aria-label="Pesquisar demandas"
+            />
+            {query && (
+              <button
+                type="button"
+                aria-label="Limpar pesquisa"
+                className="absolute right-2 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100"
+                onClick={() => setQuery("")}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm"><Filter className="h-4 w-4 mr-1" /> + Filtro</Button>
@@ -1205,6 +1234,20 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["projects"] }); toast.success("Removido"); onClose(); },
   });
 
+  const removeAttachment = useMutation({
+    mutationFn: async (att: { id: string; file_path: string }) => {
+      await supabase.storage.from("project-files").remove([att.file_path]);
+      const { error } = await supabase.from("project_attachments").delete().eq("id", att.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["attachments"] });
+      qc.invalidateQueries({ queryKey: ["project_attachments_cal"] });
+      toast.success("Anexo removido");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const uploadDeliverable = async (file: File) => {
     if (!project) return;
     const path = `${project.id}/deliverable_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
@@ -1320,7 +1363,20 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
                 {attachments.map((a) => (
                   <li key={a.id} className="flex items-center justify-between gap-2 p-2 rounded bg-muted/50">
                     <span className="inline-flex items-center gap-2 truncate"><Paperclip className="h-3.5 w-3.5" /><span className="truncate">{a.file_name}</span></span>
-                    <Button variant="ghost" size="sm" onClick={() => downloadFile(a.file_path)}><Download className="h-3.5 w-3.5" /></Button>
+                    <span className="flex items-center gap-1 shrink-0">
+                      <Button variant="ghost" size="sm" onClick={() => downloadFile(a.file_path)}><Download className="h-3.5 w-3.5" /></Button>
+                      {canManageProjects && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          aria-label={`Excluir ${a.file_name}`}
+                          onClick={() => { if (confirm(`Excluir o anexo ${a.file_name}?`)) removeAttachment.mutate({ id: a.id, file_path: a.file_path }); }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
