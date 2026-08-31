@@ -237,7 +237,7 @@ function AppLayout() {
       {/* Mobile topbar */}
       <header
         style={sidebarStyle}
-        className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-white/55 dark:bg-white/5 backdrop-blur-xl text-sidebar-foreground border-b border-white/30 dark:border-white/10 flex items-center justify-between px-3"
+        className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-white/55 dark:!bg-sidebar/95 backdrop-blur-xl text-sidebar-foreground border-b border-white/30 dark:border-primary/15 flex items-center justify-between px-3"
       >
         <div className="flex items-center gap-2">
           {branding.logo_url ? (
