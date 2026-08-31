@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAccess } from "@/lib/access-context";
 import { useStageRulesFor } from "@/lib/access-sections";
-import { computeEfficiency, computeLateness, pct } from "@/lib/dashboard-efficiency";
+import { computeLateness } from "@/lib/dashboard-efficiency";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 
 import { Card } from "@/components/ui/card";
@@ -536,9 +536,7 @@ function StatsOverview() {
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
           <DialogHeader className="px-6 py-4 shrink-0 border-b">
             <DialogTitle className="text-lg">
-              {selected?.label === "Eficiência"
-                ? `Eficiência ${pct(eff.efficiency)} — ${eff.concluded} ${eff.concluded === 1 ? "demanda concluída" : "demandas concluídas"}`
-                : `${selected?.label} — ${selected?.value} ${selected?.value === 1 ? "demanda" : "demandas"}`}
+              {`${selected?.label} — ${selected?.value} ${selected?.value === 1 ? "demanda" : "demandas"}`}
             </DialogTitle>
 
           </DialogHeader>
@@ -574,14 +572,8 @@ function StatsOverview() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {selected?.label === "Eficiência" && eff.lateIds.has(p.id) && (
-                          <Badge variant="destructive" className="text-[10px]">Atrasada</Badge>
-                        )}
-                        {wasLate && selected?.label !== "Eficiência" && (
+                        {wasLate && (
                           <Badge variant="outline" className="text-[10px]">Resolvida com atraso</Badge>
-                        )}
-                        {selected?.label === "Eficiência" && eff.returnedIds.has(p.id) && (
-                          <Badge variant="outline" className="text-[10px]">Retornada</Badge>
                         )}
 
                         {p.due_date && (
