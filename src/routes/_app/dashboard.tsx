@@ -397,8 +397,7 @@ function useLateness<T extends { id: string; status_id?: string | null; due_date
       }
     }
     return { regressedIds: regressed, doneDates: dates };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transitions, statusSort]);
+  }, [transitions, statusSort, stageRules]);
 
   const lateness = useMemo(
     () => computeLateness(projects, {
@@ -407,8 +406,7 @@ function useLateness<T extends { id: string; status_id?: string | null; due_date
       today,
       doneDates,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [projects, doneDates, today],
+    [projects, doneDates, today, stageRules],
   );
 
   return { stageRules, today, regressedIds, doneDates, lateness, statuses: statusRows };
@@ -448,8 +446,7 @@ function StatsOverview() {
 
   const eff = useMemo(
     () => computeEfficiency(projects, { isDone: (s) => stageRules.isDone(s), refDates: stageRules.refDates, regressedIds, today, doneDates }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [projects, regressedIds, doneDates, today],
+    [projects, regressedIds, doneDates, today, stageRules],
   );
 
 
