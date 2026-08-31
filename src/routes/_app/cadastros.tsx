@@ -146,6 +146,36 @@ function CrudTable({ table }: { table: typeof TABLES[number] }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const reorder = useMutation({
+    mutationFn: async (ordered: Record<string, unknown>[]) => {
+      for (let i = 0; i < ordered.length; i++) {
+        if (Number(ordered[i].sort_order) === i + 1) continue;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase.from as any)(table.key)
+          .update({ sort_order: i + 1 }).eq("id", ordered[i].id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: [table.key] }); toast.success("Ordem atualizada"); },
+    onError: (e: Error) => { qc.invalidateQueries({ queryKey: [table.key] }); toast.error(e.message); },
+  });
+
+  const [locked, setLocked] = usePersistedState(`cadastros:lock:${table.key}`, true);
+  const [dragRows, setDragRows] = useState<Record<string, unknown>[] | null>(null);
+  const list = dragRows ?? rows;
+  const canDrag = !!table.reorderable && !locked;
+
+  const onDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const from = list.findIndex((r) => String(r.id) === active.id);
+    const to = list.findIndex((r) => String(r.id) === over.id);
+    if (from < 0 || to < 0) return;
+    const next = arrayMove(list, from, to);
+    setDragRows(next);
+    reorder.mutate(next, { onSettled: () => setDragRows(null) });
+  };
+
   const primaryField = table.fields[0].name;
   const secondaryField = table.fields[1]?.name;
 
@@ -153,6 +183,18 @@ function CrudTable({ table }: { table: typeof TABLES[number] }) {
     <Card className="p-4">
       <div className="flex justify-between items-center mb-4">
         <span className="text-sm text-muted-foreground">{rows.length} registro(s)</span>
+        <div className="flex items-center gap-2">
+        {table.reorderable && (
+          <Button
+            size="sm"
+            variant={locked ? "outline" : "secondary"}
+            onClick={() => setLocked(!locked)}
+            title={locked ? "Desbloquear ordenação" : "Bloquear ordenação"}
+          >
+            {locked ? <Lock className="h-4 w-4 mr-1" /> : <Unlock className="h-4 w-4 mr-1" />}
+            {locked ? "Ordem bloqueada" : "Ordem liberada"}
+          </Button>
+        )}
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
           <DialogTrigger asChild>
             <Button size="sm" onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-1" /> Novo</Button>
