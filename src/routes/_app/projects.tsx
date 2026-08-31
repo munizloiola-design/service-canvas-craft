@@ -311,6 +311,20 @@ function ProjectsPage() {
     [filteredProjects, allowedStatusIds],
   );
 
+  // Lista: membros veem por padrão apenas o que ainda não está entregue
+  // (conforme regra de início/conclusão da especialidade). Gerentes/admins
+  // mantêm a visão geral.
+  const [showDone, setShowDone] = usePersistedState<boolean>(
+    persistKey("projects", "show-done", user?.id),
+    isManager,
+  );
+  const listProjects = useMemo(
+    () => (isManager || showDone
+      ? stageVisibleProjects
+      : stageVisibleProjects.filter((p) => !stageRules.isDone(p.status_id))),
+    [stageVisibleProjects, isManager, showDone, stageRules],
+  );
+
   const filterOptions: Record<FilterKey, { value: string; label: string }[]> = {
     client: clients.map((c) => ({ value: c.id, label: c.name })),
     assignee: members.map((m) => ({ value: m.id, label: m.full_name })),
@@ -368,6 +382,16 @@ function ProjectsPage() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          {view === "list" && !isManager && (
+            <Button
+              variant={showDone ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setShowDone((v) => !v)}
+              title={showDone ? "Ocultar demandas entregues" : "Mostrar demandas entregues"}
+            >
+              <Eye className="h-4 w-4 mr-1" /> Entregues
+            </Button>
+          )}
           {view === "list" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
