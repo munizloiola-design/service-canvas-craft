@@ -616,6 +616,7 @@ function KanbanCard({ project: p, statuses, priorities: _priorities, maps, assig
   onDetail: (id: string) => void;
   onStatusChange: (id: string, status_id: string, from: string | null) => void;
 }) {
+  const cardMediaMap = useProjectMediaTypes();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: p.id, data: { from: p.status_id },
   });
