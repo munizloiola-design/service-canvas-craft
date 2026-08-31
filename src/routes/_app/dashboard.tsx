@@ -493,7 +493,28 @@ function StatsOverview() {
       quick: "atrasadas",
       filter: (p) => lateness.openLateIds.has(p.id),
     },
-
+    {
+      label: "Eficiência",
+      value: lateAll,
+      display: efficiency === null ? "—" : `${Math.round(efficiency * 100)}%`,
+      sub: efficiency === null ? undefined : `${onTime} de ${total} no prazo`,
+      valueClass:
+        efficiency === null ? undefined
+          : efficiency > 0.85 ? "text-success"
+          : efficiency >= 0.6 ? "text-warning"
+          : "text-destructive",
+      icon: Gauge,
+      color: "text-primary",
+      filter: (p) => lateness.lateIds.has(p.id),
+    },
+    {
+      label: "Correção",
+      value: correctionIds.size,
+      sub: "Voltaram de fase ou reprovadas",
+      icon: RotateCcw,
+      color: "text-warning",
+      filter: (p) => correctionIds.has(p.id),
+    },
   ];
 
 
