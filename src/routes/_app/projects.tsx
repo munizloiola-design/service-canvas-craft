@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,8 @@ import { useSectionGate, useStageGate, useStageRules } from "@/lib/access-sectio
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import { ProjectChat } from "@/components/ProjectChat";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
+import { MultiSelectFilter } from "@/components/MultiSelectFilter";
+import { useProjectMediaTypes, mediaIdsOf, syncProjectMediaTypes } from "@/lib/project-media-types";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
@@ -97,7 +99,16 @@ function comparePriorityThenDue(a: Project, b: Project, maps: Record<string, Map
 }
 
 type FilterKey = "client" | "assignee" | "status" | "priority" | "media" | "decision" | "due_from" | "due_to" | "post_from" | "post_to";
-type ActiveFilter = { key: FilterKey; value: string };
+type ActiveFilter = { key: FilterKey; values: string[] };
+const DATE_FILTERS: FilterKey[] = ["due_from", "due_to", "post_from", "post_to"];
+
+/** Aceita o formato antigo ({ value: string }) salvo no navegador. */
+function normalizeFilter(f: ActiveFilter | { key: FilterKey; value?: string }): ActiveFilter {
+  const values = (f as ActiveFilter).values;
+  if (Array.isArray(values)) return { key: f.key, values };
+  const legacy = (f as { value?: string }).value;
+  return { key: f.key, values: legacy ? [legacy] : [] };
+}
 
 const FILTER_LABELS: Record<FilterKey, string> = {
   client: "Cliente", assignee: "Responsável", status: "Etapa", priority: "Prioridade",
@@ -145,7 +156,8 @@ function ProjectsPage() {
     persistKey("projects", "cols", user?.id),
     ALL_COLUMNS.map((c) => c.key),
   );
-  const [filters, setFilters] = usePersistedState<ActiveFilter[]>(persistKey("projects", "filters", user?.id), []);
+  const [rawFilters, setFilters] = usePersistedState<ActiveFilter[]>(persistKey("projects", "filters", user?.id), []);
+  const filters = useMemo(() => rawFilters.map(normalizeFilter), [rawFilters]);
   const [query, setQuery] = usePersistedState<string>(persistKey("projects", "search", user?.id), "");
   const [quick, setQuick] = usePersistedState<QuickFilter | undefined>(
     persistKey("projects", "quick", user?.id),
@@ -243,6 +255,8 @@ function ProjectsPage() {
     [priorities],
   );
 
+  const projectMediaMap = useProjectMediaTypes();
+
   const filteredProjects = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     const isDone = (p: Project) => stageRules.isDone(p.status_id);
@@ -261,27 +275,33 @@ function ProjectsPage() {
       if (quick === "atrasadas" && (isDone(p) || !p.due_date || p.due_date >= today)) return false;
 
       for (const f of filters) {
-        if (!f.value) continue;
+        if (!f.values.length) continue;
+        const v0 = f.values[0];
+        const has = (val: string | null | undefined) => f.values.includes(val ?? "");
         switch (f.key) {
-          case "client": if (p.client_id !== f.value) return false; break;
-          case "status": if ((p.status_id ?? "") !== f.value) return false; break;
-          case "priority": if ((p.priority_id ?? "") !== f.value) return false; break;
-          case "media": if ((p.media_type_id ?? "") !== f.value) return false; break;
-          case "decision": if ((p.client_decision ?? "pending") !== f.value) return false; break;
-          case "assignee": {
-            const ass = assigneesByProject.get(p.id) ?? [];
-            if (!ass.some((a) => a.user_id === f.value)) return false;
+          case "client": if (!has(p.client_id)) return false; break;
+          case "status": if (!has(p.status_id)) return false; break;
+          case "priority": if (!has(p.priority_id)) return false; break;
+          case "media": {
+            const ids = mediaIdsOf(projectMediaMap, p);
+            if (!ids.some((id) => f.values.includes(id))) return false;
             break;
           }
-          case "due_from": if (!p.due_date || p.due_date < f.value) return false; break;
-          case "due_to": if (!p.due_date || p.due_date > f.value) return false; break;
-          case "post_from": if (!p.post_date || p.post_date < f.value) return false; break;
-          case "post_to": if (!p.post_date || p.post_date > f.value) return false; break;
+          case "decision": if (!has(p.client_decision ?? "pending")) return false; break;
+          case "assignee": {
+            const ass = assigneesByProject.get(p.id) ?? [];
+            if (!ass.some((a) => f.values.includes(a.user_id))) return false;
+            break;
+          }
+          case "due_from": if (!p.due_date || p.due_date < v0) return false; break;
+          case "due_to": if (!p.due_date || p.due_date > v0) return false; break;
+          case "post_from": if (!p.post_date || p.post_date < v0) return false; break;
+          case "post_to": if (!p.post_date || p.post_date > v0) return false; break;
         }
       }
       return true;
     });
-  }, [visibleProjects, filters, assigneesByProject, quick, stageRules, topPriorityId, query, maps]);
+  }, [visibleProjects, filters, assigneesByProject, quick, stageRules, topPriorityId, query, maps, projectMediaMap]);
 
 
   // Kanban e Lista só mostram demandas em fases liberadas
@@ -341,7 +361,7 @@ function ProjectsPage() {
               <DropdownMenuLabel>Adicionar filtro</DropdownMenuLabel>
               {(Object.keys(FILTER_LABELS) as FilterKey[]).map((k) => (
                 <DropdownMenuCheckboxItem key={k} checked={filters.some((f) => f.key === k)}
-                  onCheckedChange={(v) => setFilters((cur) => v ? [...cur, { key: k, value: "" }] : cur.filter((f) => f.key !== k))}>
+                  onCheckedChange={(v) => setFilters((cur) => v ? [...cur.map(normalizeFilter), { key: k, values: [] }] : cur.map(normalizeFilter).filter((f) => f.key !== k))}>
                   {FILTER_LABELS[k]}
                 </DropdownMenuCheckboxItem>
               ))}
@@ -403,16 +423,15 @@ function ProjectsPage() {
           {filters.map((f, i) => (
             <div key={`${f.key}-${i}`} className="flex items-center gap-1 bg-muted/50 rounded-md pl-2 pr-1 py-1">
               <span className="text-xs font-medium">{FILTER_LABELS[f.key]}:</span>
-              {f.key === "due_from" || f.key === "due_to" || f.key === "post_from" || f.key === "post_to" ? (
-                <Input type="date" value={f.value} className="h-7 text-xs w-36"
-                  onChange={(e) => setFilters((cur) => cur.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} />
+              {DATE_FILTERS.includes(f.key) ? (
+                <Input type="date" value={f.values[0] ?? ""} className="h-7 text-xs w-36"
+                  onChange={(e) => setFilters((cur) => cur.map(normalizeFilter).map((x, j) => j === i ? { ...x, values: e.target.value ? [e.target.value] : [] } : x))} />
               ) : (
-                <Select value={f.value} onValueChange={(v) => setFilters((cur) => cur.map((x, j) => j === i ? { ...x, value: v } : x))}>
-                  <SelectTrigger className="h-7 text-xs w-44"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                  <SelectContent>
-                    {filterOptions[f.key].map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <MultiSelectFilter
+                  options={filterOptions[f.key]}
+                  values={f.values}
+                  onChange={(vals) => setFilters((cur) => cur.map(normalizeFilter).map((x, j) => j === i ? { ...x, values: vals } : x))}
+                />
               )}
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
                 onClick={() => setFilters((cur) => cur.filter((_, j) => j !== i))}><X className="h-3 w-3" /></Button>
@@ -597,6 +616,7 @@ function KanbanCard({ project: p, statuses, priorities: _priorities, maps, assig
   onDetail: (id: string) => void;
   onStatusChange: (id: string, status_id: string, from: string | null) => void;
 }) {
+  const cardMediaMap = useProjectMediaTypes();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: p.id, data: { from: p.status_id },
   });
@@ -608,6 +628,7 @@ function KanbanCard({ project: p, statuses, priorities: _priorities, maps, assig
     touchAction: "none",
     ...(pr?.color ? { background: `${pr.color}1A`, borderLeft: `3px solid ${pr.color}` } : {}),
   };
+  const cardMediaIds = mediaIdsOf(cardMediaMap, p);
   return (
     <Card ref={setNodeRef} style={style} {...attributes} {...listeners}
       className="p-2.5 hover:shadow-md cursor-grab active:cursor-grabbing"
@@ -617,7 +638,13 @@ function KanbanCard({ project: p, statuses, priorities: _priorities, maps, assig
         {pr && canSee("priority" as never) && <Badge className="border-0 text-[10px] shrink-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge>}
       </div>
       {p.client_id && canSee("client_id" as never) && <p className="text-xs text-muted-foreground">{maps.client.get(p.client_id) as string}</p>}
-      {p.media_type_id && canSee("media_type" as never) && <span className="inline-block text-[10px] bg-secondary px-1.5 py-0.5 rounded mt-1">{maps.media.get(p.media_type_id) as string}</span>}
+      {canSee("media_type" as never) && cardMediaIds.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1">
+          {cardMediaIds.map((id) => (
+            <span key={id} className="inline-block text-[10px] bg-secondary px-1.5 py-0.5 rounded">{maps.media.get(id) as string}</span>
+          ))}
+        </div>
+      )}
       <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground mt-2">
         {p.due_date && canSee("due_date" as never) && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(p.due_date).toLocaleDateString("pt-BR")}</span>}
         {ass.length > 0 && <span>{ass.length} resp.</span>}
@@ -640,6 +667,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
   canManage?: boolean;
   onEdit?: (p: Project) => void;
 }) {
+  const listMediaMap = useProjectMediaTypes();
   const qc = useQueryClient();
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -649,6 +677,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["projects"] });
       qc.invalidateQueries({ queryKey: ["project_assignees"] });
+      qc.invalidateQueries({ queryKey: ["project_media_types"] });
       toast.success("Demanda excluída");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -677,7 +706,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
       switch (sort.key) {
         case "title": return p.title ?? "";
         case "client": return p.client_id ? txt(maps.client.get(p.client_id)) : "";
-        case "media": return p.media_type_id ? txt(maps.media.get(p.media_type_id)) : "";
+        case "media": return mediaIdsOf(listMediaMap, p).map((id) => txt(maps.media.get(id))).join(", ");
         case "status": {
           const st = p.status_id ? (maps.status.get(p.status_id) as { sort_order?: number } | undefined) : undefined;
           return st?.sort_order ?? Number.POSITIVE_INFINITY;
@@ -704,7 +733,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
       if (typeof va === "number" && typeof vb === "number") return (va - vb) * mul;
       return String(va).localeCompare(String(vb), "pt-BR") * mul;
     });
-  }, [projects, sort, maps, assigneesByProject]);
+  }, [projects, sort, maps, assigneesByProject, listMediaMap]);
 
   return (
     <Card className="overflow-x-auto">
@@ -737,7 +766,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
               <tr key={p.id} className="border-b hover:bg-muted/30">
                 {allowedCols.includes("title") && <td className="px-3 py-2 font-medium">{p.title}</td>}
                 {allowedCols.includes("client") && <td className="px-3 py-2 text-muted-foreground">{p.client_id ? (maps.client.get(p.client_id) as string) : "—"}</td>}
-                {allowedCols.includes("media") && <td className="px-3 py-2 text-muted-foreground">{p.media_type_id ? (maps.media.get(p.media_type_id) as string) : "—"}</td>}
+                {allowedCols.includes("media") && <td className="px-3 py-2 text-muted-foreground">{mediaIdsOf(listMediaMap, p).map((id) => maps.media.get(id) as string).filter(Boolean).join(", ") || "—"}</td>}
                 {allowedCols.includes("status") && <td className="px-3 py-2">{st ? <Badge className="border-0" style={{ background: `${st.color}25`, color: st.color }}>{st.name}</Badge> : "—"}</td>}
                 {allowedCols.includes("priority") && <td className="px-3 py-2">{pr ? <Badge className="border-0" style={{ background: `${pr.color}25`, color: pr.color }}>{pr.name}</Badge> : "—"}</td>}
                 {allowedCols.includes("assignees") && <td className="px-3 py-2 text-xs text-muted-foreground">{ass.map((a) => maps.member.get(a.user_id) as string ?? "?").join(", ") || "—"}</td>}
@@ -796,6 +825,17 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
       ? existingAssignees.map((a) => ({ user_id: a.user_id, role_id: a.role_id ?? "" }))
       : [{ user_id: "", role_id: "" }]
   );
+  const dialogMediaMap = useProjectMediaTypes();
+  const [mediaIds, setMediaIds] = useState<string[]>(
+    editProject ? mediaIdsOf(dialogMediaMap, editProject) : [],
+  );
+  const mediaLoaded = useRef(false);
+  useEffect(() => {
+    if (!editProject || mediaLoaded.current) return;
+    const ids = mediaIdsOf(dialogMediaMap, editProject);
+    if (ids.length) { mediaLoaded.current = true; setMediaIds(ids); }
+  }, [editProject, dialogMediaMap]);
+
   const [clientId, setClientId] = useState<string>(editProject?.client_id ?? "");
   const [lastAutoFilledClient, setLastAutoFilledClient] = useState<string>(editProject?.client_id ?? "");
   const [teamId, setTeamId] = useState<string>(editProject?.team_id ?? "");
@@ -911,7 +951,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         final_link: (finalLink.trim() || null),
         client_id: clientId || null,
         team_id: teamId || null,
-        media_type_id: (fd.get("media_type_id") as string) || null,
+        media_type_id: mediaIds[0] ?? null,
         status_id: (fd.get("status_id") as string) || null,
         priority_id: (fd.get("priority_id") as string) || null,
         start_date: (fd.get("start_date") as string) || null,
@@ -976,6 +1016,10 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         if (error) throw error;
       }
 
+      if (canSee("media_type") && canEdit("media_type")) {
+        await syncProjectMediaTypes(projectId, mediaIds);
+      }
+
       for (const file of files) {
         const path = `${projectId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
         const up = await supabase.storage.from("project-files").upload(path, file);
@@ -1035,7 +1079,23 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
             </Select>
           </Field>
           )}
-          {canSee("media_type") && <Field label="Tipo de mídia"><Select name="media_type_id" defaultValue={editProject?.media_type_id ?? undefined} disabled={ro("media_type")}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{mediaTypes.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></Field>}
+          {canSee("media_type") && (
+            <Field label="Tipo de mídia">
+              {ro("media_type") ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  {mediaIds.map((id) => mediaTypes.find((m) => m.id === id)?.name).filter(Boolean).join(", ") || "—"}
+                </p>
+              ) : (
+                <MultiSelectFilter
+                  className="h-10 w-full"
+                  placeholder="Selecione um ou mais"
+                  options={mediaTypes.map((m) => ({ value: m.id, label: m.name }))}
+                  values={mediaIds}
+                  onChange={setMediaIds}
+                />
+              )}
+            </Field>
+          )}
           <Field label="Etapa"><Select name="status_id" defaultValue={editProject?.status_id ?? statuses[0]?.id}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></Field>
           {canSee("priority") && <Field label="Prioridade"><Select name="priority_id" defaultValue={editProject?.priority_id ?? undefined} disabled={ro("priority")}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field>}
 
@@ -1278,6 +1338,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
   if (!project) return null;
   const validationUrl = project.client_token ? `${typeof window !== "undefined" ? window.location.origin : ""}/v/${project.client_token}` : null;
   const pr = project.priority_id ? (maps.priority.get(project.priority_id) as Priority | undefined) : null;
+  const detailMediaMap = useProjectMediaTypes();
 
   return (
     <Dialog open={!!project} onOpenChange={(o) => !o && onClose()}>
@@ -1293,7 +1354,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {canSee("client_id") && <Info label="Cliente" value={project.client_id ? (maps.client.get(project.client_id) as string) : "—"} />}
-            {canSee("media_type") && <Info label="Tipo de mídia" value={project.media_type_id ? (maps.media.get(project.media_type_id) as string) : "—"} />}
+            {canSee("media_type") && <Info label="Tipo de mídia" value={mediaIdsOf(detailMediaMap, project).map((id) => maps.media.get(id) as string).filter(Boolean).join(", ") || "—"} />}
             <div>
               <Label className="text-xs text-muted-foreground">Etapa</Label>
               <Select value={project.status_id ?? ""} onValueChange={(v) => updateField.mutate({ status_id: v })}>

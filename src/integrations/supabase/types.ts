@@ -1343,6 +1343,39 @@ export type Database = {
           },
         ]
       }
+      project_media_types: {
+        Row: {
+          created_at: string
+          media_type_id: string
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          media_type_id: string
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          media_type_id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_media_types_media_type_id_fkey"
+            columns: ["media_type_id"]
+            isOneToOne: false
+            referencedRelation: "media_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_media_types_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_roles: {
         Row: {
           created_at: string
