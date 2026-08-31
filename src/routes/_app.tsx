@@ -186,19 +186,21 @@ function AppLayout() {
       </nav>
 
       <div className="border-t border-sidebar-border p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{initials}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{user.email}</p>
-            <Badge variant="secondary" className="text-[10px] capitalize mt-0.5">{primaryRole}</Badge>
+        <div className="rounded-xl p-3 dark:bg-white/5 dark:border dark:border-white/10">
+          <div className="flex items-center gap-3 mb-3">
+            <Avatar className="h-9 w-9">
+              <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{initials}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user.email}</p>
+              <Badge variant="secondary" className="text-[10px] capitalize mt-0.5">{primaryRole}</Badge>
+            </div>
           </div>
+          <Button variant="ghost" size="sm" className="w-full justify-start"
+            onClick={async () => { await signOut(); navigate({ to: "/login" }); }}>
+            <LogOut className="h-4 w-4 mr-2" /> Sair
+          </Button>
         </div>
-        <Button variant="ghost" size="sm" className="w-full justify-start"
-          onClick={async () => { await signOut(); navigate({ to: "/login" }); }}>
-          <LogOut className="h-4 w-4 mr-2" /> Sair
-        </Button>
       </div>
     </>
   );
