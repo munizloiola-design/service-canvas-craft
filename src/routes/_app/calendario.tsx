@@ -133,6 +133,20 @@ function CalendarioPage() {
     if (data) window.open(data.signedUrl, "_blank");
   };
 
+  const removeAttachment = useMutation({
+    mutationFn: async (att: { id: string; file_path: string }) => {
+      await supabase.storage.from("project-files").remove([att.file_path]);
+      const { error } = await supabase.from("project_attachments").delete().eq("id", att.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["project_attachments_cal"] });
+      qc.invalidateQueries({ queryKey: ["attachments"] });
+      toast.success("Anexo removido");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const saveFinalLink = async () => {
     if (!detail) return;
     setSavingLink(true);
