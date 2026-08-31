@@ -1329,6 +1329,8 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const detailMediaMap = useProjectMediaTypes();
+
   const downloadFile = async (path: string) => {
     const { data, error } = await supabase.storage.from("project-files").createSignedUrl(path, 60);
     if (error) { toast.error(error.message); return; }
@@ -1338,7 +1340,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
   if (!project) return null;
   const validationUrl = project.client_token ? `${typeof window !== "undefined" ? window.location.origin : ""}/v/${project.client_token}` : null;
   const pr = project.priority_id ? (maps.priority.get(project.priority_id) as Priority | undefined) : null;
-  const detailMediaMap = useProjectMediaTypes();
+
 
   return (
     <Dialog open={!!project} onOpenChange={(o) => !o && onClose()}>
