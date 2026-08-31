@@ -246,7 +246,15 @@ function ProjectsPage() {
   const filteredProjects = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     const isDone = (p: Project) => stageRules.isDone(p.status_id);
+    const norm = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const term = norm(query.trim());
     return visibleProjects.filter((p) => {
+      if (term) {
+        const haystack = norm(
+          [p.title, maps.client.get(p.client_id ?? "") ?? "", p.caption ?? "", p.description ?? "", p.notes ?? ""].join(" "),
+        );
+        if (!haystack.includes(term)) return false;
+      }
       if (quick === "abertas" && isDone(p)) return false;
       if (quick === "concluidas" && !isDone(p)) return false;
       if (quick === "urgentes" && (isDone(p) || p.priority_id !== topPriorityId)) return false;
