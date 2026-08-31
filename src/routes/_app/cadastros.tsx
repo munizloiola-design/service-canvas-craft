@@ -239,32 +239,85 @@ function CrudTable({ table }: { table: typeof TABLES[number] }) {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
+      {table.reorderable && (
+        <p className="text-xs text-muted-foreground mb-2">
+          {locked ? "Clique no cadeado para liberar e reordenar as etapas arrastando." : "Arraste pelo ícone à esquerda para reordenar as etapas."}
+        </p>
+      )}
+
       <div className="border rounded-md divide-y">
-        {rows.length === 0 && <p className="p-4 md:p-8 text-center text-sm text-muted-foreground">Nenhum registro</p>}
-        {rows.map((r) => (
-          <div key={String(r.id)} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40">
-            {"color" in r && r.color ? (
-              <span className="h-4 w-4 rounded-full border shrink-0" style={{ background: String(r.color) }} />
-            ) : null}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{r[primaryField] != null ? String(r[primaryField]) : "—"}</p>
-              {secondaryField && r[secondaryField] != null && (
-                <p className="text-xs text-muted-foreground truncate">{String(r[secondaryField])}</p>
-              )}
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => { setEditing(r); setOpen(true); }}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive"
-              onClick={() => { if (confirm("Remover?")) remove.mutate(String(r.id)); }}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ))}
+        {list.length === 0 && <p className="p-4 md:p-8 text-center text-sm text-muted-foreground">Nenhum registro</p>}
+        <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={list.map((r) => String(r.id))} strategy={verticalListSortingStrategy}>
+            {list.map((r) => (
+              <CrudRow
+                key={String(r.id)}
+                row={r}
+                canDrag={canDrag}
+                primaryField={primaryField}
+                secondaryField={secondaryField}
+                onEdit={() => { setEditing(r); setOpen(true); }}
+                onRemove={() => { if (confirm("Remover?")) remove.mutate(String(r.id)); }}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
       </div>
     </Card>
+  );
+}
+
+function CrudRow({
+  row: r, canDrag, primaryField, secondaryField, onEdit, onRemove,
+}: {
+  row: Record<string, unknown>;
+  canDrag: boolean;
+  primaryField: string;
+  secondaryField?: string;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: String(r.id),
+    disabled: !canDrag,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }}
+      className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40 bg-card"
+    >
+      {canDrag && (
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground shrink-0"
+          aria-label="Reordenar"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      )}
+      {"color" in r && r.color ? (
+        <span className="h-4 w-4 rounded-full border shrink-0" style={{ background: String(r.color) }} />
+      ) : null}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{r[primaryField] != null ? String(r[primaryField]) : "—"}</p>
+        {secondaryField && r[secondaryField] != null && (
+          <p className="text-xs text-muted-foreground truncate">{String(r[secondaryField])}</p>
+        )}
+      </div>
+      <Button variant="ghost" size="sm" onClick={onEdit}>
+        <Pencil className="h-3.5 w-3.5" />
+      </Button>
+      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={onRemove}>
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+    </div>
   );
 }
 
