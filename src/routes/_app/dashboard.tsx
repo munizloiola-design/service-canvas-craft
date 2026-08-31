@@ -552,6 +552,13 @@ function StatsOverview() {
         return { barColor: "bg-destructive", dotColor: "bg-destructive", ratio };
       case "Atrasados":
         return { barColor: "bg-destructive", dotColor: "bg-destructive", ratio };
+      case "Eficiência": {
+        const eff = efficiency === null ? 0 : Math.round(efficiency * 100);
+        const color = efficiency === null ? "bg-muted-foreground" : efficiency > 0.85 ? "bg-success" : efficiency >= 0.6 ? "bg-warning" : "bg-destructive";
+        return { barColor: color, dotColor: color, ratio: eff };
+      }
+      case "Correção":
+        return { barColor: "bg-warning", dotColor: "bg-warning", ratio };
       default:
         return { barColor: "bg-primary", dotColor: "bg-primary", ratio };
     }
