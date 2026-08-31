@@ -466,14 +466,16 @@ function StatsOverview() {
   const onTime = Math.max(0, total - lateAll);
   const efficiency = total > 0 ? onTime / total : null;
 
-  // Correção = demandas que voltaram de fase ou foram reprovadas pelo cliente.
+  // Correção = demandas atualmente na fase de correção.
+  const correctionStatusId = useMemo(() => statuses.find((s) => s.name === "Correção")?.id, [statuses]);
   const correctionIds = useMemo(() => {
     const s = new Set<string>();
+    if (!correctionStatusId) return s;
     for (const p of projects) {
-      if (regressedIds.has(p.id) || (p as { client_decision?: string | null }).client_decision === "reprovado") s.add(p.id);
+      if (p.status_id === correctionStatusId) s.add(p.id);
     }
     return s;
-  }, [projects, regressedIds]);
+  }, [projects, correctionStatusId]);
 
 
 
@@ -530,7 +532,7 @@ function StatsOverview() {
     {
       label: "Correção",
       value: correctionIds.size,
-      sub: "Voltaram de fase ou reprovadas",
+      sub: "Na fase de correção",
       icon: RotateCcw,
       color: "text-warning",
       filter: (p) => correctionIds.has(p.id),
