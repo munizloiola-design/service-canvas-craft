@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccess } from "@/lib/access-context";
@@ -32,20 +33,22 @@ export function useStageGate() {
 export function useStageRules() {
   const { startStageOrder, doneStatusIds, statusOrder, finalStatusIds, isPrivileged } = useAccess();
 
-  const base = buildStageRules({ startStageOrder, doneStatusIds, statusOrder, finalStatusIds });
+  return useMemo(() => {
+    const base = buildStageRules({ startStageOrder, doneStatusIds, statusOrder, finalStatusIds });
 
-  const isStarted = (statusId: string | null | undefined) => {
-    if (isPrivileged) return true;
-    return base.isStarted(statusId);
-  };
+    const isStarted = (statusId: string | null | undefined) => {
+      if (isPrivileged) return true;
+      return base.isStarted(statusId);
+    };
 
-  const isDone = (statusId: string | null | undefined) => {
-    if (!statusId) return false;
-    if (!isPrivileged) return base.isDone(statusId);
-    return finalStatusIds.has(statusId);
-  };
+    const isDone = (statusId: string | null | undefined) => {
+      if (!statusId) return false;
+      if (!isPrivileged) return base.isDone(statusId);
+      return finalStatusIds.has(statusId);
+    };
 
-  return { ...base, isStarted, isDone };
+    return { ...base, isStarted, isDone };
+  }, [startStageOrder, doneStatusIds, statusOrder, finalStatusIds, isPrivileged]);
 }
 
 export type DateBasis = "due" | "post";
@@ -134,19 +137,21 @@ export function useStageRulesFor(userId: string | null | undefined) {
     },
   });
 
-  if (!userId || !data) return own;
+  return useMemo(() => {
+    if (!userId || !data) return own;
 
-  const startIds = Array.isArray(data.start) ? data.start : [];
-  const startStageOrder = startIds.length
-    ? Math.min(...startIds.map((id) => statusOrder.get(id) ?? 0))
-    : null;
-  return buildStageRules({
-    startStageOrder,
-    doneStatusIds: new Set(data.done),
-    statusOrder,
-    finalStatusIds,
-    dateBases: data.bases,
-  });
+    const startIds = Array.isArray(data.start) ? data.start : [];
+    const startStageOrder = startIds.length
+      ? Math.min(...startIds.map((id) => statusOrder.get(id) ?? 0))
+      : null;
+    return buildStageRules({
+      startStageOrder,
+      doneStatusIds: new Set(data.done),
+      statusOrder,
+      finalStatusIds,
+      dateBases: data.bases,
+    });
+  }, [userId, data, own, statusOrder, finalStatusIds]);
 }
 
 
