@@ -301,9 +301,9 @@ export function permissionTree(
       kind: "Seção",
     }));
     if (entry.key === FIELD_MENU) {
-      for (const s of stages ?? []) {
-        items.push({ key: stageKey(s.id), label: `Fase: ${s.name}`, kind: "Fase" });
-      }
+      (stages ?? []).forEach((s, idx) => {
+        items.push({ key: stageKey(s.id), label: `${idx + 1}. ${s.name}`, kind: "Fase" });
+      });
       for (const f of deriveFieldRegistry(projectColumns)) {
         items.push({ key: f.key, label: f.label, kind: "Campo" });
       }
