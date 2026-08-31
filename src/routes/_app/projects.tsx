@@ -475,7 +475,7 @@ function ProjectsPage() {
         </TabsContent>
 
         <TabsContent value="list" className="mt-4">
-          <ListView projects={stageVisibleProjects} visibleCols={visibleCols} maps={maps}
+          <ListView projects={listProjects} visibleCols={visibleCols} maps={maps}
             assigneesByProject={assigneesByProject} onDetail={setDetailId}
             canManage={canManageProjects}
             onEdit={(p) => { setEditingProject(p); setOpen(true); }} />
