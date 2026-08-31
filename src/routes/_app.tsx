@@ -152,15 +152,15 @@ function AppLayout() {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors border ${
                   indented ? "ml-2" : ""
                 } ${
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground dark:bg-primary/10 dark:text-primary dark:border-primary/20 border-transparent"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground border-transparent"
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className={`h-4 w-4 ${active ? "dark:text-primary" : ""}`} />
                 {item.label}
               </Link>
             );
@@ -186,19 +186,21 @@ function AppLayout() {
       </nav>
 
       <div className="border-t border-sidebar-border p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{initials}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{user.email}</p>
-            <Badge variant="secondary" className="text-[10px] capitalize mt-0.5">{primaryRole}</Badge>
+        <div className="rounded-xl p-3 dark:bg-white/5 dark:border dark:border-white/10">
+          <div className="flex items-center gap-3 mb-3">
+            <Avatar className="h-9 w-9">
+              <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{initials}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user.email}</p>
+              <Badge variant="secondary" className="text-[10px] capitalize mt-0.5">{primaryRole}</Badge>
+            </div>
           </div>
+          <Button variant="ghost" size="sm" className="w-full justify-start"
+            onClick={async () => { await signOut(); navigate({ to: "/login" }); }}>
+            <LogOut className="h-4 w-4 mr-2" /> Sair
+          </Button>
         </div>
-        <Button variant="ghost" size="sm" className="w-full justify-start"
-          onClick={async () => { await signOut(); navigate({ to: "/login" }); }}>
-          <LogOut className="h-4 w-4 mr-2" /> Sair
-        </Button>
       </div>
     </>
   );
@@ -213,7 +215,7 @@ function AppLayout() {
     <div className="min-h-screen flex">
       <aside
         style={sidebarStyle}
-        className={`hidden md:flex shrink-0 border-r border-white/30 dark:border-white/10 bg-white/55 dark:bg-white/5 backdrop-blur-xl text-sidebar-foreground flex-col overflow-hidden transition-[width] duration-200 shadow-[0_8px_32px_0_rgba(15,23,42,0.05)] ${
+        className={`hidden md:flex shrink-0 border-r border-white/30 dark:border-primary/15 bg-white/55 dark:!bg-sidebar/95 backdrop-blur-xl text-sidebar-foreground flex-col overflow-hidden transition-[width] duration-200 shadow-[0_8px_32px_0_rgba(15,23,42,0.05)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.35)] ${
           desktopCollapsed ? "w-0 border-r-0" : "w-64"
         }`}
       >
@@ -237,7 +239,7 @@ function AppLayout() {
       {/* Mobile topbar */}
       <header
         style={sidebarStyle}
-        className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-white/55 dark:bg-white/5 backdrop-blur-xl text-sidebar-foreground border-b border-white/30 dark:border-white/10 flex items-center justify-between px-3"
+        className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-white/55 dark:!bg-sidebar/95 backdrop-blur-xl text-sidebar-foreground border-b border-white/30 dark:border-primary/15 flex items-center justify-between px-3"
       >
         <div className="flex items-center gap-2">
           {branding.logo_url ? (
@@ -255,7 +257,7 @@ function AppLayout() {
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="h-9 w-9"><Menu className="h-5 w-5" /></Button>
             </SheetTrigger>
-            <SheetContent side="left" style={sidebarStyle} className="p-0 w-72 text-sidebar-foreground flex flex-col">
+            <SheetContent side="left" style={sidebarStyle} className="p-0 w-72 text-sidebar-foreground flex flex-col dark:!bg-sidebar/95 dark:border-primary/15">
               <SheetTitle className="sr-only">Menu</SheetTitle>
               {SidebarContent}
             </SheetContent>
