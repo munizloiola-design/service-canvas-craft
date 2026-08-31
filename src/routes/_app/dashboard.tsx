@@ -430,7 +430,9 @@ function useLateness<T extends { id: string; status_id?: string | null; due_date
 
 function StatsOverview() {
   const { menuAllowed } = useAccess();
+  const statsScopeUserId = useScopeUserId();
   const [openStat, setOpenStat] = useState<string | null>(null);
+
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-stats"],
     queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, post_date, assigned_to, client_id, team_id, client_decision, client_decided_at")).data ?? [],
