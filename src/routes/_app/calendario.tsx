@@ -159,6 +159,20 @@ function CalendarioPage() {
     toast.success("Link do material salvo");
   };
 
+  const removeDeliverable = useMutation({
+    mutationFn: async (path: string) => {
+      await supabase.storage.from("project-files").remove([path]);
+      const { error } = await supabase.from("projects").update({ deliverable_path: null }).eq("id", detail!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setDetail((d) => (d ? { ...d, deliverable_path: null } : d));
+      qc.invalidateQueries({ queryKey: ["projects-cal"] });
+      toast.success("Material removido");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const uploadDeliverable = async (file: File) => {
     if (!detail) return;
     setUploading(true);
@@ -600,9 +614,17 @@ function CalendarioPage() {
                       {detail.deliverable_path ? (
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-sm truncate">Arquivo enviado ✓</span>
-                          <Button variant="outline" size="sm" onClick={() => downloadFile(detail.deliverable_path!)}>
-                            <Download className="h-3.5 w-3.5 mr-1" /> Baixar
-                          </Button>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button variant="outline" size="sm" onClick={() => downloadFile(detail.deliverable_path!)}>
+                              <Download className="h-3.5 w-3.5 mr-1" /> Baixar
+                            </Button>
+                            {canEdit("deliverable_path") && (
+                              <Button variant="outline" size="sm" className="text-destructive" disabled={removeDeliverable.isPending}
+                                onClick={() => { if (confirm("Excluir o arquivo do material?")) removeDeliverable.mutate(detail.deliverable_path!); }}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       ) : (
                         !canEdit("deliverable_path") && <p className="text-xs text-muted-foreground">Nenhum arquivo enviado.</p>
