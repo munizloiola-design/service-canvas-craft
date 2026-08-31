@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter, Pencil, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Plus, Calendar, Trash2, Paperclip, Link as LinkIcon, Eye, Download, Copy, X, Columns3, Upload, Filter, Pencil, ArrowUp, ArrowDown, ArrowUpDown, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useFieldVisibility } from "@/lib/field-visibility";
 import { useAccess } from "@/lib/access-context";
@@ -303,7 +303,27 @@ function ProjectsPage() {
           <h1 className="text-3xl font-semibold tracking-tight">Demandas</h1>
           <p className="text-muted-foreground mt-1">Acompanhe o fluxo da agência ponta a ponta.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center flex-wrap">
+          <div className="relative">
+            <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Pesquisar demandas..."
+              className="h-9 pl-8 w-56"
+              aria-label="Pesquisar demandas"
+            />
+            {query && (
+              <button
+                type="button"
+                aria-label="Limpar pesquisa"
+                className="absolute right-2 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100"
+                onClick={() => setQuery("")}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm"><Filter className="h-4 w-4 mr-1" /> + Filtro</Button>
