@@ -154,7 +154,8 @@ function ProjectsPage() {
     persistKey("projects", "cols", user?.id),
     ALL_COLUMNS.map((c) => c.key),
   );
-  const [filters, setFilters] = usePersistedState<ActiveFilter[]>(persistKey("projects", "filters", user?.id), []);
+  const [rawFilters, setFilters] = usePersistedState<ActiveFilter[]>(persistKey("projects", "filters", user?.id), []);
+  const filters = useMemo(() => rawFilters.map(normalizeFilter), [rawFilters]);
   const [query, setQuery] = usePersistedState<string>(persistKey("projects", "search", user?.id), "");
   const [quick, setQuick] = usePersistedState<QuickFilter | undefined>(
     persistKey("projects", "quick", user?.id),
