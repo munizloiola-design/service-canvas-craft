@@ -14,7 +14,7 @@ export function useProjectMediaTypes() {
         .from("project_media_types" as any)
         .select("project_id, media_type_id");
       if (error) throw error;
-      return (data ?? []) as Row[];
+      return (data ?? []) as unknown as Row[];
     },
   });
 
