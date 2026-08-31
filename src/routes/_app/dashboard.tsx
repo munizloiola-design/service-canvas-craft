@@ -514,7 +514,10 @@ function StatsOverview() {
       label: "Eficiência",
       value: lateAll,
       display: efficiency === null ? "—" : `${Math.round(efficiency * 100)}%`,
-      sub: efficiency === null ? undefined : `${onTime} de ${total} no prazo`,
+      sub: efficiency === null
+        ? undefined
+        : `${onTime} de ${total} no prazo · ${statsScopeUserId ? "regras do perfil" : "etapa final do fluxo"}`,
+
       valueClass:
         efficiency === null ? undefined
           : efficiency > 0.85 ? "text-success"
