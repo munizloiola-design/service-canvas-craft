@@ -668,6 +668,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["projects"] });
       qc.invalidateQueries({ queryKey: ["project_assignees"] });
+      qc.invalidateQueries({ queryKey: ["project_media_types"] });
       toast.success("Demanda excluída");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -815,6 +816,17 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
       ? existingAssignees.map((a) => ({ user_id: a.user_id, role_id: a.role_id ?? "" }))
       : [{ user_id: "", role_id: "" }]
   );
+  const dialogMediaMap = useProjectMediaTypes();
+  const [mediaIds, setMediaIds] = useState<string[]>(
+    editProject ? mediaIdsOf(dialogMediaMap, editProject) : [],
+  );
+  const mediaLoaded = useRef(false);
+  useEffect(() => {
+    if (!editProject || mediaLoaded.current) return;
+    const ids = mediaIdsOf(dialogMediaMap, editProject);
+    if (ids.length) { mediaLoaded.current = true; setMediaIds(ids); }
+  }, [editProject, dialogMediaMap]);
+
   const [clientId, setClientId] = useState<string>(editProject?.client_id ?? "");
   const [lastAutoFilledClient, setLastAutoFilledClient] = useState<string>(editProject?.client_id ?? "");
   const [teamId, setTeamId] = useState<string>(editProject?.team_id ?? "");
@@ -930,7 +942,7 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         final_link: (finalLink.trim() || null),
         client_id: clientId || null,
         team_id: teamId || null,
-        media_type_id: (fd.get("media_type_id") as string) || null,
+        media_type_id: mediaIds[0] ?? null,
         status_id: (fd.get("status_id") as string) || null,
         priority_id: (fd.get("priority_id") as string) || null,
         start_date: (fd.get("start_date") as string) || null,
@@ -995,6 +1007,10 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         if (error) throw error;
       }
 
+      if (canSee("media_type") && canEdit("media_type")) {
+        await syncProjectMediaTypes(projectId, mediaIds);
+      }
+
       for (const file of files) {
         const path = `${projectId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
         const up = await supabase.storage.from("project-files").upload(path, file);
@@ -1054,7 +1070,23 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
             </Select>
           </Field>
           )}
-          {canSee("media_type") && <Field label="Tipo de mídia"><Select name="media_type_id" defaultValue={editProject?.media_type_id ?? undefined} disabled={ro("media_type")}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{mediaTypes.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></Field>}
+          {canSee("media_type") && (
+            <Field label="Tipo de mídia">
+              {ro("media_type") ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  {mediaIds.map((id) => mediaTypes.find((m) => m.id === id)?.name).filter(Boolean).join(", ") || "—"}
+                </p>
+              ) : (
+                <MultiSelectFilter
+                  className="h-10 w-full"
+                  placeholder="Selecione um ou mais"
+                  options={mediaTypes.map((m) => ({ value: m.id, label: m.name }))}
+                  values={mediaIds}
+                  onChange={setMediaIds}
+                />
+              )}
+            </Field>
+          )}
           <Field label="Etapa"><Select name="status_id" defaultValue={editProject?.status_id ?? statuses[0]?.id}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></Field>
           {canSee("priority") && <Field label="Prioridade"><Select name="priority_id" defaultValue={editProject?.priority_id ?? undefined} disabled={ro("priority")}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field>}
 
