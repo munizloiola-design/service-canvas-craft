@@ -444,7 +444,21 @@ function StatsOverview() {
   const overdue = lateness.openLateIds.size;
   const resolvedLate = lateness.resolvedLateIds.size;
 
-  // Taxa de eficiência desativada na tela (cálculo mantido em dashboard-efficiency.ts).
+  // Eficiência = demandas sem atraso ÷ total (considera atrasos já resolvidos).
+  const lateAll = lateness.lateIds.size;
+  const onTime = Math.max(0, total - lateAll);
+  const efficiency = total > 0 ? onTime / total : null;
+
+  // Correção = demandas que voltaram de fase ou foram reprovadas pelo cliente.
+  const correctionIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of projects) {
+      if (regressedIds.has(p.id) || (p as { client_decision?: string | null }).client_decision === "reprovado") s.add(p.id);
+    }
+    return s;
+  }, [projects, regressedIds]);
+
+
 
 
   const canProjects = menuAllowed("/projects");
