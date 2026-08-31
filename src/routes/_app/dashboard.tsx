@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, createContext, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useAccess } from "@/lib/access-context";
-import { useStageRulesFor } from "@/lib/access-sections";
+import { useStageRulesFor, useProjectDateBases, refDatesForBases } from "@/lib/access-sections";
 import { computeLateness } from "@/lib/dashboard-efficiency";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 
