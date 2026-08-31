@@ -511,9 +511,18 @@ function KanbanView({ projects, statuses, priorities, maps, assigneesByProject, 
     const to = String(over.id);
     if (to === (from ?? "__none__")) return;
     const newStatusId = to === "__none__" ? null : to;
-    // optimistic update
+    // optimistic update (also bump priority when entering "Correção" — DB trigger does it for real)
+    const toStatus = newStatusId ? (maps.status.get(newStatusId) as Status | undefined) : undefined;
+    const isCorrecao = !!toStatus && toStatus.name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase() === "correcao";
+    const alta = [...priorities].sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
+      .find((pr) => pr.name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase() === "alta");
     qc.setQueryData<Project[]>(["projects"], (old) =>
-      old ? old.map((p) => (p.id === active.id ? { ...p, status_id: newStatusId } : p)) : old,
+      old ? old.map((p) => {
+        if (p.id !== active.id) return p;
+        const cur = p.priority_id ? (maps.priority.get(p.priority_id) as Priority | undefined) : undefined;
+        const bump = isCorrecao && alta && ((cur?.level ?? 0) < (alta.level ?? 0));
+        return { ...p, status_id: newStatusId, priority_id: bump ? alta.id : p.priority_id };
+      }) : old,
     );
     if (newStatusId) updateStatus.mutate({ id: String(active.id), status_id: newStatusId, from });
   };
