@@ -9,8 +9,10 @@ export function useProjectMediaTypes() {
   const { data = [] } = useQuery({
     queryKey: ["project_media_types"],
     queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.from as any)("project_media_types").select("project_id, media_type_id");
+      const { data, error } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from("project_media_types" as any)
+        .select("project_id, media_type_id");
       if (error) throw error;
       return (data ?? []) as Row[];
     },
