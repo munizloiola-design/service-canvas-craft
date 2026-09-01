@@ -775,13 +775,7 @@ function CalendarioPage() {
       <CorrectionDeadlineDialog
         target={correctionTarget}
         onClose={() => setCorrectionTarget(null)}
-        onSaved={() => {
-          setCorrectionTarget(null);
-          qc.invalidateQueries({ queryKey: ["projects-cal"] });
-          if (correctionTarget && detail && correctionTarget.id === detail.id) {
-            setDetail(null);
-          }
-        }}
+        invalidateKeys={[["projects-cal"]]}
       />
     </div>
   );
