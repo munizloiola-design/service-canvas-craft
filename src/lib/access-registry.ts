@@ -174,6 +174,13 @@ export function stageKey(statusId: string) {
   return sectionKey("/projects", `stage:${statusId}`);
 }
 
+/** Chave de permissão de uma fase (etapa) no Calendário. */
+export function calendarStageKey(statusId: string) {
+  return sectionKey("/calendario", `stage:${statusId}`);
+}
+
+
+
 
 /** Seções de um menu; menus sem abas ganham um item único de acesso à página. */
 export function sectionsForMenu(menu: string): SectionEntry[] {
