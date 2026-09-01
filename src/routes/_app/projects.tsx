@@ -1588,6 +1588,8 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
         </div>
       </DialogContent>
     </Dialog>
+    </>
+
   );
 }
 
