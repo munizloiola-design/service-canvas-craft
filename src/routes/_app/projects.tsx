@@ -589,6 +589,8 @@ function KanbanView({ projects, statuses, priorities, maps, assigneesByProject, 
         })}
       </div>
     </DndContext>
+    </>
+
   );
 }
 
