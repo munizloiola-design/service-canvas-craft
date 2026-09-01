@@ -24,11 +24,15 @@ export function useStageGate() {
     !statusId || canViewSection("/projects", `stage:${statusId}`);
 }
 
-/** Gate das fases (etapas) exibidas no Calendário. */
+/**
+ * Gate das fases (etapas) exibidas no Calendário. Se a especialidade não tem
+ * regras próprias para o Calendário, herda as fases autorizadas em Demandas.
+ */
 export function useCalendarStageGate() {
-  const { canViewSection } = useAccess();
+  const { canViewSection, hasSectionRules } = useAccess();
+  const menu = hasSectionRules("/calendario") ? "/calendario" : "/projects";
   return (statusId: string | null | undefined) =>
-    !statusId || canViewSection("/calendario", `stage:${statusId}`);
+    !statusId || canViewSection(menu, `stage:${statusId}`);
 }
 
 

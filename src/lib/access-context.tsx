@@ -23,6 +23,7 @@ type Ctx = {
   canViewField: (key: string) => boolean;
   canEditField: (key: string) => boolean;
   canViewSection: (menu: string, section: string) => boolean;
+  hasSectionRules: (menu: string) => boolean;
   canEditSection: (menu: string, section: string) => boolean;
   refresh: () => Promise<void>;
 };
@@ -131,7 +132,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     !hasRulesFor(menu) || state.fieldEdit.has(sectionKey(menu, section));
 
   return (
-    <AccessContext.Provider value={{ ...state, isPrivileged, menuAllowed, canViewField, canEditField, canViewSection, canEditSection, refresh: load }}>
+    <AccessContext.Provider value={{ ...state, isPrivileged, menuAllowed, canViewField, canEditField, canViewSection, canEditSection, hasSectionRules: hasRulesFor, refresh: load }}>
 
       {children}
     </AccessContext.Provider>
