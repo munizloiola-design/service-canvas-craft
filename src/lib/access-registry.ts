@@ -315,6 +315,12 @@ export function permissionTree(
         items.push({ key: f.key, label: f.label, kind: "Campo" });
       }
     }
+    if (entry.key === "/calendario") {
+      (stages ?? []).forEach((s, idx) => {
+        items.push({ key: calendarStageKey(s.id), label: `${idx + 1}. ${s.name}`, kind: "Fase" });
+      });
+    }
+
     const group = entry.group ?? "Geral";
     const list = groups.get(group) ?? [];
     list.push({ entry, depth: depthOf(entry.key), areaAllowed: areaAllowed.has(entry.key), items });
