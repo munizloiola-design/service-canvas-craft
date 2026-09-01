@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.apply_auto_priority() FROM anon, authenticated, PUBLIC;
