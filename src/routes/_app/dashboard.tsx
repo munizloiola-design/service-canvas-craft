@@ -559,10 +559,16 @@ function StatsOverview() {
 
   const [totalStat, ...secondaryStats] = stats;
 
-  const totalSpark = useMemo(
-    () => [35, 55, 40, 70, 50, 80, 45],
-    [],
-  );
+  const totalSpark = useMemo(() => {
+    const counts: number[] = [];
+    const todayDate = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = format(subDays(todayDate, i), "yyyy-MM-dd");
+      counts.push(projects.filter((p) => p.created_at && p.created_at.startsWith(d)).length);
+    }
+    const max = Math.max(...counts, 1);
+    return counts.map((c) => Math.round((c / max) * 100));
+  }, [projects]);
 
   const secondaryMeta = (s: StatItem) => {
     const ratio = total > 0 ? Math.round((s.value / total) * 100) : 0;
