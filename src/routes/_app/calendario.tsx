@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { useSectionGate, useCalendarStageGate } from "@/lib/access-sections";
+import { useSectionGate, useCalendarStageGate, useStageGate } from "@/lib/access-sections";
 import { useDeliverables, uploadDeliverable, deleteDeliverable, openDeliverable, type Deliverable } from "@/lib/deliverables";
 import { useAuth } from "@/lib/auth-context";
 import { Badge } from "@/components/ui/badge";
@@ -104,6 +104,7 @@ function CalendarioPage() {
 
   const { canSee, canEdit } = useFieldVisibility();
   const canSeeCalendarStage = useCalendarStageGate();
+  const canSeeKanbanStage = useStageGate();
   const projectMediaMap = useProjectMediaTypes();
   const [linkDraft, setLinkDraft] = useState("");
   const [savingLink, setSavingLink] = useState(false);
@@ -264,6 +265,14 @@ function CalendarioPage() {
     () => statuses.filter((s) => canSeeCalendarStage(s.id)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [statuses, canSeeCalendarStage],
+  );
+
+  // No modal, a troca de etapa segue as fases liberadas no Kanban (Demandas),
+  // mais a etapa atual da demanda (para o seletor nunca ficar inválido).
+  const modalStatuses = useMemo(
+    () => statuses.filter((s) => canSeeKanbanStage(s.id) || s.id === detail?.status_id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [statuses, canSeeKanbanStage, detail?.status_id],
   );
 
   const priorityMap = useMemo(() => new Map(priorities.map((p) => [p.id, p])), [priorities]);
