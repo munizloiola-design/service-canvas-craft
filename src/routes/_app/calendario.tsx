@@ -164,33 +164,36 @@ function CalendarioPage() {
     toast.success("Link do material salvo");
   };
 
+  const { data: deliverables = [] } = useDeliverables(detail?.id);
+
   const removeDeliverable = useMutation({
-    mutationFn: async (path: string) => {
-      await supabase.storage.from("project-files").remove([path]);
-      const { error } = await supabase.from("projects").update({ deliverable_path: null }).eq("id", detail!.id);
-      if (error) throw error;
+    mutationFn: async (item: Deliverable) => {
+      await deleteDeliverable(detail!.id, item);
     },
     onSuccess: () => {
-      setDetail((d) => (d ? { ...d, deliverable_path: null } : d));
+      qc.invalidateQueries({ queryKey: ["project_deliverables", detail?.id] });
       qc.invalidateQueries({ queryKey: ["projects-cal"] });
       toast.success("Material removido");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const uploadDeliverable = async (file: File) => {
+  const uploadDeliverables = async (files: FileList) => {
     if (!detail) return;
     setUploading(true);
-    const path = `${detail.id}/deliverable-${Date.now()}-${file.name}`;
-    const up = await supabase.storage.from("project-files").upload(path, file);
-    if (up.error) { setUploading(false); toast.error("Falha no upload"); return; }
-    const { error } = await supabase.from("projects").update({ deliverable_path: path }).eq("id", detail.id);
+    for (const file of Array.from(files)) {
+      try {
+        await uploadDeliverable(detail.id, file, user?.id);
+      } catch {
+        toast.error(`Falha ao enviar ${file.name}`);
+      }
+    }
     setUploading(false);
-    if (error) { toast.error("Não foi possível salvar o arquivo"); return; }
-    setDetail({ ...detail, deliverable_path: path });
+    qc.invalidateQueries({ queryKey: ["project_deliverables", detail.id] });
     qc.invalidateQueries({ queryKey: ["projects-cal"] });
     toast.success("Material enviado");
   };
+
 
 
 
