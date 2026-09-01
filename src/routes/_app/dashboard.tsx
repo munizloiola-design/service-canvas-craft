@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, Cell } from "recharts";
 import {
-  format, subMonths, addMonths, startOfMonth, endOfMonth, differenceInYears, differenceInSeconds,
+  format, subMonths, addMonths, subDays, startOfMonth, endOfMonth, differenceInYears, differenceInSeconds,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -436,7 +436,7 @@ function StatsOverview() {
 
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-stats"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, post_date, assigned_to, client_id, team_id, client_decision, client_decided_at")).data ?? [],
+    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, post_date, assigned_to, client_id, team_id, client_decision, client_decided_at, created_at")).data ?? [],
   });
 
   const projects = useVisibleProjects(allProjects);
@@ -559,10 +559,16 @@ function StatsOverview() {
 
   const [totalStat, ...secondaryStats] = stats;
 
-  const totalSpark = useMemo(
-    () => [35, 55, 40, 70, 50, 80, 45],
-    [],
-  );
+  const totalSpark = useMemo(() => {
+    const counts: number[] = [];
+    const todayDate = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = format(subDays(todayDate, i), "yyyy-MM-dd");
+      counts.push(projects.filter((p) => p.created_at && p.created_at.startsWith(d)).length);
+    }
+    const max = Math.max(...counts, 1);
+    return counts.map((c) => Math.round((c / max) * 100));
+  }, [projects]);
 
   const secondaryMeta = (s: StatItem) => {
     const ratio = total > 0 ? Math.round((s.value / total) * 100) : 0;
@@ -604,7 +610,7 @@ function StatsOverview() {
                 </div>
               ))}
             </div>
-            <p className="text-xs text-primary mt-3 font-medium">Visão consolidada de todas as demandas</p>
+            <p className="text-xs text-primary mt-3 font-medium">Demandas criadas nos últimos 7 dias</p>
           </div>
         </div>
       </>
@@ -669,9 +675,6 @@ function StatsOverview() {
     <div className="glass rounded-2xl p-5 md:p-6">
       <div className="flex items-center justify-between mb-5">
         <h3 className="text-base font-semibold tracking-tight">Indicadores gerais</h3>
-        <span className="px-2.5 py-1 bg-primary/10 text-primary text-[10px] font-medium rounded-full border border-primary/20">
-          Atualizado agora
-        </span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
