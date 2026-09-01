@@ -331,7 +331,7 @@ export function PermissionTree({ areaId, specialtyId }: { areaId: string; specia
                           const cur = ruleMap.get(i.key);
                           const canView = cur?.can_view ?? false;
                           const canEdit = cur?.can_edit ?? false;
-                          const idx = i.kind === "Fase" ? stageIndex.get(i.key.split("#stage:")[1]) ?? null : null;
+                          const idx = i.kind === "Fase" && m.entry.key === "/projects" ? stageIndex.get(i.key.split("#stage:")[1]) ?? null : null;
                           const inOpenRange =
                             idx != null &&
                             (startIndex == null || idx >= startIndex) &&
@@ -365,7 +365,7 @@ export function PermissionTree({ areaId, specialtyId }: { areaId: string; specia
                                   />
                                   Editar
                                 </label>
-                              ) : i.kind === "Fase" ? (
+                              ) : i.kind === "Fase" && m.entry.key === "/projects" ? (
                                 (() => {
                                   const statusId = i.key.split("#stage:")[1];
                                   const sr = stageRuleMap.get(statusId);
