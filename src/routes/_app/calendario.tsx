@@ -216,7 +216,30 @@ function CalendarioPage() {
 
   const { data: statuses = [] } = useQuery({
     queryKey: ["workflow_statuses"],
-    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color")).data as Status[] ?? [],
+    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color").order("sort_order")).data as Status[] ?? [],
+  });
+  const visibleStatuses = useMemo(
+    () => statuses.filter((s) => canSeeCalendarStage(s.id)),
+    [statuses, canSeeCalendarStage],
+  );
+
+  // Troca de etapa direto no modal; entrar em Correção pergunta sobre o prazo
+  const [correctionTarget, setCorrectionTarget] = useState<{ id: string; title: string; due_date: string | null } | null>(null);
+  const changeStatus = useMutation({
+    mutationFn: async ({ id, status_id }: { id: string; status_id: string }) => {
+      const { error } = await supabase.from("projects").update({ status_id }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      const st = statusMap.get(vars.status_id);
+      setDetail((cur) => (cur && cur.id === vars.id ? { ...cur, status_id: vars.status_id } : cur));
+      qc.invalidateQueries({ queryKey: ["projects-cal"] });
+      toast.success("Etapa atualizada");
+      if (isCorrecaoStatus(st?.name) && detail) {
+        setCorrectionTarget({ id: detail.id, title: detail.title, due_date: detail.due_date });
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
