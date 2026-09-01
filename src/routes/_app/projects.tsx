@@ -1146,14 +1146,14 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
             </Field>
           )}
           <Field label="Etapa"><Select name="status_id" defaultValue={editProject?.status_id ?? statuses[0]?.id}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></Field>
-          {canSee("priority") && <Field label="Prioridade"><Select name="priority_id" defaultValue={editProject?.priority_id ?? undefined} disabled={ro("priority")}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field>}
+          {canSee("priority") && <Field label="Prioridade"><Select name="priority_id" value={priorityValue} onValueChange={(v) => { setPriorityValue(v); setPriorityAuto(false); }} disabled={ro("priority")}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>{priorityAuto && priorityValue && <p className="text-[11px] text-muted-foreground mt-1">Sugerido pela data</p>}</Field>}
 
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {canSee("start_date") && <Field label="Início"><Input name="start_date" type="date" defaultValue={editProject?.start_date ?? ""} readOnly={ro("start_date")} /></Field>}
-          {canSee("due_date") && <Field label="Prazo"><Input name="due_date" type="date" defaultValue={editProject?.due_date ?? ""} readOnly={ro("due_date")} /></Field>}
-          {canSee("post_date") && <Field label="Postagem"><Input name="post_date" type="date" defaultValue={editProject?.post_date ?? ""} readOnly={ro("post_date")} /></Field>}
+          {canSee("due_date") && <Field label="Prazo"><Input name="due_date" type="date" value={dueDate} onChange={(e) => { setDueDate(e.target.value); applySuggestion(postDate, e.target.value); }} readOnly={ro("due_date")} /></Field>}
+          {canSee("post_date") && <Field label="Postagem"><Input name="post_date" type="date" value={postDate} onChange={(e) => { setPostDate(e.target.value); applySuggestion(e.target.value, dueDate); }} readOnly={ro("post_date")} /></Field>}
         </div>
 
         {canSee("budget") && <Field label="Valor (R$)"><Input name="budget" type="number" step="0.01" defaultValue={editProject?.budget ?? ""} readOnly={ro("budget")} /></Field>}
