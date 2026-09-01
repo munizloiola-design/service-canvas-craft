@@ -1357,26 +1357,36 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const uploadDeliverable = async (file: File) => {
+  const { data: deliverables = [] } = useDeliverables(project?.id);
+  const [uploadingDeliverable, setUploadingDeliverable] = useState(false);
+
+  const uploadDeliverables = async (files: FileList) => {
     if (!project) return;
-    const path = `${project.id}/deliverable_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-    const up = await supabase.storage.from("project-files").upload(path, file);
-    if (up.error) { toast.error(up.error.message); return; }
-    updateField.mutate({ deliverable_path: path });
+    setUploadingDeliverable(true);
+    for (const file of Array.from(files)) {
+      try {
+        await uploadDeliverableFile(project.id, file);
+      } catch {
+        toast.error(`Falha ao enviar ${file.name}`);
+      }
+    }
+    setUploadingDeliverable(false);
+    qc.invalidateQueries({ queryKey: ["project_deliverables", project.id] });
+    qc.invalidateQueries({ queryKey: ["projects"] });
+    toast.success("Material enviado");
   };
 
   const removeDeliverable = useMutation({
-    mutationFn: async (path: string) => {
-      await supabase.storage.from("project-files").remove([path]);
-      const { error } = await supabase.from("projects").update({ deliverable_path: null }).eq("id", project!.id);
-      if (error) throw error;
-    },
+    mutationFn: async (item: Deliverable) => { await deleteDeliverable(project!.id, item); },
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["project_deliverables", project?.id] });
       qc.invalidateQueries({ queryKey: ["projects"] });
       toast.success("Material removido");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const [correctionDetail, setCorrectionDetail] = useState<CorrectionTarget | null>(null);
 
   const detailMediaMap = useProjectMediaTypes();
 
@@ -1392,6 +1402,8 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
 
 
   return (
+    <>
+    <CorrectionDeadlineDialog target={correctionDetail} onClose={() => setCorrectionDetail(null)} />
     <Dialog open={!!project} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{project.title}</DialogTitle></DialogHeader>
@@ -1408,7 +1420,13 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
             {canSee("media_type") && <Info label="Tipo de mídia" value={mediaIdsOf(detailMediaMap, project).map((id) => maps.media.get(id) as string).filter(Boolean).join(", ") || "—"} />}
             <div>
               <Label className="text-xs text-muted-foreground">Etapa</Label>
-              <Select value={project.status_id ?? ""} onValueChange={(v) => updateField.mutate({ status_id: v })}>
+              <Select value={project.status_id ?? ""} onValueChange={(v) => {
+                updateField.mutate({ status_id: v });
+                const st = statuses.find((x) => x.id === v);
+                if (isCorrecaoStatus(st?.name) && canEdit("due_date")) {
+                  setCorrectionDetail({ id: project.id, title: project.title, due_date: project.due_date });
+                }
+              }}>
                 <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
               </Select>
@@ -1511,21 +1529,31 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
           {canSee("deliverable_path") && (
             <div className="border rounded-md p-3 bg-muted/30 space-y-2">
               <Label className="text-xs uppercase">Material para o cliente</Label>
-              {project.deliverable_path ? (
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm truncate">Arquivo enviado ✓</span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button variant="outline" size="sm" onClick={() => downloadFile(project.deliverable_path!)}><Download className="h-3.5 w-3.5 mr-1" /> Baixar</Button>
-                    {canEdit("deliverable_path") && (
-                      <Button variant="outline" size="sm" className="text-destructive" disabled={removeDeliverable.isPending}
-                        onClick={() => { if (confirm("Excluir o arquivo do material?")) removeDeliverable.mutate(project.deliverable_path!); }}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <Input type="file" onChange={(e) => e.target.files?.[0] && uploadDeliverable(e.target.files[0])} />
+              {deliverables.length > 0 && (
+                <ul className="space-y-1">
+                  {deliverables.map((d) => (
+                    <li key={d.id} className="flex items-center justify-between gap-2 p-2 rounded bg-background/60">
+                      <span className="text-sm truncate">{d.file_name}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Button variant="outline" size="sm" onClick={() => openDeliverable(d.file_path)}><Download className="h-3.5 w-3.5 mr-1" /> Baixar</Button>
+                        {canEdit("deliverable_path") && (
+                          <Button variant="outline" size="sm" className="text-destructive" disabled={removeDeliverable.isPending}
+                            aria-label={`Excluir ${d.file_name}`}
+                            onClick={() => { if (confirm(`Excluir ${d.file_name}?`)) removeDeliverable.mutate(d); }}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {canEdit("deliverable_path") && (
+                <Input type="file" multiple disabled={uploadingDeliverable}
+                  onChange={(e) => e.target.files?.length && uploadDeliverables(e.target.files)} />
+              )}
+              {deliverables.length === 0 && !canEdit("deliverable_path") && (
+                <p className="text-xs text-muted-foreground">Nenhum arquivo enviado.</p>
               )}
 
               {validationUrl && (
