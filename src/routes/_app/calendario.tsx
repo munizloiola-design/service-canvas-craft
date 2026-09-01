@@ -24,6 +24,7 @@ import { useFieldVisibility } from "@/lib/field-visibility";
 import { MultiSelectFilter } from "@/components/MultiSelectFilter";
 import { useProjectMediaTypes, mediaIdsOf } from "@/lib/project-media-types";
 import { toast } from "sonner";
+import { CorrectionDeadlineDialog, isCorrecaoStatus } from "@/components/CorrectionDeadlineDialog";
 
 type CalSearch = { resp: string; equipe: string; cliente: string; fase: string; prioridade: string };
 
@@ -607,15 +608,43 @@ function CalendarioPage() {
             <div className="space-y-3 text-sm overflow-y-auto px-6 py-4 flex-1 min-h-0">
               <div className="flex flex-wrap gap-2">
                 {detail.status_id && statusMap.get(detail.status_id) && (
-                  <Badge
-                    className="border-0"
-                    style={{
-                      background: `${statusMap.get(detail.status_id)!.color}25`,
-                      color: statusMap.get(detail.status_id)!.color,
-                    }}
-                  >
-                    {statusMap.get(detail.status_id)!.name}
-                  </Badge>
+                  canEdit("status_id") ? (
+                    <Select
+                      value={detail.status_id}
+                      onValueChange={(v) => v !== detail.status_id && changeStatus.mutate({ id: detail.id, status_id: v })}
+                      disabled={changeStatus.isPending}
+                    >
+                      <SelectTrigger
+                        className="h-6 w-auto gap-1.5 rounded-full border-0 px-2.5 text-xs font-medium"
+                        style={{
+                          background: `${statusMap.get(detail.status_id)!.color}25`,
+                          color: statusMap.get(detail.status_id)!.color,
+                        }}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {visibleStatuses.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            <span className="inline-flex items-center gap-2">
+                              <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+                              {s.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge
+                      className="border-0"
+                      style={{
+                        background: `${statusMap.get(detail.status_id)!.color}25`,
+                        color: statusMap.get(detail.status_id)!.color,
+                      }}
+                    >
+                      {statusMap.get(detail.status_id)!.name}
+                    </Badge>
+                  )
                 )}
                 {detail.client_id && <Badge variant="secondary">{clientMap.get(detail.client_id) ?? "Cliente"}</Badge>}
                 {canSee("media_type") && mediaIdsOf(projectMediaMap, detail).map((id) => mediaMap.get(id)).filter(Boolean).length > 0 && (
