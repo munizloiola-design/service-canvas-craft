@@ -24,6 +24,7 @@ import { useFieldVisibility } from "@/lib/field-visibility";
 import { MultiSelectFilter } from "@/components/MultiSelectFilter";
 import { useProjectMediaTypes, mediaIdsOf } from "@/lib/project-media-types";
 import { toast } from "sonner";
+import { CorrectionDeadlineDialog, isCorrecaoStatus } from "@/components/CorrectionDeadlineDialog";
 
 type CalSearch = { resp: string; equipe: string; cliente: string; fase: string; prioridade: string };
 
@@ -216,7 +217,25 @@ function CalendarioPage() {
 
   const { data: statuses = [] } = useQuery({
     queryKey: ["workflow_statuses"],
-    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color")).data as Status[] ?? [],
+    queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color").order("sort_order")).data as Status[] ?? [],
+  });
+  // Troca de etapa direto no modal; entrar em Correção pergunta sobre o prazo
+  const [correctionTarget, setCorrectionTarget] = useState<{ id: string; title: string; due_date: string | null } | null>(null);
+  const changeStatus = useMutation({
+    mutationFn: async ({ id, status_id }: { id: string; status_id: string }) => {
+      const { error } = await supabase.from("projects").update({ status_id }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      const st = statusMap.get(vars.status_id);
+      setDetail((cur) => (cur && cur.id === vars.id ? { ...cur, status_id: vars.status_id } : cur));
+      qc.invalidateQueries({ queryKey: ["projects-cal"] });
+      toast.success("Etapa atualizada");
+      if (isCorrecaoStatus(st?.name) && detail) {
+        setCorrectionTarget({ id: detail.id, title: detail.title, due_date: detail.due_date });
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
@@ -584,15 +603,31 @@ function CalendarioPage() {
             <div className="space-y-3 text-sm overflow-y-auto px-6 py-4 flex-1 min-h-0">
               <div className="flex flex-wrap gap-2">
                 {detail.status_id && statusMap.get(detail.status_id) && (
-                  <Badge
-                    className="border-0"
-                    style={{
-                      background: `${statusMap.get(detail.status_id)!.color}25`,
-                      color: statusMap.get(detail.status_id)!.color,
-                    }}
+                  <Select
+                    value={detail.status_id}
+                    onValueChange={(v) => v !== detail.status_id && changeStatus.mutate({ id: detail.id, status_id: v })}
+                    disabled={changeStatus.isPending}
                   >
-                    {statusMap.get(detail.status_id)!.name}
-                  </Badge>
+                    <SelectTrigger
+                      className="h-6 w-auto gap-1.5 rounded-full border-0 px-2.5 text-xs font-medium"
+                      style={{
+                        background: `${statusMap.get(detail.status_id)!.color}25`,
+                        color: statusMap.get(detail.status_id)!.color,
+                      }}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {visibleStatuses.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          <span className="inline-flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+                            {s.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
                 {detail.client_id && <Badge variant="secondary">{clientMap.get(detail.client_id) ?? "Cliente"}</Badge>}
                 {canSee("media_type") && mediaIdsOf(projectMediaMap, detail).map((id) => mediaMap.get(id)).filter(Boolean).length > 0 && (
@@ -719,6 +754,12 @@ function CalendarioPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CorrectionDeadlineDialog
+        target={correctionTarget}
+        onClose={() => setCorrectionTarget(null)}
+        invalidateKeys={[["projects-cal"]]}
+      />
     </div>
   );
 }
