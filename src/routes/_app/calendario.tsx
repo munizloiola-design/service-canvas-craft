@@ -627,7 +627,7 @@ function CalendarioPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {visibleStatuses.map((s) => (
+                      {modalStatuses.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           <span className="inline-flex items-center gap-2">
                             <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
