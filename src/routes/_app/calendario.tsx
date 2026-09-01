@@ -219,11 +219,6 @@ function CalendarioPage() {
     queryKey: ["workflow_statuses"],
     queryFn: async () => (await supabase.from("workflow_statuses").select("id, name, color").order("sort_order")).data as Status[] ?? [],
   });
-  const visibleStatuses = useMemo(
-    () => statuses.filter((s) => canSeeCalendarStage(s.id)),
-    [statuses, canSeeCalendarStage],
-  );
-
   // Troca de etapa direto no modal; entrar em Correção pergunta sobre o prazo
   const [correctionTarget, setCorrectionTarget] = useState<{ id: string; title: string; due_date: string | null } | null>(null);
   const changeStatus = useMutation({
