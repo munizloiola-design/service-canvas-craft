@@ -436,7 +436,7 @@ function StatsOverview() {
 
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-stats"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, post_date, assigned_to, client_id, team_id, client_decision, client_decided_at")).data ?? [],
+    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, post_date, assigned_to, client_id, team_id, client_decision, client_decided_at, created_at")).data ?? [],
   });
 
   const projects = useVisibleProjects(allProjects);
