@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, Cell } from "recharts";
 import {
-  format, subMonths, addMonths, startOfMonth, endOfMonth, differenceInYears, differenceInSeconds,
+  format, subMonths, addMonths, subDays, startOfMonth, endOfMonth, differenceInYears, differenceInSeconds,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
