@@ -675,9 +675,6 @@ function StatsOverview() {
     <div className="glass rounded-2xl p-5 md:p-6">
       <div className="flex items-center justify-between mb-5">
         <h3 className="text-base font-semibold tracking-tight">Indicadores gerais</h3>
-        <span className="px-2.5 py-1 bg-primary/10 text-primary text-[10px] font-medium rounded-full border border-primary/20">
-          Atualizado agora
-        </span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
