@@ -13,11 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { useSectionGate } from "@/lib/access-sections";
+import { useSectionGate, useCalendarStageGate } from "@/lib/access-sections";
+import { useDeliverables, uploadDeliverable, deleteDeliverable, openDeliverable, type Deliverable } from "@/lib/deliverables";
 import { useAuth } from "@/lib/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, ExternalLink, X, Link as LinkIcon, Paperclip, Download, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ExternalLink, X, Link as LinkIcon, Paperclip, Download, Trash2 } from "lucide-react";
 import { ProjectChat } from "@/components/ProjectChat";
 import { useFieldVisibility } from "@/lib/field-visibility";
 import { MultiSelectFilter } from "@/components/MultiSelectFilter";
@@ -101,10 +102,12 @@ function CalendarioPage() {
   const qc = useQueryClient();
 
   const { canSee, canEdit } = useFieldVisibility();
+  const canSeeCalendarStage = useCalendarStageGate();
   const projectMediaMap = useProjectMediaTypes();
   const [linkDraft, setLinkDraft] = useState("");
   const [savingLink, setSavingLink] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [legendOpen, setLegendOpen] = usePersistedState<boolean>(persistKey("calendario", "legend", user?.id), true);
 
   const openDetail = (p: Project) => {
     setLinkDraft(p.final_link ?? "");
@@ -164,33 +167,36 @@ function CalendarioPage() {
     toast.success("Link do material salvo");
   };
 
+  const { data: deliverables = [] } = useDeliverables(detail?.id);
+
   const removeDeliverable = useMutation({
-    mutationFn: async (path: string) => {
-      await supabase.storage.from("project-files").remove([path]);
-      const { error } = await supabase.from("projects").update({ deliverable_path: null }).eq("id", detail!.id);
-      if (error) throw error;
+    mutationFn: async (item: Deliverable) => {
+      await deleteDeliverable(detail!.id, item);
     },
     onSuccess: () => {
-      setDetail((d) => (d ? { ...d, deliverable_path: null } : d));
+      qc.invalidateQueries({ queryKey: ["project_deliverables", detail?.id] });
       qc.invalidateQueries({ queryKey: ["projects-cal"] });
       toast.success("Material removido");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const uploadDeliverable = async (file: File) => {
+  const uploadDeliverables = async (files: FileList) => {
     if (!detail) return;
     setUploading(true);
-    const path = `${detail.id}/deliverable-${Date.now()}-${file.name}`;
-    const up = await supabase.storage.from("project-files").upload(path, file);
-    if (up.error) { setUploading(false); toast.error("Falha no upload"); return; }
-    const { error } = await supabase.from("projects").update({ deliverable_path: path }).eq("id", detail.id);
+    for (const file of Array.from(files)) {
+      try {
+        await uploadDeliverable(detail.id, file, user?.id);
+      } catch {
+        toast.error(`Falha ao enviar ${file.name}`);
+      }
+    }
     setUploading(false);
-    if (error) { toast.error("Não foi possível salvar o arquivo"); return; }
-    setDetail({ ...detail, deliverable_path: path });
+    qc.invalidateQueries({ queryKey: ["project_deliverables", detail.id] });
     qc.invalidateQueries({ queryKey: ["projects-cal"] });
     toast.success("Material enviado");
   };
+
 
 
 
@@ -201,10 +207,12 @@ function CalendarioPage() {
   });
   // Visibilidade: usuários comuns veem apenas demandas onde estão marcados
   const projects = useMemo(() => {
-    if (isManager || !user) return allProjects;
+    const visible = allProjects.filter((p) => canSeeCalendarStage(p.status_id));
+    if (isManager || !user) return visible;
     const mine = new Set(assignees.filter((a) => a.user_id === user.id).map((a) => a.project_id));
-    return allProjects.filter((p) => p.assigned_to === user.id || mine.has(p.id));
-  }, [allProjects, assignees, isManager, user]);
+    return visible.filter((p) => p.assigned_to === user.id || mine.has(p.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allProjects, assignees, isManager, user, canSeeCalendarStage]);
 
   const { data: statuses = [] } = useQuery({
     queryKey: ["workflow_statuses"],
@@ -232,6 +240,12 @@ function CalendarioPage() {
     queryFn: async () =>
       ((await supabase.from("teams").select("id, name").order("name")).data ?? []) as { id: string; name: string }[],
   });
+
+  const visibleStatuses = useMemo(
+    () => statuses.filter((s) => canSeeCalendarStage(s.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [statuses, canSeeCalendarStage],
+  );
 
   const priorityMap = useMemo(() => new Map(priorities.map((p) => [p.id, p])), [priorities]);
 
@@ -415,7 +429,7 @@ function CalendarioPage() {
               options={clients.map((c) => ({ value: c.id, label: c.name }))}
               values={listOf(search.cliente)} onChange={(v) => setMulti("cliente", v)} />
             <MultiSelectFilter className="h-10 w-full" placeholder="Todas as fases"
-              options={statuses.map((st) => ({ value: st.id, label: st.name }))}
+              options={visibleStatuses.map((st) => ({ value: st.id, label: st.name }))}
               values={listOf(search.fase)} onChange={(v) => setMulti("fase", v)} />
             <MultiSelectFilter className="h-10 w-full" placeholder="Todas as prioridades"
               options={priorities.map((p) => ({ value: p.id, label: p.name }))}
@@ -433,6 +447,36 @@ function CalendarioPage() {
       )}
 
 
+
+      <Card className="p-3 mb-4">
+        <button type="button" className="flex items-center gap-2 text-xs font-medium text-muted-foreground"
+          onClick={() => setLegendOpen((o) => !o)}>
+          {legendOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          Legenda de cores
+        </button>
+        {legendOpen && (
+          <div className="mt-3 space-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-[11px] uppercase text-muted-foreground w-16">Fluxo</span>
+              {visibleStatuses.map((st) => (
+                <span key={st.id} className="inline-flex items-center gap-1.5 text-xs">
+                  <span className="h-2.5 w-2.5 rounded-sm" style={{ background: `${st.color}` }} />
+                  {st.name}
+                </span>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-[11px] uppercase text-muted-foreground w-16">Prioridade</span>
+              {priorities.map((p) => (
+                <span key={p.id} className="inline-flex items-center gap-1.5 text-xs">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />
+                  {p.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </Card>
 
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
@@ -606,29 +650,33 @@ function CalendarioPage() {
                   <p className="text-xs uppercase text-muted-foreground">Material do cliente</p>
                   {canSee("deliverable_path") && (
                     <div className="space-y-2">
-                      {detail.deliverable_path ? (
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm truncate">Arquivo enviado ✓</span>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <Button variant="outline" size="sm" onClick={() => downloadFile(detail.deliverable_path!)}>
-                              <Download className="h-3.5 w-3.5 mr-1" /> Baixar
-                            </Button>
-                            {canEdit("deliverable_path") && (
-                              <Button variant="outline" size="sm" className="text-destructive" disabled={removeDeliverable.isPending}
-                                onClick={() => { if (confirm("Excluir o arquivo do material?")) removeDeliverable.mutate(detail.deliverable_path!); }}>
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
+                      {deliverables.length === 0 ? (
                         !canEdit("deliverable_path") && <p className="text-xs text-muted-foreground">Nenhum arquivo enviado.</p>
+                      ) : (
+                        <ul className="space-y-1">
+                          {deliverables.map((d) => (
+                            <li key={d.id} className="flex items-center justify-between gap-2 p-2 rounded bg-muted/50">
+                              <span className="inline-flex items-center gap-2 truncate"><Paperclip className="h-3.5 w-3.5" /><span className="truncate">{d.file_name}</span></span>
+                              <span className="flex items-center gap-1 shrink-0">
+                                <Button variant="ghost" size="sm" onClick={() => openDeliverable(d.file_path)}><Download className="h-3.5 w-3.5" /></Button>
+                                {canEdit("deliverable_path") && (
+                                  <Button variant="ghost" size="sm" className="text-destructive" disabled={removeDeliverable.isPending}
+                                    aria-label={`Excluir ${d.file_name}`}
+                                    onClick={() => { if (confirm(`Excluir ${d.file_name}?`)) removeDeliverable.mutate(d); }}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
                       )}
                       {canEdit("deliverable_path") && (
                         <Input
                           type="file"
+                          multiple
                           disabled={uploading}
-                          onChange={(e) => e.target.files?.[0] && uploadDeliverable(e.target.files[0])}
+                          onChange={(e) => e.target.files?.length && uploadDeliverables(e.target.files)}
                         />
                       )}
                     </div>

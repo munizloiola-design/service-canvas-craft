@@ -174,6 +174,13 @@ export function stageKey(statusId: string) {
   return sectionKey("/projects", `stage:${statusId}`);
 }
 
+/** Chave de permissão de uma fase (etapa) no Calendário. */
+export function calendarStageKey(statusId: string) {
+  return sectionKey("/calendario", `stage:${statusId}`);
+}
+
+
+
 
 /** Seções de um menu; menus sem abas ganham um item único de acesso à página. */
 export function sectionsForMenu(menu: string): SectionEntry[] {
@@ -308,6 +315,12 @@ export function permissionTree(
         items.push({ key: f.key, label: f.label, kind: "Campo" });
       }
     }
+    if (entry.key === "/calendario") {
+      (stages ?? []).forEach((s, idx) => {
+        items.push({ key: calendarStageKey(s.id), label: `${idx + 1}. ${s.name}`, kind: "Fase" });
+      });
+    }
+
     const group = entry.group ?? "Geral";
     const list = groups.get(group) ?? [];
     list.push({ entry, depth: depthOf(entry.key), areaAllowed: areaAllowed.has(entry.key), items });

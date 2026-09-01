@@ -23,6 +23,9 @@ import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, useDragg
 import { ProjectChat } from "@/components/ProjectChat";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 import { MultiSelectFilter } from "@/components/MultiSelectFilter";
+import { useDeliverables, uploadDeliverable as uploadDeliverableFile, deleteDeliverable, openDeliverable, type Deliverable } from "@/lib/deliverables";
+import { CorrectionDeadlineDialog, isCorrecaoStatus, type CorrectionTarget } from "@/components/CorrectionDeadlineDialog";
+import { suggestPriorityId } from "@/lib/auto-priority";
 import { useProjectMediaTypes, mediaIdsOf, syncProjectMediaTypes } from "@/lib/project-media-types";
 import { formatDateBR } from "@/lib/dates";
 
@@ -502,8 +505,9 @@ function KanbanView({ projects, statuses, priorities, maps, assigneesByProject, 
 }) {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const { canSee } = useFieldVisibility();
+  const { canSee, canEdit: canEditField } = useFieldVisibility();
   const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
+  const [correction, setCorrection] = useState<CorrectionTarget | null>(null);
   const updateStatus = useMutation({
     mutationFn: async ({ id, status_id, from }: { id: string; status_id: string; from: string | null }) => {
       const { error } = await supabase.rpc("update_project_schedule", { _id: id, _status_id: status_id });
@@ -514,7 +518,14 @@ function KanbanView({ projects, statuses, priorities, maps, assigneesByProject, 
         });
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      const st = maps.status.get(vars.status_id) as Status | undefined;
+      if (isCorrecaoStatus(st?.name) && canEditField("due_date" as never)) {
+        const proj = projects.find((p) => p.id === vars.id);
+        if (proj) setCorrection({ id: proj.id, title: proj.title, due_date: proj.due_date });
+      }
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -553,6 +564,8 @@ function KanbanView({ projects, statuses, priorities, maps, assigneesByProject, 
   };
 
   return (
+    <>
+    <CorrectionDeadlineDialog target={correction} onClose={() => setCorrection(null)} />
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:[grid-template-columns:repeat(var(--kanban-cols),minmax(0,1fr))] lg:overflow-x-auto"
         style={{ ["--kanban-cols" as never]: Math.min(cols.length, 5) }}>
@@ -576,6 +589,8 @@ function KanbanView({ projects, statuses, priorities, maps, assigneesByProject, 
         })}
       </div>
     </DndContext>
+    </>
+
   );
 }
 
@@ -1074,6 +1089,18 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [dueDate, setDueDate] = useState(editProject?.due_date ?? "");
+  const [postDate, setPostDate] = useState(editProject?.post_date ?? "");
+  const [priorityValue, setPriorityValue] = useState(editProject?.priority_id ?? "");
+  const [priorityAuto, setPriorityAuto] = useState(!editProject?.priority_id);
+
+  /** Preenche a prioridade sugerida enquanto o usuário não escolher manualmente. */
+  const applySuggestion = (post: string, due: string) => {
+    if (!priorityAuto) return;
+    const id = suggestPriorityId(priorities, post || null, due || null);
+    if (id) setPriorityValue(id);
+  };
+
   const removeAttachment = useMutation({
     mutationFn: async (att: { id: string; file_path: string }) => {
       await supabase.storage.from("project-files").remove([att.file_path]);
@@ -1131,14 +1158,14 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
             </Field>
           )}
           <Field label="Etapa"><Select name="status_id" defaultValue={editProject?.status_id ?? statuses[0]?.id}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></Field>
-          {canSee("priority") && <Field label="Prioridade"><Select name="priority_id" defaultValue={editProject?.priority_id ?? undefined} disabled={ro("priority")}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field>}
+          {canSee("priority") && <Field label="Prioridade"><Select name="priority_id" value={priorityValue} onValueChange={(v) => { setPriorityValue(v); setPriorityAuto(false); }} disabled={ro("priority")}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{priorities.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>{priorityAuto && priorityValue && <p className="text-[11px] text-muted-foreground mt-1">Sugerido pela data</p>}</Field>}
 
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {canSee("start_date") && <Field label="Início"><Input name="start_date" type="date" defaultValue={editProject?.start_date ?? ""} readOnly={ro("start_date")} /></Field>}
-          {canSee("due_date") && <Field label="Prazo"><Input name="due_date" type="date" defaultValue={editProject?.due_date ?? ""} readOnly={ro("due_date")} /></Field>}
-          {canSee("post_date") && <Field label="Postagem"><Input name="post_date" type="date" defaultValue={editProject?.post_date ?? ""} readOnly={ro("post_date")} /></Field>}
+          {canSee("due_date") && <Field label="Prazo"><Input name="due_date" type="date" value={dueDate} onChange={(e) => { setDueDate(e.target.value); applySuggestion(postDate, e.target.value); }} readOnly={ro("due_date")} /></Field>}
+          {canSee("post_date") && <Field label="Postagem"><Input name="post_date" type="date" value={postDate} onChange={(e) => { setPostDate(e.target.value); applySuggestion(e.target.value, dueDate); }} readOnly={ro("post_date")} /></Field>}
         </div>
 
         {canSee("budget") && <Field label="Valor (R$)"><Input name="budget" type="number" step="0.01" defaultValue={editProject?.budget ?? ""} readOnly={ro("budget")} /></Field>}
@@ -1342,26 +1369,36 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const uploadDeliverable = async (file: File) => {
+  const { data: deliverables = [] } = useDeliverables(project?.id);
+  const [uploadingDeliverable, setUploadingDeliverable] = useState(false);
+
+  const uploadDeliverables = async (files: FileList) => {
     if (!project) return;
-    const path = `${project.id}/deliverable_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-    const up = await supabase.storage.from("project-files").upload(path, file);
-    if (up.error) { toast.error(up.error.message); return; }
-    updateField.mutate({ deliverable_path: path });
+    setUploadingDeliverable(true);
+    for (const file of Array.from(files)) {
+      try {
+        await uploadDeliverableFile(project.id, file);
+      } catch {
+        toast.error(`Falha ao enviar ${file.name}`);
+      }
+    }
+    setUploadingDeliverable(false);
+    qc.invalidateQueries({ queryKey: ["project_deliverables", project.id] });
+    qc.invalidateQueries({ queryKey: ["projects"] });
+    toast.success("Material enviado");
   };
 
   const removeDeliverable = useMutation({
-    mutationFn: async (path: string) => {
-      await supabase.storage.from("project-files").remove([path]);
-      const { error } = await supabase.from("projects").update({ deliverable_path: null }).eq("id", project!.id);
-      if (error) throw error;
-    },
+    mutationFn: async (item: Deliverable) => { await deleteDeliverable(project!.id, item); },
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["project_deliverables", project?.id] });
       qc.invalidateQueries({ queryKey: ["projects"] });
       toast.success("Material removido");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const [correctionDetail, setCorrectionDetail] = useState<CorrectionTarget | null>(null);
 
   const detailMediaMap = useProjectMediaTypes();
 
@@ -1377,6 +1414,8 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
 
 
   return (
+    <>
+    <CorrectionDeadlineDialog target={correctionDetail} onClose={() => setCorrectionDetail(null)} />
     <Dialog open={!!project} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{project.title}</DialogTitle></DialogHeader>
@@ -1393,7 +1432,13 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
             {canSee("media_type") && <Info label="Tipo de mídia" value={mediaIdsOf(detailMediaMap, project).map((id) => maps.media.get(id) as string).filter(Boolean).join(", ") || "—"} />}
             <div>
               <Label className="text-xs text-muted-foreground">Etapa</Label>
-              <Select value={project.status_id ?? ""} onValueChange={(v) => updateField.mutate({ status_id: v })}>
+              <Select value={project.status_id ?? ""} onValueChange={(v) => {
+                updateField.mutate({ status_id: v });
+                const st = statuses.find((x) => x.id === v);
+                if (isCorrecaoStatus(st?.name) && canEdit("due_date")) {
+                  setCorrectionDetail({ id: project.id, title: project.title, due_date: project.due_date });
+                }
+              }}>
                 <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>{statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
               </Select>
@@ -1496,21 +1541,31 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
           {canSee("deliverable_path") && (
             <div className="border rounded-md p-3 bg-muted/30 space-y-2">
               <Label className="text-xs uppercase">Material para o cliente</Label>
-              {project.deliverable_path ? (
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm truncate">Arquivo enviado ✓</span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button variant="outline" size="sm" onClick={() => downloadFile(project.deliverable_path!)}><Download className="h-3.5 w-3.5 mr-1" /> Baixar</Button>
-                    {canEdit("deliverable_path") && (
-                      <Button variant="outline" size="sm" className="text-destructive" disabled={removeDeliverable.isPending}
-                        onClick={() => { if (confirm("Excluir o arquivo do material?")) removeDeliverable.mutate(project.deliverable_path!); }}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <Input type="file" onChange={(e) => e.target.files?.[0] && uploadDeliverable(e.target.files[0])} />
+              {deliverables.length > 0 && (
+                <ul className="space-y-1">
+                  {deliverables.map((d) => (
+                    <li key={d.id} className="flex items-center justify-between gap-2 p-2 rounded bg-background/60">
+                      <span className="text-sm truncate">{d.file_name}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Button variant="outline" size="sm" onClick={() => openDeliverable(d.file_path)}><Download className="h-3.5 w-3.5 mr-1" /> Baixar</Button>
+                        {canEdit("deliverable_path") && (
+                          <Button variant="outline" size="sm" className="text-destructive" disabled={removeDeliverable.isPending}
+                            aria-label={`Excluir ${d.file_name}`}
+                            onClick={() => { if (confirm(`Excluir ${d.file_name}?`)) removeDeliverable.mutate(d); }}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {canEdit("deliverable_path") && (
+                <Input type="file" multiple disabled={uploadingDeliverable}
+                  onChange={(e) => e.target.files?.length && uploadDeliverables(e.target.files)} />
+              )}
+              {deliverables.length === 0 && !canEdit("deliverable_path") && (
+                <p className="text-xs text-muted-foreground">Nenhum arquivo enviado.</p>
               )}
 
               {validationUrl && (
@@ -1545,6 +1600,8 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
         </div>
       </DialogContent>
     </Dialog>
+    </>
+
   );
 }
 
