@@ -610,7 +610,7 @@ function StatsOverview() {
                 </div>
               ))}
             </div>
-            <p className="text-xs text-primary mt-3 font-medium">Visão consolidada de todas as demandas</p>
+            <p className="text-xs text-primary mt-3 font-medium">Demandas criadas nos últimos 7 dias</p>
           </div>
         </div>
       </>
