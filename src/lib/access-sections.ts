@@ -24,6 +24,14 @@ export function useStageGate() {
     !statusId || canViewSection("/projects", `stage:${statusId}`);
 }
 
+/** Gate das fases (etapas) exibidas no Calendário. */
+export function useCalendarStageGate() {
+  const { canViewSection } = useAccess();
+  return (statusId: string | null | undefined) =>
+    !statusId || canViewSection("/calendario", `stage:${statusId}`);
+}
+
+
 /**
  * Regras de fase por especialidade (Perfis e Acessos):
  * - fase de início: demandas em fases anteriores somem da tela e das contagens;
