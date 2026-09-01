@@ -1089,6 +1089,18 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [dueDate, setDueDate] = useState(editProject?.due_date ?? "");
+  const [postDate, setPostDate] = useState(editProject?.post_date ?? "");
+  const [priorityValue, setPriorityValue] = useState(editProject?.priority_id ?? "");
+  const [priorityAuto, setPriorityAuto] = useState(!editProject?.priority_id);
+
+  /** Preenche a prioridade sugerida enquanto o usuário não escolher manualmente. */
+  const applySuggestion = (post: string, due: string) => {
+    if (!priorityAuto) return;
+    const id = suggestPriorityId(priorities, post || null, due || null);
+    if (id) setPriorityValue(id);
+  };
+
   const removeAttachment = useMutation({
     mutationFn: async (att: { id: string; file_path: string }) => {
       await supabase.storage.from("project-files").remove([att.file_path]);
