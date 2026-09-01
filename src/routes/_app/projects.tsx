@@ -23,6 +23,9 @@ import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, useDragg
 import { ProjectChat } from "@/components/ProjectChat";
 import { usePersistedState, persistKey } from "@/hooks/use-persisted-state";
 import { MultiSelectFilter } from "@/components/MultiSelectFilter";
+import { useDeliverables, uploadDeliverable as uploadDeliverableFile, deleteDeliverable, openDeliverable, type Deliverable } from "@/lib/deliverables";
+import { CorrectionDeadlineDialog, isCorrecaoStatus, type CorrectionTarget } from "@/components/CorrectionDeadlineDialog";
+import { suggestPriorityId } from "@/lib/auto-priority";
 import { useProjectMediaTypes, mediaIdsOf, syncProjectMediaTypes } from "@/lib/project-media-types";
 import { formatDateBR } from "@/lib/dates";
 
@@ -502,8 +505,9 @@ function KanbanView({ projects, statuses, priorities, maps, assigneesByProject, 
 }) {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const { canSee } = useFieldVisibility();
+  const { canSee, canEdit: canEditField } = useFieldVisibility();
   const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
+  const [correction, setCorrection] = useState<CorrectionTarget | null>(null);
   const updateStatus = useMutation({
     mutationFn: async ({ id, status_id, from }: { id: string; status_id: string; from: string | null }) => {
       const { error } = await supabase.rpc("update_project_schedule", { _id: id, _status_id: status_id });
@@ -514,7 +518,14 @@ function KanbanView({ projects, statuses, priorities, maps, assigneesByProject, 
         });
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      const st = maps.status.get(vars.status_id) as Status | undefined;
+      if (isCorrecaoStatus(st?.name) && canEditField("due_date" as never)) {
+        const proj = projects.find((p) => p.id === vars.id);
+        if (proj) setCorrection({ id: proj.id, title: proj.title, due_date: proj.due_date });
+      }
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -553,6 +564,8 @@ function KanbanView({ projects, statuses, priorities, maps, assigneesByProject, 
   };
 
   return (
+    <>
+    <CorrectionDeadlineDialog target={correction} onClose={() => setCorrection(null)} />
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:[grid-template-columns:repeat(var(--kanban-cols),minmax(0,1fr))] lg:overflow-x-auto"
         style={{ ["--kanban-cols" as never]: Math.min(cols.length, 5) }}>
