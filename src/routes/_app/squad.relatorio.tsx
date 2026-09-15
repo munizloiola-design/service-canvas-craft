@@ -118,7 +118,11 @@ function SquadRelatorioPage() {
   const clients = clientsQ.data ?? [];
   const projectsQ = useQuery({
     queryKey: ["rel_projects_min"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, client_id, team_id").order("title")).data ?? [],
+    queryFn: async () =>
+      (await fetchAllRows<any>("projects", "id, title, client_id, team_id")).sort((a, b) =>
+        String(a.title ?? "").localeCompare(String(b.title ?? "")),
+      ),
+
   });
   const projects = projectsQ.data ?? [];
   const statusesQ = useQuery({
