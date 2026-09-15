@@ -205,7 +205,7 @@ function ProjectsPage() {
     queryKey: ["profiles"], queryFn: async () => (await supabase.from("internal_profiles").select("id, full_name").order("full_name")).data as Profile[] ?? [],
   });
   const { data: allAssignees = [] } = useQuery({
-    queryKey: ["project_assignees"], queryFn: async () => (await supabase.from("project_assignees").select("*")).data as Assignee[] ?? [],
+    queryKey: ["project_assignees"], queryFn: async () => await fetchAllRows<Assignee>("project_assignees"),
   });
   const { data: teams = [] } = useQuery({
     queryKey: ["teams"],
