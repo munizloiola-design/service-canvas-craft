@@ -120,9 +120,11 @@ function CalendarioPage() {
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-cal"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id, title, due_date, post_date, status_id, client_id, assigned_to, priority_id, description, caption, notes, team_id, media_type_id, reference_links, deliverable_path, final_link");
-      if (error) throw error;
-      return data as Project[];
+      return await fetchAllRows<Project>(
+        "projects",
+        "id, title, due_date, post_date, status_id, client_id, assigned_to, priority_id, description, caption, notes, team_id, media_type_id, reference_links, deliverable_path, final_link",
+      );
+
     },
   });
 

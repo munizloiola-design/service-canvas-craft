@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all";
+
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -118,7 +120,11 @@ function SquadRelatorioPage() {
   const clients = clientsQ.data ?? [];
   const projectsQ = useQuery({
     queryKey: ["rel_projects_min"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, client_id, team_id").order("title")).data ?? [],
+    queryFn: async () =>
+      (await fetchAllRows<any>("projects", "id, title, client_id, team_id")).sort((a, b) =>
+        String(a.title ?? "").localeCompare(String(b.title ?? "")),
+      ),
+
   });
   const projects = projectsQ.data ?? [];
   const statusesQ = useQuery({
