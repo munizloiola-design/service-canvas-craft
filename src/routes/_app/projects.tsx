@@ -182,9 +182,11 @@ function ProjectsPage() {
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("*").order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as unknown as Project[];
+      const rows = await fetchAllRows<Project>("projects", "*");
+      return [...rows].sort((a, b) =>
+        String((b as any).created_at ?? "").localeCompare(String((a as any).created_at ?? "")),
+      );
+
     },
   });
   const { data: clients = [] } = useQuery({

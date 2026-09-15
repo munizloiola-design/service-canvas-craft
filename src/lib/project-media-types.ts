@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all";
 
 type Row = { project_id: string; media_type_id: string };
 
@@ -8,15 +9,9 @@ type Row = { project_id: string; media_type_id: string };
 export function useProjectMediaTypes() {
   const { data = [] } = useQuery({
     queryKey: ["project_media_types"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .from("project_media_types" as any)
-        .select("project_id, media_type_id");
-      if (error) throw error;
-      return (data ?? []) as unknown as Row[];
-    },
+    queryFn: async () => await fetchAllRows<Row>("project_media_types", "project_id, media_type_id"),
   });
+
 
   return useMemo(() => {
     const map = new Map<string, string[]>();
