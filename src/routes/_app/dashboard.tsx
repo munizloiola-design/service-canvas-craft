@@ -385,8 +385,10 @@ function useLateness<T extends { id: string; status_id?: string | null; due_date
   });
   const { data: transitions = [] } = useQuery({
     queryKey: ["transitions-regress"],
-    queryFn: async () => (await supabase.from("project_transitions")
-      .select("project_id, from_status_id, to_status_id, created_at").order("created_at")).data ?? [],
+    queryFn: async () => (await fetchAllRows<{ project_id: string; from_status_id: string | null; to_status_id: string | null; created_at: string }>(
+      "project_transitions", "project_id, from_status_id, to_status_id, created_at",
+    )).sort((a, b) => a.created_at.localeCompare(b.created_at)),
+
   });
   const statusSort = useMemo(() => new Map(statusRows.map((s) => [s.id, s.sort_order ?? 0])), [statusRows]);
 
@@ -437,7 +439,7 @@ function StatsOverview() {
 
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-stats"],
-    queryFn: async () => (await supabase.from("projects").select("id, title, status_id, priority_id, due_date, post_date, assigned_to, client_id, team_id, client_decision, client_decided_at, created_at")).data ?? [],
+    queryFn: async () => await fetchAllRows<any>("projects", "id, title, status_id, priority_id, due_date, post_date, assigned_to, client_id, team_id, client_decision, client_decided_at, created_at"),
   });
 
   const projects = useVisibleProjects(allProjects);
@@ -863,7 +865,7 @@ function CashFlow() {
 function ProjectsByStatus() {
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects-by-status"],
-    queryFn: async () => (await supabase.from("projects").select("id, status_id, assigned_to, due_date, post_date")).data ?? [],
+    queryFn: async () => await fetchAllRows<any>("projects", "id, status_id, assigned_to, due_date, post_date"),
   });
   const projects = useVisibleProjects(allProjects);
 
@@ -896,8 +898,10 @@ function ProjectsByStatus() {
 function StatusTimer() {
   const { data: transitions = [] } = useQuery({
     queryKey: ["transitions-all"],
-    queryFn: async () => (await supabase.from("project_transitions")
-      .select("project_id, from_status_id, to_status_id, created_at").order("created_at")).data ?? [],
+    queryFn: async () => (await fetchAllRows<{ project_id: string; from_status_id: string | null; to_status_id: string | null; created_at: string }>(
+      "project_transitions", "project_id, from_status_id, to_status_id, created_at",
+    )).sort((a, b) => a.created_at.localeCompare(b.created_at)),
+
   });
   const { data: statuses = [] } = useQuery({
     queryKey: ["workflow_statuses"],
@@ -1011,7 +1015,7 @@ function TeamLoad() {
   });
   const { data: projects = [] } = useQuery({
     queryKey: ["proj-status"],
-    queryFn: async () => (await supabase.from("projects").select("id, status_id")).data ?? [],
+    queryFn: async () => await fetchAllRows<any>("projects", "id, status_id"),
   });
   const { data: statuses = [] } = useQuery({
     queryKey: ["workflow_statuses"],
