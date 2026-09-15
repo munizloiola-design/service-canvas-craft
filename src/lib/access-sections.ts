@@ -30,7 +30,9 @@ export function useStageGate() {
  */
 export function useCalendarStageGate() {
   const { canViewSection, hasSectionRules } = useAccess();
-  const menu = hasSectionRules("/calendario") ? "/calendario" : "/projects";
+  // Só usa o Calendário quando existem regras DE FASE próprias dele; regras de
+  // aba (Mês/Semana/…) não devem esconder todas as etapas.
+  const menu = hasSectionRules("/calendario", "stage:") ? "/calendario" : "/projects";
   return (statusId: string | null | undefined) =>
     !statusId || canViewSection(menu, `stage:${statusId}`);
 }
