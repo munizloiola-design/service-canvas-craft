@@ -1054,12 +1054,44 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
         projectId = data.id;
       }
 
-      const validAssignees = canSee("assignees") && canEdit("assignees") ? assignees.filter((a) => a.user_id) : [];
-      if (validAssignees.length) {
-        const { error } = await supabase.from("project_assignees").insert(
-          validAssignees.map((a) => ({ project_id: projectId, user_id: a.user_id, role_id: a.role_id || null }))
-        );
-        if (error) throw error;
+      if (canSee("assignees") && canEdit("assignees")) {
+        // Lista desejada: sem duplicidade (pessoa + função) e sem função inexistente.
+        const roleIds = new Set(roles.map((r) => r.id));
+        const keyOf = (r: { user_id: string; role_id: string | null }) => `${r.user_id}|${r.role_id ?? ""}`;
+        const seen = new Set<string>();
+        const desired: { user_id: string; role_id: string | null }[] = [];
+        for (const a of assignees) {
+          if (!a.user_id) continue;
+          const row = { user_id: a.user_id, role_id: a.role_id && roleIds.has(a.role_id) ? a.role_id : null };
+          const k = keyOf(row);
+          if (seen.has(k)) continue;
+          seen.add(k);
+          desired.push(row);
+        }
+
+        const { data: current, error: curErr } = await supabase
+          .from("project_assignees")
+          .select("id, user_id, role_id")
+          .eq("project_id", projectId);
+        if (curErr) throw new Error(`Responsáveis: ${curErr.message}`);
+
+        const desiredKeys = new Set(desired.map(keyOf));
+        const currentKeys = new Set((current ?? []).map((r) => keyOf(r)));
+        const toAdd = desired.filter((d) => !currentKeys.has(keyOf(d)));
+        const toRemove = (current ?? []).filter((r) => !desiredKeys.has(keyOf(r))).map((r) => r.id);
+
+        // Inclui primeiro e só então remove: se algo falhar, a demanda nunca
+        // fica sem responsáveis.
+        if (toAdd.length) {
+          const { error } = await supabase
+            .from("project_assignees")
+            .insert(toAdd.map((a) => ({ project_id: projectId, user_id: a.user_id, role_id: a.role_id })));
+          if (error) throw new Error(`Responsáveis: ${error.message}`);
+        }
+        if (toRemove.length) {
+          const { error } = await supabase.from("project_assignees").delete().in("id", toRemove);
+          if (error) throw new Error(`Responsáveis: ${error.message}`);
+        }
       }
 
       if (canSee("media_type") && canEdit("media_type")) {
