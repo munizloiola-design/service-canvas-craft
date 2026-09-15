@@ -1227,7 +1227,9 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
             <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2">
               <Select value={a.user_id} disabled={ro("assignees")} onValueChange={(v) => setAssignees((cur) => cur.map((x, j) => j === i ? { ...x, user_id: v } : x))}>
                 <SelectTrigger><SelectValue placeholder="Pessoa" /></SelectTrigger>
-                <SelectContent>{members.map((m) => <SelectItem key={m.id} value={m.id}>{m.full_name || "Sem nome"}</SelectItem>)}</SelectContent>
+                <SelectContent>{members
+                  .filter((m) => m.id === a.user_id || !assignees.some((x, j) => j !== i && x.user_id === m.id && (x.role_id || "") === (a.role_id || "")))
+                  .map((m) => <SelectItem key={m.id} value={m.id}>{m.full_name || "Sem nome"}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={a.role_id} disabled={ro("assignees")} onValueChange={(v) => setAssignees((cur) => cur.map((x, j) => j === i ? { ...x, role_id: v } : x))}>
                 <SelectTrigger><SelectValue placeholder="Função" /></SelectTrigger>
