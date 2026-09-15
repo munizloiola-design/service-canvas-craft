@@ -121,8 +121,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
   // Seções (abas) de um menu. Fallback permissivo POR MENU: se a especialidade
   // não tem nenhuma regra para aquele menu, nada é escondido nele.
-  const hasRulesFor = (menu: string) => {
-    const prefix = `menu:${menu}#`;
+  const hasRulesFor = (menu: string, sectionPrefix = "") => {
+    const prefix = `menu:${menu}#${sectionPrefix}`;
     return Array.from(state.fieldView).some((k) => k.startsWith(prefix))
       || Array.from(state.fieldEdit).some((k) => k.startsWith(prefix));
   };
