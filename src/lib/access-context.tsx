@@ -23,7 +23,7 @@ type Ctx = {
   canViewField: (key: string) => boolean;
   canEditField: (key: string) => boolean;
   canViewSection: (menu: string, section: string) => boolean;
-  hasSectionRules: (menu: string) => boolean;
+  hasSectionRules: (menu: string, sectionPrefix?: string) => boolean;
   canEditSection: (menu: string, section: string) => boolean;
   refresh: () => Promise<void>;
 };
