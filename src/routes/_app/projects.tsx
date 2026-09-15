@@ -28,6 +28,7 @@ import { CorrectionDeadlineDialog, isCorrecaoStatus, type CorrectionTarget } fro
 import { suggestPriorityId } from "@/lib/auto-priority";
 import { useProjectMediaTypes, mediaIdsOf, syncProjectMediaTypes } from "@/lib/project-media-types";
 import { formatDateBR } from "@/lib/dates";
+import { fetchAllRows } from "@/lib/fetch-all";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,

@@ -22,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useSectionGate } from "@/lib/access-sections";
 import { AlertCircle, Activity, Clock, Hourglass, ShieldAlert, Pencil, Upload, Trash2, Lock, Unlock, UserPlus, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
+import { fetchAllRows } from "@/lib/fetch-all";
 
 
 export const Route = createFileRoute("/_app/team")({ component: TeamPage });
@@ -110,7 +111,7 @@ function TeamPage() {
         supabase.from("internal_profiles").select("*").order("full_name"),
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("projects").select("id, assigned_to, status_id, due_date, created_at"),
-        supabase.from("project_assignees").select("project_id, user_id"),
+        fetchAllRows<{ project_id: string; user_id: string }>("project_assignees", "project_id, user_id").then((data) => ({ data })),
         supabase.from("workflow_statuses").select("id, name, sort_order, is_final").order("sort_order"),
         supabase.from("project_transitions").select("project_id, to_status_id, created_at").order("created_at"),
         supabase.from("collaborator_functions").select("*").order("sort_order"),

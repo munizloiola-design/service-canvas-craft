@@ -25,6 +25,7 @@ import { MultiSelectFilter } from "@/components/MultiSelectFilter";
 import { useProjectMediaTypes, mediaIdsOf } from "@/lib/project-media-types";
 import { toast } from "sonner";
 import { CorrectionDeadlineDialog, isCorrecaoStatus } from "@/components/CorrectionDeadlineDialog";
+import { fetchAllRows } from "@/lib/fetch-all";
 
 type CalSearch = { resp: string; equipe: string; cliente: string; fase: string; prioridade: string };
 
@@ -205,7 +206,7 @@ function CalendarioPage() {
   const { data: assignees = [] } = useQuery({
     queryKey: ["project_assignees_cal"],
     queryFn: async () =>
-      ((await supabase.from("project_assignees").select("project_id, user_id")).data ?? []) as { project_id: string; user_id: string }[],
+      await fetchAllRows<{ project_id: string; user_id: string }>("project_assignees", "project_id, user_id"),
   });
   // Visibilidade: usuários comuns veem apenas demandas onde estão marcados
   const projects = useMemo(() => {
