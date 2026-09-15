@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccess } from "@/lib/access-context";
+import { fetchAllRows } from "@/lib/fetch-all";
 
 /**
  * Gate de seções (abas) de um menu, controlado em Perfis e Acessos →
@@ -177,7 +178,7 @@ export function useProjectDateBases() {
   const { data: assignees = [] } = useQuery({
     queryKey: ["project_assignees_bases"],
     queryFn: async () =>
-      (await supabase.from("project_assignees").select("project_id, user_id")).data ?? [],
+      await fetchAllRows<{ project_id: string; user_id: string }>("project_assignees", "project_id, user_id"),
   });
 
   const { data: userBases } = useQuery({

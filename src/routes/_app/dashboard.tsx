@@ -28,6 +28,7 @@ import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
+import { fetchAllRows } from "@/lib/fetch-all";
 
 export const Route = createFileRoute("/_app/dashboard")({ component: DashboardPage });
 
@@ -348,7 +349,7 @@ function useVisibleProjects<
   const stageRules = useStageRulesFor(scopeUserId);
   const { data: assignees = [] } = useQuery({
     queryKey: ["project_assignees_dash"],
-    queryFn: async () => (await supabase.from("project_assignees").select("project_id, user_id")).data ?? [],
+    queryFn: async () => await fetchAllRows<{ project_id: string; user_id: string }>("project_assignees", "project_id, user_id"),
   });
   return useMemo(() => {
     const mine = new Set(assignees.filter((a) => a.user_id === scopeUserId).map((a) => a.project_id));
@@ -1006,7 +1007,7 @@ function RecurringRevenue() {
 function TeamLoad() {
   const { data: assignees = [] } = useQuery({
     queryKey: ["pa-load"],
-    queryFn: async () => (await supabase.from("project_assignees").select("user_id, project_id")).data ?? [],
+    queryFn: async () => await fetchAllRows<{ project_id: string; user_id: string }>("project_assignees", "user_id, project_id"),
   });
   const { data: projects = [] } = useQuery({
     queryKey: ["proj-status"],

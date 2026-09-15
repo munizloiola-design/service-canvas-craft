@@ -28,6 +28,7 @@ import { CorrectionDeadlineDialog, isCorrecaoStatus, type CorrectionTarget } fro
 import { suggestPriorityId } from "@/lib/auto-priority";
 import { useProjectMediaTypes, mediaIdsOf, syncProjectMediaTypes } from "@/lib/project-media-types";
 import { formatDateBR } from "@/lib/dates";
+import { fetchAllRows } from "@/lib/fetch-all";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
@@ -205,7 +206,7 @@ function ProjectsPage() {
     queryKey: ["profiles"], queryFn: async () => (await supabase.from("internal_profiles").select("id, full_name").order("full_name")).data as Profile[] ?? [],
   });
   const { data: allAssignees = [] } = useQuery({
-    queryKey: ["project_assignees"], queryFn: async () => (await supabase.from("project_assignees").select("*")).data as Assignee[] ?? [],
+    queryKey: ["project_assignees"], queryFn: async () => await fetchAllRows<Assignee>("project_assignees"),
   });
   const { data: teams = [] } = useQuery({
     queryKey: ["teams"],
