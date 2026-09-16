@@ -120,8 +120,13 @@ function TeamPage() {
         supabase.from("collaborator_functions").select("*").order("sort_order"),
         supabase.from("user_functions").select("user_id, function_id"),
       ]);
+      const privateById = new Map<string, Record<string, unknown>>(
+        ((privateRes.data ?? []) as { id: string }[]).map((r) => [r.id, r as Record<string, unknown>]),
+      );
       return {
-        profiles: (profilesRes.data ?? []) as Profile[],
+        profiles: ((profilesRes.data ?? []) as Record<string, unknown>[]).map(
+          (p) => ({ ...p, ...(privateById.get(p.id as string) ?? {}) }),
+        ) as unknown as Profile[],
         roles: rolesRes.data ?? [],
         projects: projectsRes.data ?? [],
         assignees: assigneesRes.data ?? [],
