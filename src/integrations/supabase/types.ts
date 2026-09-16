@@ -1882,6 +1882,13 @@ export type Database = {
             foreignKeyName: "team_members_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "internal_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "internal_profiles"
             referencedColumns: ["id"]
           },
@@ -2197,6 +2204,30 @@ export type Database = {
       }
     }
     Views: {
+      internal_directory: {
+        Row: {
+          avatar_url: string | null
+          full_name: string | null
+          id: string | null
+          job_title: string | null
+          phone: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          job_title?: string | null
+          phone?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          job_title?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
       internal_profiles: {
         Row: {
           address: string | null
