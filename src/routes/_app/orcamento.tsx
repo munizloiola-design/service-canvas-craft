@@ -30,7 +30,7 @@ function OrcamentoPage() {
       const costById = new Map<string, number>(
         ((costs.data ?? []) as { id: string; hourly_cost: number | null }[]).map((c) => [c.id, Number(c.hourly_cost ?? 0)]),
       );
-      return (names.data ?? []).map((p) => ({ ...p, hourly_cost: costById.get(p.id) ?? 0 }));
+      return (names.data ?? []).map((p) => ({ ...p, hourly_cost: costById.get(p.id ?? "") ?? 0 }));
     },
   });
   const { data: settings } = useQuery({
