@@ -107,8 +107,11 @@ function TeamPage() {
   const { data } = useQuery({
     queryKey: ["team-overview"],
     queryFn: async () => {
-      const [profilesRes, rolesRes, projectsRes, assigneesRes, statusesRes, transitionsRes, fnsRes, userFnsRes] = await Promise.all([
+      const [profilesRes, privateRes, rolesRes, projectsRes, assigneesRes, statusesRes, transitionsRes, fnsRes, userFnsRes] = await Promise.all([
         supabase.from("internal_profiles").select("*").order("full_name"),
+        // Dados sensíveis (documento, endereço, custo/hora…) só chegam para o
+        // próprio colaborador ou para gestores.
+        supabase.rpc("team_private_profiles"),
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("projects").select("id, assigned_to, status_id, due_date, created_at"),
         fetchAllRows<{ project_id: string; user_id: string }>("project_assignees", "project_id, user_id").then((data) => ({ data })),
