@@ -15,6 +15,9 @@ export async function fetchAllRows<T = Record<string, unknown>>(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase.from(table as any) as any)
       .select(columns)
+      // Ordenação estável por chave única: sem isso o Postgres pode repetir/pular
+      // linhas entre as páginas.
+      .order(orderBy, { ascending: true })
       .range(from, from + pageSize - 1);
     if (error) throw error;
     const rows = (data ?? []) as T[];
