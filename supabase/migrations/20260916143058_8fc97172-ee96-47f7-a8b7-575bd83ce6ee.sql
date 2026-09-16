@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.has_menu_access(uuid, text) TO anon, authenticated, service_role;

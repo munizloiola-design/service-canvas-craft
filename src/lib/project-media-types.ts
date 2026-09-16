@@ -9,7 +9,11 @@ type Row = { project_id: string; media_type_id: string };
 export function useProjectMediaTypes() {
   const { data = [] } = useQuery({
     queryKey: ["project_media_types"],
-    queryFn: async () => await fetchAllRows<Row>("project_media_types", "project_id, media_type_id"),
+    queryFn: async () =>
+      await fetchAllRows<Row>("project_media_types", "project_id, media_type_id", 1000, [
+        "project_id",
+        "media_type_id",
+      ]),
   });
 
 
