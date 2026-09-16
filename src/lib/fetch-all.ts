@@ -9,6 +9,7 @@ export async function fetchAllRows<T = Record<string, unknown>>(
   table: string,
   columns = "*",
   pageSize = 1000,
+  orderBy = "id",
 ): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; ; from += pageSize) {
