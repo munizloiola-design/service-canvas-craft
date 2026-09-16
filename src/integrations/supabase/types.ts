@@ -2199,60 +2199,30 @@ export type Database = {
     Views: {
       internal_profiles: {
         Row: {
-          address: string | null
           avatar_url: string | null
-          birth_date: string | null
-          commission_pct: number | null
-          contract_type: string | null
           created_at: string | null
-          document: string | null
-          emergency_contact: string | null
           full_name: string | null
-          hourly_cost: number | null
           id: string | null
           job_title: string | null
-          password_setup_expires_at: string | null
-          password_setup_link: string | null
           phone: string | null
-          start_date: string | null
           updated_at: string | null
         }
         Insert: {
-          address?: string | null
           avatar_url?: string | null
-          birth_date?: string | null
-          commission_pct?: number | null
-          contract_type?: string | null
           created_at?: string | null
-          document?: string | null
-          emergency_contact?: string | null
           full_name?: string | null
-          hourly_cost?: number | null
           id?: string | null
           job_title?: string | null
-          password_setup_expires_at?: string | null
-          password_setup_link?: string | null
           phone?: string | null
-          start_date?: string | null
           updated_at?: string | null
         }
         Update: {
-          address?: string | null
           avatar_url?: string | null
-          birth_date?: string | null
-          commission_pct?: number | null
-          contract_type?: string | null
           created_at?: string | null
-          document?: string | null
-          emergency_contact?: string | null
           full_name?: string | null
-          hourly_cost?: number | null
           id?: string | null
           job_title?: string | null
-          password_setup_expires_at?: string | null
-          password_setup_link?: string | null
           phone?: string | null
-          start_date?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -2399,6 +2369,22 @@ export type Database = {
       submit_client_decision_authed: {
         Args: { _decision: string; _feedback: string; _project_id: string }
         Returns: boolean
+      }
+      team_private_profiles: {
+        Args: never
+        Returns: {
+          address: string
+          birth_date: string
+          commission_pct: number
+          contract_type: string
+          document: string
+          emergency_contact: string
+          hourly_cost: number
+          id: string
+          password_setup_expires_at: string
+          password_setup_link: string
+          start_date: string
+        }[]
       }
       unaccent_safe: { Args: { _t: string }; Returns: string }
       update_project_schedule: {

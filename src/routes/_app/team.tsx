@@ -107,8 +107,11 @@ function TeamPage() {
   const { data } = useQuery({
     queryKey: ["team-overview"],
     queryFn: async () => {
-      const [profilesRes, rolesRes, projectsRes, assigneesRes, statusesRes, transitionsRes, fnsRes, userFnsRes] = await Promise.all([
+      const [profilesRes, privateRes, rolesRes, projectsRes, assigneesRes, statusesRes, transitionsRes, fnsRes, userFnsRes] = await Promise.all([
         supabase.from("internal_profiles").select("*").order("full_name"),
+        // Dados sensíveis (documento, endereço, custo/hora…) só chegam para o
+        // próprio colaborador ou para gestores.
+        supabase.rpc("team_private_profiles"),
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("projects").select("id, assigned_to, status_id, due_date, created_at"),
         fetchAllRows<{ project_id: string; user_id: string }>("project_assignees", "project_id, user_id").then((data) => ({ data })),
@@ -117,8 +120,13 @@ function TeamPage() {
         supabase.from("collaborator_functions").select("*").order("sort_order"),
         supabase.from("user_functions").select("user_id, function_id"),
       ]);
+      const privateById = new Map<string, Record<string, unknown>>(
+        ((privateRes.data ?? []) as { id: string }[]).map((r) => [r.id, r as Record<string, unknown>]),
+      );
       return {
-        profiles: (profilesRes.data ?? []) as Profile[],
+        profiles: ((profilesRes.data ?? []) as Record<string, unknown>[]).map(
+          (p) => ({ ...p, ...(privateById.get(p.id as string) ?? {}) }),
+        ) as unknown as Profile[],
         roles: rolesRes.data ?? [],
         projects: projectsRes.data ?? [],
         assignees: assigneesRes.data ?? [],

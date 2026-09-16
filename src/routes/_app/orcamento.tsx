@@ -21,7 +21,17 @@ function OrcamentoPage() {
   const qc = useQueryClient();
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-budget"],
-    queryFn: async () => (await supabase.from("internal_profiles").select("id, full_name, hourly_cost").order("full_name")).data ?? [],
+    queryFn: async () => {
+      const [names, costs] = await Promise.all([
+        supabase.from("internal_profiles").select("id, full_name").order("full_name"),
+        // custo/hora só é liberado para gestores e para o próprio colaborador
+        supabase.rpc("team_private_profiles"),
+      ]);
+      const costById = new Map<string, number>(
+        ((costs.data ?? []) as { id: string; hourly_cost: number | null }[]).map((c) => [c.id, Number(c.hourly_cost ?? 0)]),
+      );
+      return (names.data ?? []).map((p) => ({ ...p, hourly_cost: costById.get(p.id ?? "") ?? 0 }));
+    },
   });
   const { data: settings } = useQuery({
     queryKey: ["financial_settings"],
