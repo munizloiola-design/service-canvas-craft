@@ -47,7 +47,7 @@ export function ProjectChat({ projectId }: { projectId: string }) {
     enabled: authorIds.length > 0,
     queryFn: async () => {
       const { data } = await supabase
-        .from("profiles")
+        .from("internal_profiles")
         .select("id, full_name, avatar_url")
         .in("id", authorIds);
       return (data ?? []) as Author[];
