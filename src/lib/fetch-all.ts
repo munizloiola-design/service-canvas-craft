@@ -9,17 +9,18 @@ export async function fetchAllRows<T = Record<string, unknown>>(
   table: string,
   columns = "*",
   pageSize = 1000,
-  orderBy = "id",
+  /** Colunas que formam uma chave única (ordenação estável entre páginas). */
+  orderBy: string | string[] = "id",
 ): Promise<T[]> {
+  const keys = Array.isArray(orderBy) ? orderBy : [orderBy];
   const out: T[] = [];
   for (let from = 0; ; from += pageSize) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from(table as any) as any)
-      .select(columns)
-      // Ordenação estável por chave única: sem isso o Postgres pode repetir/pular
-      // linhas entre as páginas.
-      .order(orderBy, { ascending: true })
-      .range(from, from + pageSize - 1);
+    let q = (supabase.from(table as any) as any).select(columns);
+    // Sem ordenação por chave única o Postgres pode repetir/pular linhas
+    // entre as páginas.
+    for (const k of keys) q = q.order(k, { ascending: true });
+    const { data, error } = await q.range(from, from + pageSize - 1);
     if (error) throw error;
     const rows = (data ?? []) as T[];
     out.push(...rows);
