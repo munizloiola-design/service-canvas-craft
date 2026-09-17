@@ -410,6 +410,11 @@ function AccessTab() {
 ============================================================ */
 type Material = { label: string; url: string };
 type Indicador = { nome: string; meta: string; atual: string };
+type RedeSocial = { rede: string; perfil: string; url: string; email: string; observacoes: string };
+type ReferenciaPesquisa = { nome: string; tipo: string; url: string; motivo: string };
+
+export const REDES_OPCOES = ["Instagram", "Facebook", "TikTok", "YouTube", "LinkedIn", "X", "Pinterest", "Outra"];
+export const REF_TIPOS = ["Site", "Instagram", "Blog", "Concorrente", "Outro"];
 
 type Briefing = {
   id?: string;
@@ -423,6 +428,8 @@ type Briefing = {
   objetivos_mes: string;
   materiais: Material[];
   indicadores: Indicador[];
+  redes_sociais: RedeSocial[];
+  referencias_pesquisa: ReferenciaPesquisa[];
 };
 
 const emptyBriefing = (client_id: string): Briefing => ({
@@ -435,6 +442,7 @@ const emptyBriefing = (client_id: string): Briefing => ({
   swot_forcas: "", swot_fraquezas: "", swot_oportunidades: "", swot_ameacas: "",
   objetivos_mes: "",
   materiais: [], indicadores: [],
+  redes_sociais: [], referencias_pesquisa: [],
 });
 
 function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId: (id: string) => void }) {
