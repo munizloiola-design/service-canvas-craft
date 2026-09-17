@@ -163,7 +163,8 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
     return rows.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (!q) return true;
-      return [r.name, r.contact_name, r.email, r.phone].some((f) => (f ?? "").toLowerCase().includes(q));
+      const extras = (r.contacts ?? []).flatMap((c) => [c.name, c.phone, c.email]);
+      return [r.name, r.contact_name, r.email, r.phone, ...extras].some((f) => (f ?? "").toLowerCase().includes(q));
     });
   }, [rows, search, statusFilter]);
 
@@ -250,7 +251,14 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
               return (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{r.contact_name || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.contact_name || "—"}
+                    {(r.contacts?.length ?? 0) > 0 && (
+                      <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5" title={`${r.contacts!.length} contato(s) adicional(is)`}>
+                        +{r.contacts!.length}
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{r.phone || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{r.email || "—"}</TableCell>
                   <TableCell>{tn ? <Badge variant="secondary">{tn}</Badge> : <span className="text-muted-foreground">—</span>}</TableCell>
