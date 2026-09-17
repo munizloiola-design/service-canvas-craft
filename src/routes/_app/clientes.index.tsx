@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Plus, Trash2, Save, ExternalLink, Pencil, UserPlus,
   Users, KeyRound, FileText, FolderKanban, Sparkles, Search, MessageCircle,
-  Settings2, ArrowUp, ArrowDown, Trophy, XCircle, PlusCircle,
+  Settings2, ArrowUp, ArrowDown, Trophy, XCircle, PlusCircle, Eye, EyeOff, Lock,
 } from "lucide-react";
 
 import { toast } from "sonner";
