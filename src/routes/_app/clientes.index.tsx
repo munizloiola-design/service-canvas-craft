@@ -743,7 +743,7 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
                                 autoComplete="new-password"
                                 placeholder="Senha de acesso (visível só para admin/gerente)"
                                 value={senhas[r.id] ?? ""}
-                                onChange={(e) => setSenhas((s) => ({ ...s, [r.id as string]: e.target.value }))}
+                                onChange={(e) => setSenhasEdit((s) => ({ ...s, [r.id as string]: e.target.value }))}
                               />
                               <Button type="button" variant="ghost" size="icon"
                                 onClick={() => setShowSenha((s) => ({ ...s, [r.id as string]: !s[r.id as string] }))}>
