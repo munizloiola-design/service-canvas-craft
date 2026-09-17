@@ -532,7 +532,10 @@ const emptyBriefing = (client_id: string): Briefing => ({
 
 function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId: (id: string) => void }) {
   const qc = useQueryClient();
+  const { isManager } = useAuth();
   const [data, setData] = useState<Briefing | null>(null);
+  const [senhas, setSenhas] = useState<Record<string, string>>({});
+  const [showSenha, setShowSenha] = useState<Record<string, boolean>>({});
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-list"],
@@ -551,14 +554,31 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
     },
   });
 
+  const { data: secrets = [] } = useQuery({
+    queryKey: ["client_social_secrets", clientId],
+    enabled: !!clientId && isManager,
+    queryFn: async () => {
+      const { data } = await supabase.from("client_social_secrets").select("entry_id, senha").eq("client_id", clientId);
+      return (data ?? []) as { entry_id: string; senha: string }[];
+    },
+  });
+
+  useEffect(() => {
+    const map: Record<string, string> = {};
+    for (const s of secrets) map[s.entry_id] = s.senha ?? "";
+    setSenhas(map);
+  }, [secrets]);
+
   useEffect(() => {
     if (!clientId) { setData(null); return; }
+    const withIds = (list: RedeSocial[] | null | undefined) =>
+      (list ?? []).map((r) => (r.id ? r : { ...r, id: crypto.randomUUID() }));
     setData(briefing
       ? {
           ...emptyBriefing(clientId), ...briefing,
           materiais: briefing.materiais ?? [],
           indicadores: briefing.indicadores ?? [],
-          redes_sociais: briefing.redes_sociais ?? [],
+          redes_sociais: withIds(briefing.redes_sociais),
           referencias_pesquisa: briefing.referencias_pesquisa ?? [],
         }
       : emptyBriefing(clientId));
@@ -574,10 +594,25 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
         ? await tbl.update(payload).eq("id", data.id)
         : await tbl.insert(payload);
       if (error) throw error;
+
+      if (isManager) {
+        const rows = data.redes_sociais
+          .filter((r) => r.id && (senhas[r.id] ?? "").length > 0)
+          .map((r) => ({ client_id: clientId, entry_id: r.id as string, senha: senhas[r.id as string] ?? "", updated_at: new Date().toISOString() }));
+        if (rows.length > 0) {
+          const { error: se } = await supabase.from("client_social_secrets").upsert(rows, { onConflict: "client_id,entry_id" });
+          if (se) throw se;
+        }
+        const keep = rows.map((r) => r.entry_id);
+        let del = supabase.from("client_social_secrets").delete().eq("client_id", clientId);
+        if (keep.length > 0) del = del.not("entry_id", "in", `(${keep.map((k) => `"${k}"`).join(",")})`);
+        await del;
+      }
     },
     onSuccess: () => {
       toast.success("Cadastro salvo");
       qc.invalidateQueries({ queryKey: ["client_briefing", clientId] });
+      qc.invalidateQueries({ queryKey: ["client_social_secrets", clientId] });
     },
     onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
