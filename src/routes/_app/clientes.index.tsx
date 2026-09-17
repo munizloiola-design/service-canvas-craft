@@ -534,7 +534,7 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
   const qc = useQueryClient();
   const { isManager } = useAuth();
   const [data, setData] = useState<Briefing | null>(null);
-  const [senhas, setSenhas] = useState<Record<string, string>>({});
+  const [senhasEdit, setSenhasEdit] = useState<Record<string, string>>({});
   const [showSenha, setShowSenha] = useState<Record<string, boolean>>({});
 
   const { data: clients = [] } = useQuery({
@@ -563,11 +563,18 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
     },
   });
 
-  useEffect(() => {
+  const senhasSalvas = useMemo(() => {
     const map: Record<string, string> = {};
     for (const s of secrets) map[s.entry_id] = s.senha ?? "";
-    setSenhas(map);
+    return map;
   }, [secrets]);
+
+  const senhas = useMemo(() => ({ ...senhasSalvas, ...senhasEdit }), [senhasSalvas, senhasEdit]);
+
+  useEffect(() => {
+    setSenhasEdit({});
+    setShowSenha({});
+  }, [clientId]);
 
   useEffect(() => {
     if (!clientId) { setData(null); return; }
@@ -736,7 +743,7 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
                                 autoComplete="new-password"
                                 placeholder="Senha de acesso (visível só para admin/gerente)"
                                 value={senhas[r.id] ?? ""}
-                                onChange={(e) => setSenhas((s) => ({ ...s, [r.id as string]: e.target.value }))}
+                                onChange={(e) => setSenhasEdit((s) => ({ ...s, [r.id as string]: e.target.value }))}
                               />
                               <Button type="button" variant="ghost" size="icon"
                                 onClick={() => setShowSenha((s) => ({ ...s, [r.id as string]: !s[r.id as string] }))}>
