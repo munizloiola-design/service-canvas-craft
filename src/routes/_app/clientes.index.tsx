@@ -748,7 +748,7 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
                       );
                     })}
                     <Button type="button" variant="outline" size="sm"
-                      onClick={() => set("redes_sociais", [...data.redes_sociais, { rede: "", perfil: "", url: "", email: "", observacoes: "" }])}>
+                      onClick={() => set("redes_sociais", [...data.redes_sociais, { id: crypto.randomUUID(), rede: "", perfil: "", url: "", email: "", observacoes: "" }])}>
                       <Plus className="h-4 w-4 mr-1" /> Adicionar rede
                     </Button>
                   </div>
