@@ -1190,19 +1190,58 @@ function ProspectCard({
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {client.phone && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
-              title="Enviar WhatsApp"
-              onClick={(e) => {
-                e.stopPropagation();
-                window.open(buildWhatsAppUrl(client.phone!), "_blank", "noopener,noreferrer");
-              }}
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-            </Button>
+          {(() => {
+            const targets = [
+              ...(client.phone ? [{ label: client.contact_name || "Contato principal", phone: client.phone }] : []),
+              ...(client.contacts ?? [])
+                .filter((c) => c.phone)
+                .map((c) => ({ label: c.name ? `${c.name}${c.role ? ` (${c.role})` : ""}` : "Contato", phone: c.phone })),
+            ];
+            if (targets.length === 0) return null;
+            if (targets.length === 1) {
+              return (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                  title="Enviar WhatsApp"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(buildWhatsAppUrl(targets[0].phone), "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                </Button>
+              );
+            }
+            return (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                    title="Enviar WhatsApp — escolher contato"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                  {targets.map((t, i) => (
+                    <DropdownMenuItem
+                      key={i}
+                      onClick={() => window.open(buildWhatsAppUrl(t.phone), "_blank", "noopener,noreferrer")}
+                    >
+                      <MessageCircle className="h-3.5 w-3.5 mr-2 text-emerald-600" />
+                      <span className="truncate">{t.label}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">{t.phone}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          })()}
           )}
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(true)}>
             <Pencil className="h-3.5 w-3.5" />
