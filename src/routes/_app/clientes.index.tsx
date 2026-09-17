@@ -315,6 +315,60 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
               <div className="space-y-1"><Label>Contato principal</Label><Input name="contact_name" defaultValue={editing?.contact_name ?? ""} /></div>
               <div className="space-y-1"><Label>Telefone</Label><Input name="phone" defaultValue={editing?.phone ?? ""} /></div>
               <div className="col-span-2 space-y-1"><Label>E-mail</Label><Input name="email" type="email" defaultValue={editing?.email ?? ""} /></div>
+              <div className="col-span-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Outros contatos</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setContacts((cs) => [...cs, { ...emptyContact }])}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar contato
+                  </Button>
+                </div>
+                {contacts.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Nenhum contato adicional. Use o botão para adicionar.</p>
+                )}
+                <div className="space-y-2">
+                  {contacts.map((c, i) => (
+                    <div key={i} className="grid grid-cols-2 gap-2 rounded-md border p-2 relative">
+                      <Input
+                        placeholder="Nome"
+                        value={c.name}
+                        onChange={(e) => setContacts((cs) => cs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
+                      />
+                      <Input
+                        placeholder="Cargo / função (opcional)"
+                        value={c.role}
+                        onChange={(e) => setContacts((cs) => cs.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)))}
+                      />
+                      <Input
+                        placeholder="Telefone / WhatsApp"
+                        value={c.phone}
+                        onChange={(e) => setContacts((cs) => cs.map((x, j) => (j === i ? { ...x, phone: e.target.value } : x)))}
+                      />
+                      <Input
+                        placeholder="E-mail"
+                        type="email"
+                        value={c.email}
+                        onChange={(e) => setContacts((cs) => cs.map((x, j) => (j === i ? { ...x, email: e.target.value } : x)))}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border text-muted-foreground hover:text-destructive"
+                        title="Remover contato"
+                        onClick={() => setContacts((cs) => cs.filter((_, j) => j !== i))}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-1">
                 <Label>Status</Label>
                 <Select value={status} onValueChange={(v) => setStatus(v as ClientStatus)}>
