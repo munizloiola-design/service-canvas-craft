@@ -534,7 +534,7 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
   const qc = useQueryClient();
   const { isManager } = useAuth();
   const [data, setData] = useState<Briefing | null>(null);
-  const [senhas, setSenhas] = useState<Record<string, string>>({});
+  const [senhasEdit, setSenhasEdit] = useState<Record<string, string>>({});
   const [showSenha, setShowSenha] = useState<Record<string, boolean>>({});
 
   const { data: clients = [] } = useQuery({
