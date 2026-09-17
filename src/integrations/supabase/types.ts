@@ -174,7 +174,9 @@ export type Database = {
           objetivos_mes: string | null
           persona: string | null
           publico_alvo: string | null
+          redes_sociais: Json
           referencias: string | null
+          referencias_pesquisa: Json
           swot_ameacas: string | null
           swot_forcas: string | null
           swot_fraquezas: string | null
@@ -200,7 +202,9 @@ export type Database = {
           objetivos_mes?: string | null
           persona?: string | null
           publico_alvo?: string | null
+          redes_sociais?: Json
           referencias?: string | null
+          referencias_pesquisa?: Json
           swot_ameacas?: string | null
           swot_forcas?: string | null
           swot_fraquezas?: string | null
@@ -226,7 +230,9 @@ export type Database = {
           objetivos_mes?: string | null
           persona?: string | null
           publico_alvo?: string | null
+          redes_sociais?: Json
           referencias?: string | null
+          referencias_pesquisa?: Json
           swot_ameacas?: string | null
           swot_forcas?: string | null
           swot_fraquezas?: string | null
