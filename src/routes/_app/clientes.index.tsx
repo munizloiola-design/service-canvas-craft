@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Plus, Trash2, Save, ExternalLink, Pencil, UserPlus,
@@ -77,12 +78,32 @@ function ClientesPage() {
 /* ============================================================
    ABA 1 — Diretório
 ============================================================ */
+type ContactPerson = { name: string; role: string; phone: string; email: string };
+
+const emptyContact: ContactPerson = { name: "", role: "", phone: "", email: "" };
+
+function parseContacts(raw: unknown): ContactPerson[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((c) => {
+      const o = (c ?? {}) as Record<string, unknown>;
+      return {
+        name: String(o.name ?? ""),
+        role: String(o.role ?? ""),
+        phone: String(o.phone ?? ""),
+        email: String(o.email ?? ""),
+      };
+    })
+    .filter((c) => c.name || c.phone || c.email);
+}
+
 type Client = {
   id: string;
   name: string;
   contact_name: string | null;
   email: string | null;
   phone: string | null;
+  contacts: ContactPerson[] | null;
   notes: string | null;
   status: ClientStatus;
   prospect_stage: string | null;
@@ -136,13 +157,15 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
   const [status, setStatus] = useState<ClientStatus>("ativo");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ClientStatus | "all">("all");
+  const [contacts, setContacts] = useState<ContactPerson[]>([]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (!q) return true;
-      return [r.name, r.contact_name, r.email, r.phone].some((f) => (f ?? "").toLowerCase().includes(q));
+      const extras = (r.contacts ?? []).flatMap((c) => [c.name, c.phone, c.email]);
+      return [r.name, r.contact_name, r.email, r.phone, ...extras].some((f) => (f ?? "").toLowerCase().includes(q));
     });
   }, [rows, search, statusFilter]);
 
@@ -175,8 +198,8 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
     onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
-  const openNew = () => { setEditing(null); setStatus("ativo"); setOpen(true); };
-  const openEdit = (c: Client) => { setEditing(c); setStatus(c.status); setOpen(true); };
+  const openNew = () => { setEditing(null); setStatus("ativo"); setContacts([]); setOpen(true); };
+  const openEdit = (c: Client) => { setEditing(c); setStatus(c.status); setContacts(parseContacts(c.contacts)); setOpen(true); };
 
   return (
     <Card className="p-4 md:p-6 bg-card/95 backdrop-blur">
@@ -229,7 +252,14 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
               return (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{r.contact_name || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.contact_name || "—"}
+                    {(r.contacts?.length ?? 0) > 0 && (
+                      <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5" title={`${r.contacts!.length} contato(s) adicional(is)`}>
+                        +{r.contacts!.length}
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{r.phone || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{r.email || "—"}</TableCell>
                   <TableCell>{tn ? <Badge variant="secondary">{tn}</Badge> : <span className="text-muted-foreground">—</span>}</TableCell>
@@ -275,15 +305,70 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
                 email: (fd.get("email") as string) || null,
                 phone: (fd.get("phone") as string) || null,
                 notes: (fd.get("notes") as string) || null,
+                contacts: contacts.filter((c) => c.name || c.phone || c.email),
                 status,
               });
             }}
           >
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1"><Label>Nome / Empresa *</Label><Input name="name" required defaultValue={editing?.name ?? ""} /></div>
-              <div className="space-y-1"><Label>Contato</Label><Input name="contact_name" defaultValue={editing?.contact_name ?? ""} /></div>
+              <div className="space-y-1"><Label>Contato principal</Label><Input name="contact_name" defaultValue={editing?.contact_name ?? ""} /></div>
               <div className="space-y-1"><Label>Telefone</Label><Input name="phone" defaultValue={editing?.phone ?? ""} /></div>
               <div className="col-span-2 space-y-1"><Label>E-mail</Label><Input name="email" type="email" defaultValue={editing?.email ?? ""} /></div>
+              <div className="col-span-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Outros contatos</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setContacts((cs) => [...cs, { ...emptyContact }])}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar contato
+                  </Button>
+                </div>
+                {contacts.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Nenhum contato adicional. Use o botão para adicionar.</p>
+                )}
+                <div className="space-y-2">
+                  {contacts.map((c, i) => (
+                    <div key={i} className="grid grid-cols-2 gap-2 rounded-md border p-2 relative">
+                      <Input
+                        placeholder="Nome"
+                        value={c.name}
+                        onChange={(e) => setContacts((cs) => cs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
+                      />
+                      <Input
+                        placeholder="Cargo / função (opcional)"
+                        value={c.role}
+                        onChange={(e) => setContacts((cs) => cs.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)))}
+                      />
+                      <Input
+                        placeholder="Telefone / WhatsApp"
+                        value={c.phone}
+                        onChange={(e) => setContacts((cs) => cs.map((x, j) => (j === i ? { ...x, phone: e.target.value } : x)))}
+                      />
+                      <Input
+                        placeholder="E-mail"
+                        type="email"
+                        value={c.email}
+                        onChange={(e) => setContacts((cs) => cs.map((x, j) => (j === i ? { ...x, email: e.target.value } : x)))}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border text-muted-foreground hover:text-destructive"
+                        title="Remover contato"
+                        onClick={() => setContacts((cs) => cs.filter((_, j) => j !== i))}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-1">
                 <Label>Status</Label>
                 <Select value={status} onValueChange={(v) => setStatus(v as ClientStatus)}>
@@ -1105,20 +1190,58 @@ function ProspectCard({
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {client.phone && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
-              title="Enviar WhatsApp"
-              onClick={(e) => {
-                e.stopPropagation();
-                window.open(buildWhatsAppUrl(client.phone!), "_blank", "noopener,noreferrer");
-              }}
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-            </Button>
-          )}
+          {(() => {
+            const targets = [
+              ...(client.phone ? [{ label: client.contact_name || "Contato principal", phone: client.phone }] : []),
+              ...(client.contacts ?? [])
+                .filter((c) => c.phone)
+                .map((c) => ({ label: c.name ? `${c.name}${c.role ? ` (${c.role})` : ""}` : "Contato", phone: c.phone })),
+            ];
+            if (targets.length === 0) return null;
+            if (targets.length === 1) {
+              return (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                  title="Enviar WhatsApp"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(buildWhatsAppUrl(targets[0].phone), "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                </Button>
+              );
+            }
+            return (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                    title="Enviar WhatsApp — escolher contato"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                  {targets.map((t, i) => (
+                    <DropdownMenuItem
+                      key={i}
+                      onClick={() => window.open(buildWhatsAppUrl(t.phone), "_blank", "noopener,noreferrer")}
+                    >
+                      <MessageCircle className="h-3.5 w-3.5 mr-2 text-emerald-600" />
+                      <span className="truncate">{t.label}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">{t.phone}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          })()}
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(true)}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
