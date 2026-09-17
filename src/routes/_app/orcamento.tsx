@@ -24,8 +24,8 @@ function OrcamentoPage() {
     queryFn: async () => {
       const [names, costs] = await Promise.all([
         supabase.from("internal_profiles").select("id, full_name").order("full_name"),
-        // custo/hora só é liberado para gestores e para o próprio colaborador
-        supabase.rpc("team_private_profiles"),
+        // custo/hora liberado para quem tem acesso ao menu Orçamento (ou gestores)
+        supabase.rpc("budget_hourly_costs"),
       ]);
       const costById = new Map<string, number>(
         ((costs.data ?? []) as { id: string; hourly_cost: number | null }[]).map((c) => [c.id, Number(c.hourly_cost ?? 0)]),
