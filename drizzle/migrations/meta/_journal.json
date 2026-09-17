@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789658059356,
+      "tag": "0000_budget_hourly_costs_rpc",
+      "breakpoints": true
+    }
+  ]
+}

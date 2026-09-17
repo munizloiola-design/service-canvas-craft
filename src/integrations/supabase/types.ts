@@ -2278,6 +2278,13 @@ export type Database = {
     }
     Functions: {
       apply_auto_priority: { Args: never; Returns: number }
+      budget_hourly_costs: {
+        Args: never
+        Returns: {
+          hourly_cost: number
+          id: string
+        }[]
+      }
       can_manage_user_role: {
         Args: {
           _actor: string
