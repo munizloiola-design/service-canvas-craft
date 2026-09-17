@@ -304,13 +304,14 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
                 email: (fd.get("email") as string) || null,
                 phone: (fd.get("phone") as string) || null,
                 notes: (fd.get("notes") as string) || null,
+                contacts: contacts.filter((c) => c.name || c.phone || c.email),
                 status,
               });
             }}
           >
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1"><Label>Nome / Empresa *</Label><Input name="name" required defaultValue={editing?.name ?? ""} /></div>
-              <div className="space-y-1"><Label>Contato</Label><Input name="contact_name" defaultValue={editing?.contact_name ?? ""} /></div>
+              <div className="space-y-1"><Label>Contato principal</Label><Input name="contact_name" defaultValue={editing?.contact_name ?? ""} /></div>
               <div className="space-y-1"><Label>Telefone</Label><Input name="phone" defaultValue={editing?.phone ?? ""} /></div>
               <div className="col-span-2 space-y-1"><Label>E-mail</Label><Input name="email" type="email" defaultValue={editing?.email ?? ""} /></div>
               <div className="space-y-1">
