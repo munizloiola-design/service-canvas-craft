@@ -728,6 +728,22 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
                             <Input type="email" placeholder="E-mail de acesso" value={r.email} onChange={(e) => upd({ email: e.target.value })} />
                             <Input placeholder="Observações" value={r.observacoes} onChange={(e) => upd({ observacoes: e.target.value })} />
                           </div>
+                          {isManager && r.id && (
+                            <div className="flex gap-2 items-center">
+                              <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <Input
+                                type={showSenha[r.id] ? "text" : "password"}
+                                autoComplete="new-password"
+                                placeholder="Senha de acesso (visível só para admin/gerente)"
+                                value={senhas[r.id] ?? ""}
+                                onChange={(e) => setSenhas((s) => ({ ...s, [r.id as string]: e.target.value }))}
+                              />
+                              <Button type="button" variant="ghost" size="icon"
+                                onClick={() => setShowSenha((s) => ({ ...s, [r.id as string]: !s[r.id as string] }))}>
+                                {showSenha[r.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
