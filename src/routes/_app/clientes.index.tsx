@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Plus, Trash2, Save, ExternalLink, Pencil, UserPlus,
   Users, KeyRound, FileText, FolderKanban, Sparkles, Search, MessageCircle,
-  Settings2, ArrowUp, ArrowDown, Trophy, XCircle, PlusCircle,
+  Settings2, ArrowUp, ArrowDown, Trophy, XCircle, PlusCircle, Eye, EyeOff, Lock,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -495,7 +495,7 @@ function AccessTab() {
 ============================================================ */
 type Material = { label: string; url: string };
 type Indicador = { nome: string; meta: string; atual: string };
-type RedeSocial = { rede: string; perfil: string; url: string; email: string; observacoes: string };
+type RedeSocial = { id?: string; rede: string; perfil: string; url: string; email: string; observacoes: string };
 type ReferenciaPesquisa = { nome: string; tipo: string; url: string; motivo: string };
 
 export const REDES_OPCOES = ["Instagram", "Facebook", "TikTok", "YouTube", "LinkedIn", "X", "Pinterest", "Outra"];
@@ -532,7 +532,10 @@ const emptyBriefing = (client_id: string): Briefing => ({
 
 function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId: (id: string) => void }) {
   const qc = useQueryClient();
+  const { isManager } = useAuth();
   const [data, setData] = useState<Briefing | null>(null);
+  const [senhas, setSenhas] = useState<Record<string, string>>({});
+  const [showSenha, setShowSenha] = useState<Record<string, boolean>>({});
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-list"],
@@ -551,14 +554,31 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
     },
   });
 
+  const { data: secrets = [] } = useQuery({
+    queryKey: ["client_social_secrets", clientId],
+    enabled: !!clientId && isManager,
+    queryFn: async () => {
+      const { data } = await supabase.from("client_social_secrets").select("entry_id, senha").eq("client_id", clientId);
+      return (data ?? []) as { entry_id: string; senha: string }[];
+    },
+  });
+
+  useEffect(() => {
+    const map: Record<string, string> = {};
+    for (const s of secrets) map[s.entry_id] = s.senha ?? "";
+    setSenhas(map);
+  }, [secrets]);
+
   useEffect(() => {
     if (!clientId) { setData(null); return; }
+    const withIds = (list: RedeSocial[] | null | undefined) =>
+      (list ?? []).map((r) => (r.id ? r : { ...r, id: crypto.randomUUID() }));
     setData(briefing
       ? {
           ...emptyBriefing(clientId), ...briefing,
           materiais: briefing.materiais ?? [],
           indicadores: briefing.indicadores ?? [],
-          redes_sociais: briefing.redes_sociais ?? [],
+          redes_sociais: withIds(briefing.redes_sociais),
           referencias_pesquisa: briefing.referencias_pesquisa ?? [],
         }
       : emptyBriefing(clientId));
@@ -574,10 +594,25 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
         ? await tbl.update(payload).eq("id", data.id)
         : await tbl.insert(payload);
       if (error) throw error;
+
+      if (isManager) {
+        const rows = data.redes_sociais
+          .filter((r) => r.id && (senhas[r.id] ?? "").length > 0)
+          .map((r) => ({ client_id: clientId, entry_id: r.id as string, senha: senhas[r.id as string] ?? "", updated_at: new Date().toISOString() }));
+        if (rows.length > 0) {
+          const { error: se } = await supabase.from("client_social_secrets").upsert(rows, { onConflict: "client_id,entry_id" });
+          if (se) throw se;
+        }
+        const keep = rows.map((r) => r.entry_id);
+        let del = supabase.from("client_social_secrets").delete().eq("client_id", clientId);
+        if (keep.length > 0) del = del.not("entry_id", "in", `(${keep.map((k) => `"${k}"`).join(",")})`);
+        await del;
+      }
     },
     onSuccess: () => {
       toast.success("Cadastro salvo");
       qc.invalidateQueries({ queryKey: ["client_briefing", clientId] });
+      qc.invalidateQueries({ queryKey: ["client_social_secrets", clientId] });
     },
     onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
@@ -693,11 +728,27 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
                             <Input type="email" placeholder="E-mail de acesso" value={r.email} onChange={(e) => upd({ email: e.target.value })} />
                             <Input placeholder="Observações" value={r.observacoes} onChange={(e) => upd({ observacoes: e.target.value })} />
                           </div>
+                          {isManager && r.id && (
+                            <div className="flex gap-2 items-center">
+                              <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <Input
+                                type={showSenha[r.id] ? "text" : "password"}
+                                autoComplete="new-password"
+                                placeholder="Senha de acesso (visível só para admin/gerente)"
+                                value={senhas[r.id] ?? ""}
+                                onChange={(e) => setSenhas((s) => ({ ...s, [r.id as string]: e.target.value }))}
+                              />
+                              <Button type="button" variant="ghost" size="icon"
+                                onClick={() => setShowSenha((s) => ({ ...s, [r.id as string]: !s[r.id as string] }))}>
+                                {showSenha[r.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
                     <Button type="button" variant="outline" size="sm"
-                      onClick={() => set("redes_sociais", [...data.redes_sociais, { rede: "", perfil: "", url: "", email: "", observacoes: "" }])}>
+                      onClick={() => set("redes_sociais", [...data.redes_sociais, { id: crypto.randomUUID(), rede: "", perfil: "", url: "", email: "", observacoes: "" }])}>
                       <Plus className="h-4 w-4 mr-1" /> Adicionar rede
                     </Button>
                   </div>
