@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Plus, Trash2, Save, ExternalLink, Pencil, UserPlus,
@@ -77,12 +78,32 @@ function ClientesPage() {
 /* ============================================================
    ABA 1 — Diretório
 ============================================================ */
+type ContactPerson = { name: string; role: string; phone: string; email: string };
+
+const emptyContact: ContactPerson = { name: "", role: "", phone: "", email: "" };
+
+function parseContacts(raw: unknown): ContactPerson[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((c) => {
+      const o = (c ?? {}) as Record<string, unknown>;
+      return {
+        name: String(o.name ?? ""),
+        role: String(o.role ?? ""),
+        phone: String(o.phone ?? ""),
+        email: String(o.email ?? ""),
+      };
+    })
+    .filter((c) => c.name || c.phone || c.email);
+}
+
 type Client = {
   id: string;
   name: string;
   contact_name: string | null;
   email: string | null;
   phone: string | null;
+  contacts: ContactPerson[] | null;
   notes: string | null;
   status: ClientStatus;
   prospect_stage: string | null;
