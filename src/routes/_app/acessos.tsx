@@ -381,12 +381,9 @@ function AssignTab({ focusUserId }: { focusUserId?: string }) {
   const membersQ = useQuery<MemberProfile[]>({
     queryKey: ["team-members-for-assign"],
     queryFn: async () => {
-      const primary = await supabase.from("internal_profiles").select("id, full_name").order("full_name");
-      if (!primary.error) return (primary.data ?? []) as MemberProfile[];
-      console.error("[acessos:assign:internal_profiles fallback]", primary.error);
-      const fb = await supabase.from("profiles").select("id, full_name").order("full_name");
-      if (fb.error) throw fb.error;
-      return (fb.data ?? []) as MemberProfile[];
+      const { data, error } = await supabase.from("internal_profiles").select("id, full_name").order("full_name");
+      if (error) throw error;
+      return (data ?? []) as MemberProfile[];
     },
   });
   const members = membersQ.data ?? [];
