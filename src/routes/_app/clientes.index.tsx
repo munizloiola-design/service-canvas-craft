@@ -563,11 +563,18 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
     },
   });
 
-  useEffect(() => {
+  const senhasSalvas = useMemo(() => {
     const map: Record<string, string> = {};
     for (const s of secrets) map[s.entry_id] = s.senha ?? "";
-    setSenhas(map);
+    return map;
   }, [secrets]);
+
+  const senhas = useMemo(() => ({ ...senhasSalvas, ...senhasEdit }), [senhasSalvas, senhasEdit]);
+
+  useEffect(() => {
+    setSenhasEdit({});
+    setShowSenha({});
+  }, [clientId]);
 
   useEffect(() => {
     if (!clientId) { setData(null); return; }
