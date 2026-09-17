@@ -25,6 +25,8 @@ type Briefing = {
   objetivos_mes: string | null;
   materiais: Material[] | null;
   indicadores: Indicador[] | null;
+  redes_sociais: RedeSocial[] | null;
+  referencias_pesquisa: ReferenciaPesquisa[] | null;
 };
 
 function PortalEstrategia() {
