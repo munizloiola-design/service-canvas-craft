@@ -92,11 +92,45 @@ function PortalEstrategia() {
             </AccordionItem>
 
             <AccordionItem value="redes">
-              <AccordionTrigger>Análise das Redes Sociais</AccordionTrigger>
-              <AccordionContent className="pt-2">
+              <AccordionTrigger>Redes Sociais</AccordionTrigger>
+              <AccordionContent className="space-y-3 pt-2">
+                {briefing.redes_sociais && briefing.redes_sociais.length > 0 && (
+                  <div className="space-y-2">
+                    {briefing.redes_sociais.map((r, i) => (
+                      <div key={i} className="rounded-md border p-3 text-sm space-y-1">
+                        <div className="font-medium">{r.rede || "Rede"}{r.perfil ? ` — ${r.perfil}` : ""}</div>
+                        {r.url && (
+                          <a href={r.url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                            {r.url} <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                        {r.observacoes && <p className="text-muted-foreground whitespace-pre-wrap">{r.observacoes}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <Block label="Diagnóstico atual" value={briefing.analise_redes} />
               </AccordionContent>
             </AccordionItem>
+
+            {briefing.referencias_pesquisa && briefing.referencias_pesquisa.length > 0 && (
+              <AccordionItem value="refs">
+                <AccordionTrigger>Referências de pesquisa</AccordionTrigger>
+                <AccordionContent className="space-y-2 pt-2">
+                  {briefing.referencias_pesquisa.map((r, i) => (
+                    <div key={i} className="rounded-md border p-3 text-sm space-y-1">
+                      <div className="font-medium">{r.nome || r.url}{r.tipo ? ` · ${r.tipo}` : ""}</div>
+                      {r.url && (
+                        <a href={r.url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                          {r.url} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                      {r.motivo && <p className="text-muted-foreground whitespace-pre-wrap">{r.motivo}</p>}
+                    </div>
+                  ))}
+                </AccordionContent>
+              </AccordionItem>
+            )}
 
             <AccordionItem value="marca">
               <AccordionTrigger>Estudo da Marca</AccordionTrigger>
