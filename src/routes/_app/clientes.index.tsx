@@ -157,6 +157,7 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
   const [status, setStatus] = useState<ClientStatus>("ativo");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ClientStatus | "all">("all");
+  const [contacts, setContacts] = useState<ContactPerson[]>([]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -197,8 +198,8 @@ function DirectoryTab({ onOpenBriefing }: { onOpenBriefing: (id: string) => void
     onError: (e: unknown) => toast.error(describeSupabaseError(e)),
   });
 
-  const openNew = () => { setEditing(null); setStatus("ativo"); setOpen(true); };
-  const openEdit = (c: Client) => { setEditing(c); setStatus(c.status); setOpen(true); };
+  const openNew = () => { setEditing(null); setStatus("ativo"); setContacts([]); setOpen(true); };
+  const openEdit = (c: Client) => { setEditing(c); setStatus(c.status); setContacts(parseContacts(c.contacts)); setOpen(true); };
 
   return (
     <Card className="p-4 md:p-6 bg-card/95 backdrop-blur">
