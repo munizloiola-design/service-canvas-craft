@@ -12,6 +12,8 @@ export const Route = createFileRoute("/portal/estrategia")({ component: PortalEs
 
 type Material = { label: string; url: string };
 type Indicador = { nome: string; meta: string; atual: string };
+type RedeSocial = { rede: string; perfil: string; url: string; email: string; observacoes: string };
+type ReferenciaPesquisa = { nome: string; tipo: string; url: string; motivo: string };
 type Briefing = {
   id?: string;
   client_id: string;
