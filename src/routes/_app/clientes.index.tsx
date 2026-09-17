@@ -575,9 +575,88 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
               </AccordionItem>
 
               <AccordionItem value="redes">
-                <AccordionTrigger>Análise das Redes Sociais</AccordionTrigger>
-                <AccordionContent className="pt-2">
+                <AccordionTrigger>Redes Sociais</AccordionTrigger>
+                <AccordionContent className="space-y-3 pt-2">
+                  <div className="space-y-2">
+                    {data.redes_sociais.map((r, i) => {
+                      const upd = (patch: Partial<RedeSocial>) =>
+                        set("redes_sociais", data.redes_sociais.map((x, idx) => idx === i ? { ...x, ...patch } : x));
+                      return (
+                        <div key={i} className="rounded-md border p-3 space-y-2 bg-background/40">
+                          <div className="grid grid-cols-1 md:grid-cols-[160px_1fr_1fr_auto] gap-2 items-start">
+                            <Select value={r.rede || undefined} onValueChange={(v) => upd({ rede: v })}>
+                              <SelectTrigger><SelectValue placeholder="Rede" /></SelectTrigger>
+                              <SelectContent>
+                                {REDES_OPCOES.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <Input placeholder="@usuário / perfil" value={r.perfil} onChange={(e) => upd({ perfil: e.target.value })} />
+                            <div className="flex gap-2">
+                              <Input placeholder="https://..." value={r.url} onChange={(e) => upd({ url: e.target.value })} />
+                              {r.url && (
+                                <a href={r.url} target="_blank" rel="noreferrer" className="self-center text-muted-foreground hover:text-foreground">
+                                  <ExternalLink className="h-4 w-4" />
+                                </a>
+                              )}
+                            </div>
+                            <Button type="button" variant="ghost" size="icon"
+                              onClick={() => set("redes_sociais", data.redes_sociais.filter((_, idx) => idx !== i))}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <Input type="email" placeholder="E-mail de acesso" value={r.email} onChange={(e) => upd({ email: e.target.value })} />
+                            <Input placeholder="Observações" value={r.observacoes} onChange={(e) => upd({ observacoes: e.target.value })} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <Button type="button" variant="outline" size="sm"
+                      onClick={() => set("redes_sociais", [...data.redes_sociais, { rede: "", perfil: "", url: "", email: "", observacoes: "" }])}>
+                      <Plus className="h-4 w-4 mr-1" /> Adicionar rede
+                    </Button>
+                  </div>
                   <Field label="Diagnóstico atual das redes" value={data.analise_redes} onChange={(v) => set("analise_redes", v)} rows={5} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="refs">
+                <AccordionTrigger>Referências de pesquisa (sites e perfis)</AccordionTrigger>
+                <AccordionContent className="space-y-2 pt-2">
+                  {data.referencias_pesquisa.map((r, i) => {
+                    const upd = (patch: Partial<ReferenciaPesquisa>) =>
+                      set("referencias_pesquisa", data.referencias_pesquisa.map((x, idx) => idx === i ? { ...x, ...patch } : x));
+                    return (
+                      <div key={i} className="rounded-md border p-3 space-y-2 bg-background/40">
+                        <div className="grid grid-cols-1 md:grid-cols-[1fr_160px_1fr_auto] gap-2 items-start">
+                          <Input placeholder="Nome / descrição" value={r.nome} onChange={(e) => upd({ nome: e.target.value })} />
+                          <Select value={r.tipo || undefined} onValueChange={(v) => upd({ tipo: v })}>
+                            <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+                            <SelectContent>
+                              {REF_TIPOS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <div className="flex gap-2">
+                            <Input placeholder="https://..." value={r.url} onChange={(e) => upd({ url: e.target.value })} />
+                            {r.url && (
+                              <a href={r.url} target="_blank" rel="noreferrer" className="self-center text-muted-foreground hover:text-foreground">
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            )}
+                          </div>
+                          <Button type="button" variant="ghost" size="icon"
+                            onClick={() => set("referencias_pesquisa", data.referencias_pesquisa.filter((_, idx) => idx !== i))}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <Input placeholder="Por que é relevante" value={r.motivo} onChange={(e) => upd({ motivo: e.target.value })} />
+                      </div>
+                    );
+                  })}
+                  <Button type="button" variant="outline" size="sm"
+                    onClick={() => set("referencias_pesquisa", [...data.referencias_pesquisa, { nome: "", tipo: "", url: "", motivo: "" }])}>
+                    <Plus className="h-4 w-4 mr-1" /> Adicionar referência
+                  </Button>
                 </AccordionContent>
               </AccordionItem>
 
