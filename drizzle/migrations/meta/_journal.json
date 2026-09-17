@@ -15,6 +15,13 @@
       "when": 1789661458947,
       "tag": "0001_add_briefing_social_and_refs",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789661681234,
+      "tag": "0002_clients_contacts",
+      "breakpoints": true
     }
   ]
 }

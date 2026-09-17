@@ -351,6 +351,7 @@ export type Database = {
       clients: {
         Row: {
           contact_name: string | null
+          contacts: Json
           created_at: string
           email: string | null
           id: string
@@ -366,6 +367,7 @@ export type Database = {
         }
         Insert: {
           contact_name?: string | null
+          contacts?: Json
           created_at?: string
           email?: string | null
           id?: string
@@ -381,6 +383,7 @@ export type Database = {
         }
         Update: {
           contact_name?: string | null
+          contacts?: Json
           created_at?: string
           email?: string | null
           id?: string
