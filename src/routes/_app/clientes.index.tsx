@@ -469,7 +469,13 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
   useEffect(() => {
     if (!clientId) { setData(null); return; }
     setData(briefing
-      ? { ...emptyBriefing(clientId), ...briefing, materiais: briefing.materiais ?? [], indicadores: briefing.indicadores ?? [] }
+      ? {
+          ...emptyBriefing(clientId), ...briefing,
+          materiais: briefing.materiais ?? [],
+          indicadores: briefing.indicadores ?? [],
+          redes_sociais: briefing.redes_sociais ?? [],
+          referencias_pesquisa: briefing.referencias_pesquisa ?? [],
+        }
       : emptyBriefing(clientId));
   }, [briefing, clientId]);
 
