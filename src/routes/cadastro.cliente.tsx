@@ -15,24 +15,34 @@ export const Route = createFileRoute("/cadastro/cliente")({ component: CadastroC
 function CadastroClientePage() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const send = useServerFn(submitRegistration);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const password = String(fd.get("password") ?? "");
+    const confirm = String(fd.get("confirm") ?? "");
+    if (password.length < 8) return toast.error("A senha deve ter pelo menos 8 caracteres.");
+    if (password !== confirm) return toast.error("As senhas não coincidem.");
     setBusy(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from as any)("pending_registrations").insert({
-      type: "cliente",
-      email: String(fd.get("email")).trim().toLowerCase(),
-      full_name: String(fd.get("full_name")).trim(),
-      company_name: String(fd.get("company_name") ?? "").trim() || null,
-      phone: String(fd.get("phone") ?? "").trim() || null,
-      notes: String(fd.get("notes") ?? "").trim() || null,
-      status: "pending",
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    setDone(true);
+    try {
+      await send({
+        data: {
+          type: "cliente",
+          email: String(fd.get("email")).trim().toLowerCase(),
+          full_name: String(fd.get("full_name")).trim(),
+          company_name: String(fd.get("company_name") ?? "").trim() || null,
+          phone: String(fd.get("phone") ?? "").trim() || null,
+          notes: String(fd.get("notes") ?? "").trim() || null,
+          password,
+        },
+      });
+      setDone(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível enviar o cadastro.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (done) {
