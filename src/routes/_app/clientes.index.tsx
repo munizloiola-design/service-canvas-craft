@@ -554,11 +554,12 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
     },
   });
 
-  const { data: secrets = [] } = useQuery({
+  const { data: secrets = [], isSuccess: secretsLoaded } = useQuery({
     queryKey: ["client_social_secrets", clientId],
     enabled: !!clientId && isManager,
     queryFn: async () => {
-      const { data } = await supabase.from("client_social_secrets").select("entry_id, senha").eq("client_id", clientId);
+      const { data, error } = await supabase.from("client_social_secrets").select("entry_id, senha").eq("client_id", clientId);
+      if (error) throw error;
       return (data ?? []) as { entry_id: string; senha: string }[];
     },
   });
