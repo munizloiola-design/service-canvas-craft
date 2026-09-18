@@ -16,22 +16,33 @@ export const approveRegistration = createServerFn({ method: "POST" })
     if (e1 || !reg) throw new Error("Cadastro não encontrado");
     if (reg.status !== "pending") throw new Error("Cadastro já processado");
 
-    const { data: created, error: e2 } = await supabaseAdmin.auth.admin.createUser({
-      email: reg.email,
-      email_confirm: true,
-      user_metadata: { full_name: reg.full_name },
-    });
-    if (e2 || !created.user) throw new Error(e2?.message ?? "Falha ao criar usuário");
-    const uid = created.user.id;
+    let uid: string;
+    let actionLink: string | null = null;
+    let expiresAt: string | null = null;
 
-    const { data: linkData, error: e3 } = await supabaseAdmin.auth.admin.generateLink({
-      type: "recovery",
-      email: reg.email,
-      options: { redirectTo: setPasswordRedirect(data.base_url) },
-    });
-    if (e3) throw new Error(e3.message);
-    const actionLink = linkData?.properties?.action_link ?? null;
-    const expiresAt = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+    if (reg.auth_user_id) {
+      // A pessoa já criou a senha no cadastro: basta liberar o acesso.
+      uid = reg.auth_user_id as string;
+      const { error: eu } = await supabaseAdmin.auth.admin.updateUserById(uid, { ban_duration: "none" });
+      if (eu) throw new Error(eu.message);
+    } else {
+      const { data: created, error: e2 } = await supabaseAdmin.auth.admin.createUser({
+        email: reg.email,
+        email_confirm: true,
+        user_metadata: { full_name: reg.full_name },
+      });
+      if (e2 || !created.user) throw new Error(e2?.message ?? "Falha ao criar usuário");
+      uid = created.user.id;
+
+      const { data: linkData, error: e3 } = await supabaseAdmin.auth.admin.generateLink({
+        type: "recovery",
+        email: reg.email,
+        options: { redirectTo: setPasswordRedirect(data.base_url) },
+      });
+      if (e3) throw new Error(e3.message);
+      actionLink = linkData?.properties?.action_link ?? null;
+      expiresAt = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+    }
 
     if (reg.type === "cliente") {
       await admin.from("user_roles").delete().eq("user_id", uid);
