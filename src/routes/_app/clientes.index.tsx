@@ -554,11 +554,12 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
     },
   });
 
-  const { data: secrets = [] } = useQuery({
+  const { data: secrets = [], isSuccess: secretsLoaded } = useQuery({
     queryKey: ["client_social_secrets", clientId],
     enabled: !!clientId && isManager,
     queryFn: async () => {
-      const { data } = await supabase.from("client_social_secrets").select("entry_id, senha").eq("client_id", clientId);
+      const { data, error } = await supabase.from("client_social_secrets").select("entry_id, senha").eq("client_id", clientId);
+      if (error) throw error;
       return (data ?? []) as { entry_id: string; senha: string }[];
     },
   });
@@ -603,6 +604,9 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
       if (error) throw error;
 
       if (isManager) {
+        if (!secretsLoaded) {
+          throw new Error("As senhas de rede social ainda não foram carregadas. Aguarde e salve novamente.");
+        }
         const rows = data.redes_sociais
           .filter((r) => r.id && (senhas[r.id] ?? "").length > 0)
           .map((r) => ({ client_id: clientId, entry_id: r.id as string, senha: senhas[r.id as string] ?? "", updated_at: new Date().toISOString() }));
@@ -613,7 +617,8 @@ function BriefingTab({ clientId, setClientId }: { clientId: string; setClientId:
         const keep = rows.map((r) => r.entry_id);
         let del = supabase.from("client_social_secrets").delete().eq("client_id", clientId);
         if (keep.length > 0) del = del.not("entry_id", "in", `(${keep.map((k) => `"${k}"`).join(",")})`);
-        await del;
+        const { error: de } = await del;
+        if (de) throw de;
       }
     },
     onSuccess: () => {
