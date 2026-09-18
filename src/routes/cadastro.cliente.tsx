@@ -54,7 +54,7 @@ function CadastroClientePage() {
           </div>
           <h2 className="text-xl font-semibold">Cadastro enviado</h2>
           <p className="text-sm text-muted-foreground">
-            Sua solicitação foi enviada para aprovação. Você receberá um e-mail assim que ela for aprovada, com o link para criar sua senha.
+            Sua solicitação foi enviada para aprovação. Sua senha já está cadastrada: assim que o acesso for liberado, é só entrar com seu e-mail e senha.
           </p>
           <Button asChild variant="outline"><Link to="/login">Voltar ao login</Link></Button>
         </Card>
@@ -80,6 +80,8 @@ function CadastroClientePage() {
           <div className="space-y-1"><Label htmlFor="email">E-mail *</Label><Input id="email" name="email" type="email" required /></div>
           <div className="space-y-1"><Label htmlFor="phone">Telefone / WhatsApp</Label><Input id="phone" name="phone" /></div>
           <div className="space-y-1"><Label htmlFor="notes">Observações</Label><Textarea id="notes" name="notes" rows={3} /></div>
+          <div className="space-y-1"><Label htmlFor="password">Senha *</Label><Input id="password" name="password" type="password" minLength={8} required autoComplete="new-password" /></div>
+          <div className="space-y-1"><Label htmlFor="confirm">Confirmar senha *</Label><Input id="confirm" name="confirm" type="password" minLength={8} required autoComplete="new-password" /></div>
           <Button type="submit" className="w-full" disabled={busy}>{busy ? "Enviando..." : "Enviar cadastro"}</Button>
         </form>
       </Card>
