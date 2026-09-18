@@ -1142,6 +1142,7 @@ export type Database = {
       }
       pending_registrations: {
         Row: {
+          auth_user_id: string | null
           company_name: string | null
           created_at: string
           email: string
@@ -1157,6 +1158,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          auth_user_id?: string | null
           company_name?: string | null
           created_at?: string
           email: string
@@ -1172,6 +1174,7 @@ export type Database = {
           type: string
         }
         Update: {
+          auth_user_id?: string | null
           company_name?: string | null
           created_at?: string
           email?: string

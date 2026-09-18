@@ -43,6 +43,13 @@
       "when": 1789662368370,
       "tag": "0005_restore_profiles_select_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789746510577,
+      "tag": "0006_pending_registrations_auth_user",
+      "breakpoints": true
     }
   ]
 }
