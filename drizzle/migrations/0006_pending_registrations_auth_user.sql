@@ -1,0 +1,1 @@
+ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS auth_user_id uuid;

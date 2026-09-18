@@ -43,6 +43,10 @@ function LoginPage() {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) {
       setBusy(false);
+      const raw = (error?.message ?? "").toLowerCase();
+      if (raw.includes("banned") || raw.includes("blocked")) {
+        return toast.error("Seu cadastro ainda está em análise. Você será avisado quando for aprovado.");
+      }
       return toast.error(error?.message ?? "Falha no login");
     }
     const { data: rolesData } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);

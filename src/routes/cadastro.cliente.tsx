@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { submitRegistration } from "@/lib/registration.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,24 +15,34 @@ export const Route = createFileRoute("/cadastro/cliente")({ component: CadastroC
 function CadastroClientePage() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const send = useServerFn(submitRegistration);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const password = String(fd.get("password") ?? "");
+    const confirm = String(fd.get("confirm") ?? "");
+    if (password.length < 8) return toast.error("A senha deve ter pelo menos 8 caracteres.");
+    if (password !== confirm) return toast.error("As senhas não coincidem.");
     setBusy(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from as any)("pending_registrations").insert({
-      type: "cliente",
-      email: String(fd.get("email")).trim().toLowerCase(),
-      full_name: String(fd.get("full_name")).trim(),
-      company_name: String(fd.get("company_name") ?? "").trim() || null,
-      phone: String(fd.get("phone") ?? "").trim() || null,
-      notes: String(fd.get("notes") ?? "").trim() || null,
-      status: "pending",
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    setDone(true);
+    try {
+      await send({
+        data: {
+          type: "cliente",
+          email: String(fd.get("email")).trim().toLowerCase(),
+          full_name: String(fd.get("full_name")).trim(),
+          company_name: String(fd.get("company_name") ?? "").trim() || null,
+          phone: String(fd.get("phone") ?? "").trim() || null,
+          notes: String(fd.get("notes") ?? "").trim() || null,
+          password,
+        },
+      });
+      setDone(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível enviar o cadastro.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (done) {
@@ -43,7 +54,7 @@ function CadastroClientePage() {
           </div>
           <h2 className="text-xl font-semibold">Cadastro enviado</h2>
           <p className="text-sm text-muted-foreground">
-            Sua solicitação foi enviada para aprovação. Você receberá um e-mail assim que ela for aprovada, com o link para criar sua senha.
+            Sua solicitação foi enviada para aprovação. Sua senha já está cadastrada: assim que o acesso for liberado, é só entrar com seu e-mail e senha.
           </p>
           <Button asChild variant="outline"><Link to="/login">Voltar ao login</Link></Button>
         </Card>
@@ -69,6 +80,8 @@ function CadastroClientePage() {
           <div className="space-y-1"><Label htmlFor="email">E-mail *</Label><Input id="email" name="email" type="email" required /></div>
           <div className="space-y-1"><Label htmlFor="phone">Telefone / WhatsApp</Label><Input id="phone" name="phone" /></div>
           <div className="space-y-1"><Label htmlFor="notes">Observações</Label><Textarea id="notes" name="notes" rows={3} /></div>
+          <div className="space-y-1"><Label htmlFor="password">Senha *</Label><Input id="password" name="password" type="password" minLength={8} required autoComplete="new-password" /></div>
+          <div className="space-y-1"><Label htmlFor="confirm">Confirmar senha *</Label><Input id="confirm" name="confirm" type="password" minLength={8} required autoComplete="new-password" /></div>
           <Button type="submit" className="w-full" disabled={busy}>{busy ? "Enviando..." : "Enviar cadastro"}</Button>
         </form>
       </Card>
