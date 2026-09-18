@@ -58,6 +58,11 @@ export const approveRegistration = createServerFn({ method: "POST" })
         .single();
       if (e4) throw new Error(e4.message);
       await admin.from("client_users").insert({ user_id: uid, client_id: cli.id });
+    } else {
+      const { data: existing } = await admin.from("user_roles").select("id").eq("user_id", uid).limit(1);
+      if (!existing || existing.length === 0) {
+        await admin.from("user_roles").insert({ user_id: uid, role: "membro" });
+      }
     }
 
     await admin
