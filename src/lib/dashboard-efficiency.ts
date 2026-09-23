@@ -73,7 +73,10 @@ export function computeLateness(
     const deadline = [...dates].sort()[0];
     deadlines.set(p.id, deadline);
     const done = isDone(p.status_id);
-    const finished = done ? (doneDates?.get(p.id) ?? today) : today;
+    // Entregue sem registro de movimentação: não dá para afirmar atraso, então
+    // não penaliza (antes assumia "hoje" e criava atraso falso em demandas antigas).
+    if (done && !doneDates?.get(p.id)) continue;
+    const finished = done ? doneDates!.get(p.id)! : today;
     if (finished > deadline) {
       lateIds.add(p.id);
       if (done) resolvedLateIds.add(p.id);
