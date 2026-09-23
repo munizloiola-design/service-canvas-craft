@@ -97,6 +97,12 @@ export const rejectRegistration = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const admin = supabaseAdmin as any;
+    const { data: reg } = await admin
+      .from("pending_registrations")
+      .select("status, auth_user_id")
+      .eq("id", data.id)
+      .single();
+    if (reg && reg.status !== "pending") throw new Error("Cadastro já processado");
     const { error } = await admin
       .from("pending_registrations")
       .update({
@@ -104,9 +110,18 @@ export const rejectRegistration = createServerFn({ method: "POST" })
         rejection_reason: data.reason ?? null,
         reviewed_by: context.userId,
         reviewed_at: new Date().toISOString(),
+        auth_user_id: null,
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+    // Remove a conta bloqueada criada no cadastro para permitir novo envio,
+    // desde que ela não tenha recebido nenhum papel.
+    if (reg?.auth_user_id) {
+      const { data: roles } = await admin.from("user_roles").select("id").eq("user_id", reg.auth_user_id).limit(1);
+      if (!roles || roles.length === 0) {
+        await supabaseAdmin.auth.admin.deleteUser(reg.auth_user_id);
+      }
+    }
     return { success: true };
   });
 

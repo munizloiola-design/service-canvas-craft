@@ -57,7 +57,11 @@ export const submitRegistration = createServerFn({ method: "POST" })
       status: "pending",
       auth_user_id: uid,
     });
-    if (e2) throw new Error(e2.message);
+    if (e2) {
+      // Desfaz a conta criada para não travar um novo envio com o mesmo e-mail
+      await supabaseAdmin.auth.admin.deleteUser(uid);
+      throw new Error(e2.message);
+    }
 
     return { success: true };
   });
