@@ -465,10 +465,10 @@ function StatsOverview() {
   const overdue = lateness.openLateIds.size;
   const resolvedLate = lateness.resolvedLateIds.size;
 
-  // Eficiência = demandas sem atraso ÷ total (considera atrasos já resolvidos).
-  const lateAll = lateness.lateIds.size;
-  const onTime = Math.max(0, total - lateAll);
-  const efficiency = total > 0 ? onTime / total : null;
+  // Eficiência = entregues no prazo ÷ entregues (demandas em andamento não contam).
+  const lateDelivered = lateness.resolvedLateIds.size;
+  const onTime = Math.max(0, done - lateDelivered);
+  const efficiency = done > 0 ? onTime / done : null;
 
   // Correção = demandas atualmente na fase de correção.
   const correctionStatusId = useMemo(() => statuses.find((s) => s.name === "Correção")?.id, [statuses]);
