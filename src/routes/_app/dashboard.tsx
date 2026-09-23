@@ -518,11 +518,11 @@ function StatsOverview() {
     },
     {
       label: "Eficiência",
-      value: lateAll,
+      value: lateDelivered,
       display: efficiency === null ? "—" : `${Math.round(efficiency * 100)}%`,
       sub: efficiency === null
-        ? undefined
-        : `${onTime} de ${total} no prazo · ${statsScopeUserId ? "regras do perfil" : "etapa final do fluxo"}`,
+        ? "Sem entregas no período"
+        : `${onTime} de ${done} entregues no prazo · ${statsScopeUserId ? "regras da especialidade" : "etapa final do fluxo"}`,
 
       valueClass:
         efficiency === null ? undefined
