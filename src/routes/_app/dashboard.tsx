@@ -531,7 +531,7 @@ function StatsOverview() {
           : "text-destructive",
       icon: Gauge,
       color: "text-primary",
-      filter: (p) => lateness.lateIds.has(p.id),
+      filter: (p) => lateness.resolvedLateIds.has(p.id),
     },
     {
       label: "Correção",
