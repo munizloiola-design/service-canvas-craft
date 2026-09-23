@@ -465,10 +465,10 @@ function StatsOverview() {
   const overdue = lateness.openLateIds.size;
   const resolvedLate = lateness.resolvedLateIds.size;
 
-  // Eficiência = demandas sem atraso ÷ total (considera atrasos já resolvidos).
-  const lateAll = lateness.lateIds.size;
-  const onTime = Math.max(0, total - lateAll);
-  const efficiency = total > 0 ? onTime / total : null;
+  // Eficiência = entregues no prazo ÷ entregues (demandas em andamento não contam).
+  const lateDelivered = lateness.resolvedLateIds.size;
+  const onTime = Math.max(0, done - lateDelivered);
+  const efficiency = done > 0 ? onTime / done : null;
 
   // Correção = demandas atualmente na fase de correção.
   const correctionStatusId = useMemo(() => statuses.find((s) => s.name === "Correção")?.id, [statuses]);
@@ -518,11 +518,11 @@ function StatsOverview() {
     },
     {
       label: "Eficiência",
-      value: lateAll,
+      value: lateDelivered,
       display: efficiency === null ? "—" : `${Math.round(efficiency * 100)}%`,
       sub: efficiency === null
-        ? undefined
-        : `${onTime} de ${total} no prazo · ${statsScopeUserId ? "regras do perfil" : "etapa final do fluxo"}`,
+        ? "Sem entregas no período"
+        : `${onTime} de ${done} entregues no prazo · ${statsScopeUserId ? "regras da especialidade" : "etapa final do fluxo"}`,
 
       valueClass:
         efficiency === null ? undefined
@@ -531,7 +531,7 @@ function StatsOverview() {
           : "text-destructive",
       icon: Gauge,
       color: "text-primary",
-      filter: (p) => lateness.lateIds.has(p.id),
+      filter: (p) => lateness.resolvedLateIds.has(p.id),
     },
     {
       label: "Correção",
