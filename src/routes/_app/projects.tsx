@@ -1393,6 +1393,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
   });
 
   const [dupOpen, setDupOpen] = useState(false);
+  const navigate = useNavigate();
   const remove = useMutation({
     mutationFn: async () => { const { error } = await supabase.from("projects").delete().eq("id", project!.id); if (error) throw error; },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["projects"] }); toast.success("Removido"); onClose(); },
