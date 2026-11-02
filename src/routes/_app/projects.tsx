@@ -912,17 +912,38 @@ function NewDemandDialog({ onClose, clients, mediaTypes, statuses, priorities, r
     },
   });
 
-  // Auto-fill assignees when the responsible team changes (keeps manual picks).
+  // Members of the previously selected team — removed when the team is swapped.
+  const prevTeamMembersRef = useRef<{ teamId: string; ids: string[] } | null>(null);
+  useEffect(() => {
+    if (!lastAutoFilledTeam || prevTeamMembersRef.current?.teamId === lastAutoFilledTeam) return;
+    let cancelled = false;
+    (async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from as any)("team_members").select("user_id").eq("team_id", lastAutoFilledTeam);
+      if (cancelled) return;
+      prevTeamMembersRef.current = {
+        teamId: lastAutoFilledTeam,
+        ids: ((data ?? []) as { user_id: string }[]).map((x) => x.user_id),
+      };
+    })();
+    return () => { cancelled = true; };
+  }, [lastAutoFilledTeam]);
+
+  // When the responsible team changes, replace the old team's members with the new team's.
+  // Manual picks that don't belong to the old team are kept.
   useEffect(() => {
     if (!teamId || teamId === lastAutoFilledTeam) return;
     if (fetchingTeamMembers) return; // wait for members to load before deciding
-    if (!internalTeamMemberIds.length) { setLastAutoFilledTeam(teamId); return; }
+    const oldIds = new Set(
+      prevTeamMembersRef.current?.teamId === lastAutoFilledTeam ? prevTeamMembersRef.current.ids : [],
+    );
+    const newIds = new Set(internalTeamMemberIds);
     setAssignees((cur) => {
-      const existingIds = new Set(cur.filter((a) => a.user_id).map((a) => a.user_id));
+      const kept = cur.filter((a) => a.user_id && (!oldIds.has(a.user_id) || newIds.has(a.user_id)));
+      const existingIds = new Set(kept.map((a) => a.user_id));
       const toAdd = internalTeamMemberIds
         .filter((id) => !existingIds.has(id))
         .map((id) => ({ user_id: id, role_id: "" }));
-      const kept = cur.filter((a) => a.user_id);
       const result = [...kept, ...toAdd];
       return result.length ? result : [{ user_id: "", role_id: "" }];
     });
