@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { DuplicateProjectDialog } from "@/components/DuplicateProjectDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -734,6 +735,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
     },
     onError: (e: Error) => toast.error(e.message),
   });
+  const [dupTarget, setDupTarget] = useState<{ id: string; title: string } | null>(null);
   const isColBlocked = useColumnAccess();
   const allowedCols = visibleCols.filter((k) => !isColBlocked(k));
   const { user: listUser } = useAuth();
@@ -835,6 +837,11 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
                       </Button>
                     )}
                     {canManage && (
+                      <Button variant="ghost" size="sm" title="Duplicar demanda" onClick={() => setDupTarget({ id: p.id, title: p.title })}>
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {canManage && (
                       <Button variant="ghost" size="sm" title="Excluir demanda"
                         className="text-muted-foreground hover:text-destructive"
                         disabled={remove.isPending}
@@ -847,6 +854,7 @@ function ListView({ projects, visibleCols, maps, assigneesByProject, onDetail, c
               </tr>
             );
           })}
+          {dupTarget && <tr className="hidden"><td><DuplicateProjectDialog project={dupTarget} onClose={() => setDupTarget(null)} onDone={(id) => onDetail(id)} /></td></tr>}
           {projects.length === 0 && <tr><td colSpan={allowedCols.length + 1} className="text-center py-8 text-muted-foreground text-sm">Nenhuma demanda</td></tr>}
         </tbody>
       </table>
@@ -1384,6 +1392,7 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [dupOpen, setDupOpen] = useState(false);
   const remove = useMutation({
     mutationFn: async () => { const { error } = await supabase.from("projects").delete().eq("id", project!.id); if (error) throw error; },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["projects"] }); toast.success("Removido"); onClose(); },
@@ -1626,6 +1635,12 @@ function ProjectDetail({ project, statuses, priorities, maps, assignees, onClose
 
           {isManager && (
             <DialogFooter>
+              <Button variant="outline" onClick={() => setDupOpen(true)}>
+                <Copy className="h-4 w-4 mr-1" /> Duplicar
+              </Button>
+              <DuplicateProjectDialog project={dupOpen ? { id: project.id, title: project.title } : null}
+                onClose={() => setDupOpen(false)}
+                onDone={(id) => { onClose(); setTimeout(() => navigate({ to: "/projects", search: { detail: id } }), 50); }} />
               <Button variant="ghost" className="text-destructive" onClick={() => { if (confirm("Remover demanda?")) remove.mutate(); }}>
                 <Trash2 className="h-4 w-4 mr-1" /> Remover demanda
               </Button>

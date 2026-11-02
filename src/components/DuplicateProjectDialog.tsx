@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { duplicateProject } from "@/lib/duplicate-project";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/lib/auth-context";
 
 export function DuplicateProjectDialog({ project, onClose, onDone }: {
   project: { id: string; title: string } | null;
